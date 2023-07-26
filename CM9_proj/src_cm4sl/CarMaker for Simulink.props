@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Label="PropertySheets" />
+
+  <PropertyGroup>
+    <_PropertySheetDisplayName>CarMaker for Simulink Project Settings</_PropertySheetDisplayName>
+    <TargetName>libcarmaker4sl</TargetName>
+    <OutDir>./</OutDir>
+    <IntDir>./$(Configuration)/CarMaker4SL-$(ARCH)/</IntDir>
+    <TargetExt>.$(MAT_EXT)</TargetExt>
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+
+  <PropertyGroup Label="UserMacros">
+    <APP_VER>Car_Generic ?.?</APP_VER>
+    <MATSUPP_MATVER>R2016b</MATSUPP_MATVER>
+    <MAT_HOME>C:/Program Files/MATLAB/$(MATSUPP_MATVER)</MAT_HOME>
+    <MATSUPP_DIR>$(CARMAKER_DIR)/Matlab/$(MATSUPP_MATVER)</MATSUPP_DIR>
+    <MATSUPP_LIB>$(MATSUPP_DIR)/libmatsupp-$(ARCH).a</MATSUPP_LIB>
+    <MAT_LIBDIR>$(CARMAKER_DIR)/CM4SL/$(MATSUPP_MATVER)/mingw</MAT_LIBDIR>
+    <SUPP4SL_LIB>$(CARMAKER_DIR)/CM4SL/$(MATSUPP_MATVER)/libsupp4sl-$(ARCH).a</SUPP4SL_LIB>
+    <C_FLAGS>"Used compiler options are not available for MS Visual Studio builds."</C_FLAGS>
+    <LD_LIBS>"$(CARMAKER4SL_LIB)" "$(CAR4SL_LIB)" "$(SUPP4SL_LIB)" "$(DRIVER_LIB)" "$(ROAD_LIB)" "$(TIRE_LIB)" "$(MATSUPP_LIB)"</LD_LIBS>
+  </PropertyGroup>
+  <PropertyGroup Label="UserMacros" Condition="'$(Platform)'=='x64'">
+    <MAT_LIBDIR>$(CARMAKER_DIR)/CM4SL/$(MATSUPP_MATVER)/mingw64</MAT_LIBDIR>
+  </PropertyGroup>
+
+  <!-- general settings -->
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <PreprocessorDefinitions>WIN32;CM_NUMVER=$(CARMAKER_NUMVER);NDEBUG;_CONSOLE;_CRT_NONSTDC_NO_DEPRECATE;_CRT_SECURE_NO_WARNINGS;CM4SL;MATLAB_MEX_FILE</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>"$(CARMAKER_INC_DIR)/Car";"$(CARMAKER_INC_DIR)";"$(MATSUPP_DIR)/include";"$(MAT_HOME)/extern/include";"$(MAT_HOME)/simulink/include"</AdditionalIncludeDirectories>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <EnableFunctionLevelLinking>true</EnableFunctionLevelLinking>
+      <WarningLevel>Level3</WarningLevel>
+    </ClCompile>
+
+    <Link>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <AdditionalLibraryDirectories>"$(CARMAKER_LIB_DIR)";"$(MATSUPP_DIR)";"$(MAT_HOME)/extern/lib/$(MAT_ARCH)/microsoft";"$(CARMAKER_DIR)/CM4SL/$(MATSUPP_MATVER)"</AdditionalLibraryDirectories>
+      <AdditionalDependencies>"$(CARMAKER4SL_LIB)";"$(CAR4SL_LIB)";"$(SUPP4SL_LIB)";"$(DRIVER_LIB)";"$(ROAD_LIB)";"$(TIRE_LIB)";"$(MATSUPP_LIB)";"$(Z_LIB)";"$(CARMAKER_LIB_DIR)/libcompat_$(ARCH).a";"$(MAT_LIBDIR)/libmx.lib";"$(MAT_LIBDIR)/libmex.lib";"$(MAT_LIBDIR)/libmat.lib";user32.lib;advapi32.lib;ole32.lib;uuid.lib;ws2_32.lib;legacy_stdio_definitions.lib</AdditionalDependencies>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+      <AdditionalOptions>/EXPORT:CarMaker4SL_CMLib</AdditionalOptions>
+      <ImportLibrary>$(IntDir)$(TargetName).lib</ImportLibrary>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <!-- debug settings -->
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <PreprocessorDefinitions>WIN32;CM_NUMVER=$(CARMAKER_NUMVER);DEBUG;_CONSOLE;_CRT_NONSTDC_NO_DEPRECATE;_CRT_SECURE_NO_WARNINGS;CM4SL;MATLAB_MEX_FILE</PreprocessorDefinitions>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <TreatWarningAsError>true</TreatWarningAsError>
+    </ClCompile>
+
+    <ResourceCompile>
+      <PreprocessorDefinitions>NDEBUG</PreprocessorDefinitions>
+    </ResourceCompile>
+
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <!-- architecture settings -->
+  <ItemDefinitionGroup Condition="'$(Platform)'=='x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);WIN64</PreprocessorDefinitions>
+    </ClCompile>
+
+    <Link>
+      <AdditionalDependencies>%(AdditionalDependencies);winspool.lib</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup>
+    <PreBuildEvent>
+      <Command>"$(CREATE_INFO)" =av "$(APP_VER)" =sv "$(CARMAKER_SETVER)" =arch $(ARCH) =cf $(C_FLAGS) =libs $(LD_LIBS) =o app_tmp.c</Command>
+      <Message>Creating app_tmp.c</Message>
+    </PreBuildEvent>
+  </ItemDefinitionGroup>
+
+  <ItemGroup>
+    <BuildMacro Include="APP_VER">
+      <Value>$(APP_VER)</Value>
+    </BuildMacro>
+    <BuildMacro Include="MATSUPP_MATVER">
+      <Value>$(MATSUPP_MATVER)</Value>
+    </BuildMacro>
+    <BuildMacro Include="MAT_HOME">
+      <Value>$(MAT_HOME)</Value>
+    </BuildMacro>
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,8 @@
+VehicleMessageField=id,type,vehicleClass,speed,acceleration,positionX,positionY,positionZ,color,linkId,laneId,distanceTravel,speedDesired,heading,grade
+EnableCosimulation=1
+EnableEgoSimulink=1
+EgoId=egoCm
+EgoType=
+TrafficLayerIP=127.0.0.1
+TrafficLayerPort=2333
+TrafficRefreshRate=0.001000

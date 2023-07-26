@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 2021-07-22 13:13:05 by Eclipse SUMO netedit Version 1.9.2
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netconvertConfiguration.xsd">
+
+    <input>
+        <sumo-net-file value="C:\Dropbox%20(ORNL)\2_projects\1_2_sumo\1_8_signalcontroller\ShallowfordRdMod2\ShallowfordRd_RL.net.xml"/>
+    </input>
+
+    <output>
+        <output-file value="C:\Dropbox%20(ORNL)\2_projects\1_2_sumo\1_8_signalcontroller\ShallowfordRdMod2\ShallowfordRd_RL.net.xml"/>
+    </output>
+
+    <processing>
+        <geometry.min-radius.fix.railways value="false"/>
+        <geometry.max-grade.fix value="false"/>
+        <offset.disable-normalization value="true"/>
+        <lefthand value="false"/>
+    </processing>
+
+    <junctions>
+        <no-turnarounds value="true"/>
+        <junctions.corner-detail value="5"/>
+        <junctions.limit-turn-speed value="5.5"/>
+        <rectangular-lane-cut value="false"/>
+    </junctions>
+
+    <pedestrian>
+        <walkingareas value="false"/>
+    </pedestrian>
+
+    <netedit>
+        <route-files value="C:\Dropbox%20(ORNL)\2_projects\1_2_sumo\1_8_signalcontroller\ShallowfordRdMod2\ShallowfordRd_RL_test.rou.xml"/>
+    </netedit>
+
+    <report>
+        <aggregate-warnings value="5"/>
+    </report>
+
+</configuration>
+-->
+
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
+    <route edges="-1650 -16951 -16480 -17276 -17275 -17235 -17234 -17315 -17317 -17316 -17318 -17319 -17332 -17331" color="yellow" id="route_0"/>
+    <route edges="-906 -905 16480 16951 1650 1527" color="yellow" id="route_1"/>
+    <route edges="17275 17276 16480 16951 1650 1527" color="yellow" id="route_2"/>
+    <route edges="-906 -905 -17276 -17275 -17235 -17234 -17315 -17317 -17316 -17318 -17319 -17332 -17331" color="yellow" id="route_3"/>
+    <route edges="17275 17276 -16037" color="yellow" id="route_4"/>
+    <flow id="flow_0" begin="0.00" route="route_0" end="60.00" vehsPerHour="500.00"/>
+    <flow id="flow_1" begin="60.00" route="route_1" end="120.00" vehsPerHour="500.00"/>
+    <flow id="flow_3" begin="60.00" route="route_3" end="120.00" vehsPerHour="500.00"/>
+	<flow id="flow_2" begin="120.00" route="route_2" end="180.00" vehsPerHour="500.00"/>
+	<flow id="flow_4" begin="120.00" route="route_4" end="180.00" vehsPerHour="500.00"/>
+</routes>

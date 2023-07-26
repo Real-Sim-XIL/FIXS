@@ -1,0 +1,29 @@
+### BEGIN IPG-MOVIE-INFO
+# Subscribe VissimIF.Vhcl.tx VissimIF.Vhcl.ty VissimIF.Vhcl.tz VissimIF.Filter.PreDist VissimIF.Filter.Radius
+### END IPG-MOVIE-INFO
+
+proc DrawStart {args} {
+    global Qu
+    set 2Pi [expr {2.0*3.14159265358979323846}]
+    set Segments 100
+    set dist   $Qu(VissimIF.Filter.PreDist)
+    set radius $Qu(VissimIF.Filter.Radius)
+
+
+    gl pushmatrix
+    glDisableLighting
+    gl color 1 0 0 1
+
+    gl begin line_loop
+
+    for {set i 0} {$i<$Segments} {incr i} {
+	gl vertex [expr {$Qu(VissimIF.Vhcl.tx) + $dist * cos($Qu(Vhcl.Yaw)) + ($radius * cos($i * $2Pi / double($Segments)))}] \
+		  [expr {$Qu(VissimIF.Vhcl.ty) + $dist * sin($Qu(Vhcl.Yaw)) + ($radius * sin($i * $2Pi / double($Segments)))}] \
+		  $Qu(VissimIF.Vhcl.tz)
+    }
+    gl end
+    glEnableLighting
+    gl popmatrix
+}
+
+return -1

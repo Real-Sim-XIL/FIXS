@@ -1,0 +1,10 @@
+dsmake -f DsBuildLibrary.mk output_filename=RealSimDsLib source_files="..\CommonLib\SocketHelper.cpp ..\CommonLib\ConfigHelper.cpp ..\CommonLib\MsgHelper.cpp ..\CommonLib\VirEnvHelper.cpp" target=Dsx86_32
+
+
+dsmake -f DsBuildLibrary.mk output_filename=RealSimDsLib source_files="test.cpp" target=Dsx86_32
+
+
+
+dsmake -f DsBuildLibrary.mk output_filename=RealSimDsLib source_files="SocketHelper.cpp ConfigHelper.cpp MsgHelper.cpp VirEnvHelper.cpp" custom_cpp_options="-I./yaml-cpp/include -I./yaml-cpp/build/include -std=c++11" custom_obj_files=yaml-cpp.lib target=Dsx86_32
+
+dsmake -f DsBuildLibrary.mk output_filename=RealSimDsLib source_files="SocketHelper.cpp ConfigHelper.cpp MsgHelper.cpp VirEnvHelper.cpp" custom_cpp_options="-I./yaml-cpp/include -I./yaml-cpp/build/include -std=c++11" custom_obj_files=yaml-cpp.lib target=Dsx86_32

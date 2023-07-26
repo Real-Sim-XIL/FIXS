@@ -1,0 +1,31 @@
+# For VISSIM:
+#   -if only define links, then will use speed limit at rightmost lane that has desired speed decision defined. 
+
+Routes:
+# -   id: [3, 5]
+    # vehicleType: [100, 100]
+    # link: [1,10002,4,10011,11,10000,2,10001,3]
+    # lane: [2]
+    # initialSpeedLimit: [13.89]
+    
+# -   id: [3]
+    # vehicleType: [1000]
+    # link: [1,10000,2]
+    # lane: [1]
+    # initialSpeedLimit: [13.89]
+-   vehicleType: [1000]
+    link: [1,10000,2]
+    lane: [1]
+    initialSpeedLimit: [13.89]
+    
+# -   vehicleType: [100]
+    # link: [1,10002,4,10011,11,10000,2,10001,3]
+    # lane: [3]
+    # initialSpeedLimit: [13.89]
+
+	
+# -   id: [36]
+    # vehicleType: [100]
+    # link: [1,10002,4,10011,11,10003,6,10007,8,10008,9,10009,10]
+    # lane: [2,2,2,1,1,1,1,1,2,1,1,1,1]
+    # initialSpeedLimit: [13.89]

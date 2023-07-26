@@ -1,0 +1,50 @@
+# This is a configuration file to easily switch to different sceanrios without changing the code. 
+# Note: 
+#	1. all fields listed MUST be specified
+#	2. NO comment after each field, 
+#		THIS IS RIGHT: 
+#			playerId = 1 
+#		THIS IS WRONG: 
+#			playerId = 1 # define ego vehicles
+#	3. when define multiple elements, NO comman at the end
+#		THIS IS RIGHT: 
+#			playerId = 1,2 
+#		THIS IS WRONG: 
+#			playerId = 1,2,
+#	4. define single variable single lane
+#	5. uncomment only the config of the scenario of interest and comment out all other lines of this file
+
+playerId = 1
+veryFirstPlayerId = 2
+Link_M_no = 1
+Lane_M_no = 1
+Pos_CZ_M_en = 400
+Pos_CZ_M_ex = 800
+CZ_M_len = 400
+Link_R_no = 2
+Lane_R_no = 1
+Pos_CZ_R_en = 400.0
+Pos_CZ_R_ex = 800.0
+CZ_R_len = 400
+v_des = 13.89
+CZ_en_coords_x = 1.58, 225.48
+CZ_en_coords_y = 400, 463.46
+#CZ_en_coords_x = 575, 772.1
+#CZ_en_coords_y = -116.8, -46.1
+t_des = 0.2	
+#typeLDV = CAV_LDV
+#typeHDV = CAV_HGV
+typeLDV = 100
+typeHDV = 200
+t_des_truck = 1.5
+t_des_truck_accel = 1.5
+#dist_merg1 = 31
+#dist_merg2 = 31
+#dist_merg3 = 34
+#dist_merg1 = 21
+#dist_merg2 = 23
+#dist_merg3 = 26
+dist_merg1 = 23
+dist_merg2 = 26
+dist_merg3 = 28
+enable_vissim_ipg = 1

@@ -1,0 +1,33 @@
+#INFOFILE1.1 - Do not remove this line!
+AlignTrq.Length = 0.3
+AspectRatio = 0.6
+BinFName = Mapping/Cx727_mie22560R18_33_1401K_137830G_0.bin
+CreateArgs = -if C:caeappsTire_converterford2cmTire-masteroutMapping/Cx482_mie22560R18_33_1401K_137830G_0.tdx -of C:caeappsTire_converterford2cmTire-masteroutMapping/Cx482_mie22560R18_33_1401K_137830G_0_tmp.tir -ofbin C:caeappsTire_converterford2cmTire-masteroutMapping/Cx482_mie22560R18_33_1401K_137830G_0.bin
+Description:
+	NOTAVAIL
+	NOTAVAIL
+	Based on 'Mapping/Cx727_mie22560R18_33_1401K_137830G_0.tdx'
+	""
+	#   Load:      32 points [ 0 N  to  13946.1 N ]
+	#   Slip:     128 points [ -0.2   to  0.2 ]
+	#   Alpha:    128 points [ -20 deg  to  20 deg ]
+FLoadMax = 11157
+FileCreator = tireutil v7.0, 2019-05-14, 14:15:38 by (null)
+FileIdent = CarMaker-Tire-RTTire 3
+KinRollRadius = 0.3653
+LongFrc.Length = 0.3
+NomRadius = 0.3232
+NomWidth = 0.2
+Radial.Damping = 275.3
+Radial.Stiffness = 275300
+RollResist.Factor = 0.0032877
+RollResist.Kind = TrqLoad
+Side = left
+SideFrc.Length = 0.3
+StandStill.cAlign = 0.2
+StandStill.cLong = 0.01
+StandStill.cSide = 0.2
+muRoad = 1
+LongFrc.Stiffness = 1
+SideFrc.Stiffness = 1
+AlignTrq.Stiffness = 1

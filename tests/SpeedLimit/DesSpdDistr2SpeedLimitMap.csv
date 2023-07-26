@@ -1,0 +1,44 @@
+Index,Name,SpeedLimitValue,SpeedLimitUnit
+5,5 km/h,5.0,km/h
+12,12 km/h,12.0,km/h
+15,15 km/h,15.0,km/h
+20,20 km/h,20.0,km/h
+25,25 km/h,25.0,km/h
+30,30 km/h,30.0,km/h
+40,40 km/h,40.0,km/h
+50,50 km/h,50.0,km/h
+60,60 km/h,60.0,km/h
+70,70 km/h,70.0,km/h
+80,80 km/h,80.0,km/h
+85,85 km/h,85.0,km/h
+90,90 km/h,90.0,km/h
+100,100 km/h,100.0,km/h
+120,120 km/h,120.0,km/h
+130,130 km/h,130.0,km/h
+140,140 km/h,140.0,km/h
+1001,2.09 km/h (0.58 m/s),2.09,km/h
+1002,2.88 km/h (0.80 m/s),2.88,km/h
+1003,3.24 km/h (0.90 m/s) ±,3.24,km/h
+1004,3.60 km/h (1.00 m/s) ±,3.6,km/h
+1005,3.96 km/h (1.10 m/s) ±,3.96,km/h
+1007,4.32 km/h (1.20 m/s) ±,4.32,km/h
+1008,4.75 km/h (1.32 m/s) ±,4.75,km/h
+1009,4.93 km/h (1.37 m/s) ±,4.93,km/h
+1010,5.51 km/h (1.53 m/s) ±,5.51,km/h
+1020,IMO-M <30,,km/h
+1021,IMO-F <30,,km/h
+1022,IMO-M 30-50,,km/h
+1023,IMO-F 30-50,,km/h
+1024,IMO-M >50,,km/h
+1025,IMO-F >50,,km/h
+1026,IMO-M MI1,,km/h
+1027,IMO-F MI1,,km/h
+1028,IMO-M MI2,,km/h
+1029,IMO-F MI2,,km/h
+1040,Fruin 1,,km/h
+1041,Fruin 2,,km/h
+1042,Predt-Milinski,,km/h
+1043,Stairs Kretz 1,,km/h
+1044,Stairs Kretz 2,,km/h
+1045,At Airports - S.B. Young,,km/h
+1046,On Moving Walkways - S.B. Young,,km/h

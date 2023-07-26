@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on Thu 18 Feb 2021 08:47:45 PM EST by Eclipse SUMO netedit Version v1_8_0+0536-90f9acf735
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netconvertConfiguration.xsd">
+
+    <input>
+        <sumo-net-file value="/home/thing1/CARLA_0.9.11/Co-Simulation/Sumo/Town10HD.net.xml"/>
+    </input>
+
+    <output>
+        <output-file value="/home/thing1/CARLA_0.9.11/Co-Simulation/Sumo/Town10HD.net.xml"/>
+    </output>
+
+    <processing>
+        <geometry.min-radius.fix.railways value="false"/>
+        <geometry.max-grade.fix value="false"/>
+        <offset.disable-normalization value="true"/>
+        <lefthand value="false"/>
+    </processing>
+
+    <junctions>
+        <no-turnarounds value="true"/>
+        <junctions.corner-detail value="5"/>
+        <junctions.limit-turn-speed value="5.5"/>
+        <rectangular-lane-cut value="true"/>
+    </junctions>
+
+    <pedestrian>
+        <walkingareas value="false"/>
+    </pedestrian>
+
+    <netedit>
+        <route-files value="/home/thing1/CARLA_0.9.11/Co-Simulation/Sumo/Town10HD.rou.xml"/>
+    </netedit>
+
+    <report>
+        <aggregate-warnings value="5"/>
+    </report>
+
+</configuration>
+-->
+
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
+    <vType id="vehicle.audi.a2" length="3.71" vClass="passenger" width="1.79" height="1.55"/>
+    <vType id="vehicle.audi.etron" length="4.86" vClass="evehicle" width="2.03" height="1.65"/>
+    <vType id="vehicle.audi.tt" length="4.18" vClass="passenger" width="1.99" height="1.39"/>
+    <vType id="vehicle.bh.crossbike" length="1.49" vClass="bicycle" width="0.86" height="1.08"/>
+    <vType id="vehicle.bmw.grandtourer" length="4.61" vClass="passenger" width="2.24" height="1.67"/>
+    <vType id="vehicle.bmw.isetta" length="2.21" vClass="evehicle" width="1.48" height="1.38"/>
+    <vType id="vehicle.carlamotors.carlacola" length="5.20" vClass="truck" guiShape="truck" width="2.61" height="2.47"/>
+    <vType id="vehicle.charger2020.charger2020" length="5.01" vClass="passenger" width="2.10" height="1.53"/>
+    <vType id="vehicle.chargercop2020.chargercop2020" length="5.24" vClass="passenger" width="2.10" height="1.64"/>
+    <vType id="vehicle.chevrolet.impala" length="5.36" vClass="passenger" width="2.03" height="1.41"/>
+    <vType id="vehicle.citroen.c3" length="3.99" vClass="passenger" width="1.85" height="1.62"/>
+    <vType id="vehicle.diamondback.century" length="1.64" vClass="bicycle" width="0.37" height="1.02"/>
+    <vType id="vehicle.dodge_charger.police" length="4.97" vClass="authority" guiShape="police" width="2.04" height="1.55"/>
+    <vType id="vehicle.gazelle.omafiets" length="1.84" vClass="bicycle" width="0.33" height="1.13"/>
+    <vType id="vehicle.harley-davidson.low_rider" length="2.36" vClass="motorcycle" width="1.91" height="1.28"/>
+    <vType id="vehicle.jeep.wrangler_rubicon" length="3.87" vClass="passenger" width="1.91" height="1.88"/>
+    <vType id="vehicle.kawasaki.ninja" length="2.03" vClass="motorcycle" width="0.80" height="1.15"/>
+    <vType id="vehicle.lincoln.mkz2017" length="4.90" vClass="passenger" width="2.13" height="1.51"/>
+    <vType id="vehicle.lincoln2020.mkz2020" length="4.89" vClass="passenger" width="2.23" height="1.48"/>
+    <vType id="vehicle.mercedes-benz.coupe" length="5.03" vClass="passenger" width="2.15" height="1.64"/>
+    <vType id="vehicle.mercedesccc.mercedesccc" length="4.67" vClass="passenger" width="2.00" height="1.44"/>
+    <vType id="vehicle.mini.cooperst" length="3.81" vClass="passenger" width="1.97" height="1.48"/>
+    <vType id="vehicle.mustang.mustang" length="4.72" vClass="passenger" width="1.89" height="1.30"/>
+    <vType id="vehicle.nissan.micra" length="3.63" vClass="passenger" width="1.85" height="1.50"/>
+    <vType id="vehicle.nissan.patrol" length="4.60" vClass="passenger" width="1.93" height="1.85"/>
+    <vType id="vehicle.seat.leon" length="4.19" vClass="passenger" width="1.82" height="1.47"/>
+    <vType id="vehicle.tesla.cybertruck" length="6.27" vClass="evehicle" width="2.39" height="2.10"/>
+    <vType id="vehicle.tesla.model3" length="4.79" vClass="evehicle" width="2.16" height="1.49"/>
+    <vType id="vehicle.toyota.prius" length="4.51" vClass="evehicle" width="2.01" height="1.52"/>
+    <vType id="vehicle.volkswagen.t2" length="4.48" vClass="passenger" guiShape="passenger/van" width="2.07" height="2.04"/>
+    <vType id="vehicle.yamaha.yzf" length="2.21" vClass="motorcycle" width="0.87" height="1.25"/>
+    <route edges="6.0.00 5.0.00 4.0.00 -2.0.00 21.0.00 20.0.00 -15.0.00 6.0.00 5.0.00" color="yellow" id="route_0"/>
+    <route edges="-3.0.00 6.0.00 5.0.00 4.0.00 -2.0.00 -3.0.00" color="yellow" id="route_1"/>
+    <route edges="-5.0.00 -6.0.00 -7.0.00 2.0.00 1.0.00 -5.0.00" color="yellow" id="route_2"/>
+    <route edges="6.0.00 5.0.00 4.0.00 -2.0.00 21.0.00 20.0.00 -15.0.00 -7.0.00" color="yellow" id="route_3"/>
+    <route edges="-18.0.00 -20.0.00 -21.0.00 2.0.00 -11.0.00 -12.0.00 -14.0.00 -15.0.00 -7.0.00" color="yellow" id="route_4"/>
+    <route edges="-6.0.00 -22.0.00 14.0.00 13.0.00 -5.0.00 -18.0.00" color="yellow" id="route_5"/>
+    <route edges="-13.0.00 12.0.00 11.0.00 1.0.00 -13.0.00" color="yellow" id="route_6"/>
+    <flow id="flow_0" type="vehicle.nissan.patrol" begin="0.00" route="route_6" end="300.00" number="5"/>
+    <flow id="flow_1" type="vehicle.bmw.grandtourer" begin="0.00" route="route_1" end="300.00" number="5"/>
+    <flow id="flow_2" type="vehicle.lincoln.mkz2017" begin="0.00" route="route_2" end="300.00" number="10"/>
+    <flow id="flow_3" type="vehicle.citroen.c3" begin="0.00" route="route_3" end="20.00" number="2"/>
+    <flow id="flow_4" type="vehicle.nissan.micra" begin="0.00" route="route_4" end="300.00" number="5"/>
+    <flow id="flow_5" type="vehicle.chevrolet.impala" begin="0.00" route="route_5" end="300.00" number="5"/>
+    <vehicle id="vehicle_0" type="vehicle.audi.tt" depart="20.00" color="red" route="route_0"/>
+</routes>

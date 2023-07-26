@@ -1,0 +1,2 @@
+::sumo-gui -c ./coordMerge_v1.sumocfg --remote-port 1337 --step-length 0.1 --start
+sumo-gui -c ./ACM_coordMerge_v2.sumocfg --remote-port 1337 --step-length 0.1 --start --netstate-dump ACM_coordMerge_v2.xml  --num-clients 2 --netstate-dump ACM_coordMerge_v2_Carla.xml --lateral-resolution 0.25 --collision.check-junctions

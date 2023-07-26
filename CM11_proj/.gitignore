@@ -1,0 +1,14 @@
+Update_**
+Data/Config/OutputQuantities_Anim**
+
+src/ExtraModels/**
+src/Debug/**
+src/Release/**
+
+src/.version_win64
+
+SimOutput/**
+
+Movie/.road_cache/*
+
+**/.tmp**

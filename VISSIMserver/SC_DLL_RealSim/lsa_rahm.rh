@@ -1,0 +1,42 @@
+/*==========================================================================*/
+/*  lsa_rahm.rh                                                             */
+/*                                                                          */
+/*  Resource module of a signal controller DLL for VISSIM.                  */
+/*                                                                          */
+/*  Version of 2004-12-14                                   Lukas Kautzsch  */
+/*==========================================================================*/
+
+#define IDS_ERR_FILE_PREFIX          1
+#define IDS_ALLGEMEINER_FEHLER       2
+#define IDS_INTERNER_FEHLER          3
+#define IDS_FUNKTION                 4
+#define IDS_GRUND                    5
+#define IDS_UNZULAESSIGE_NR          6
+#define IDS_UNBEKANNTE_FEHLERNR      7
+#define IDS_PROG_ABGEBROCHEN         8
+#define IDS_LSA                      9
+#define IDS_SGPNR_UNZULAESSIG       10
+#define IDS_SGPNR_UNBEKANNT         11
+#define IDS_DETNR_UNZULAESSIG       12
+#define IDS_DETNR_UNBEKANNT         13
+#define IDS_LOOK_AT_ERR_FILE        14
+#define IDS_KEIN_SPEICHER           15
+#define IDS_UNBEKANNTES_SIGNALBILD  16
+#define IDS_PUFFERENDE              17
+#define IDS_VISSIM_SGPNR_UNBEK      18
+#define IDS_VISSIM_DETNR_UNBEK      19
+#define IDS_LSA_DEMO                20
+#define IDS_UNZUL_KOMMANDO          21
+#define IDS_TRIPEL_SCHREIBEN        22
+#define IDS_DDE_INITIALISIERUNG     23
+#define IDS_ZUWENIGE_PARAMETER      24
+#define IDS_UEBER                   25
+#define IDS_WIRKLICH_BEENDEN        26
+#define IDS_OPEN_ERR_FILE           27
+#define IDS_WRITE_ERR_FILE          28
+#define IDS_TOO_MANY_DET            29
+#define IDS_TOO_MANY_SG             30
+
+/*==========================================================================*/
+/*  End of lsa_rahm.rh                                                      */
+/*==========================================================================*/

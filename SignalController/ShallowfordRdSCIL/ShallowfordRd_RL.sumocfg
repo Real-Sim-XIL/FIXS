@@ -1,0 +1,39 @@
+<configuration>
+  <input>
+    <net-file value="ShallowfordRd_RL.net.xml"/>
+    <!-- <route-files value="demand.rou.xml"/> -->
+    <!-- route-files value="ShallowfordRd_RL.rou.xml"/> -->
+	<!-- <route-files value="nema.rou.xml"/> -->
+    <!--<route-files value="routes_2021-05-26_mod.rou.xml"/>-->
+	<route-files value="Trips.2021-07-26_mod.xml"/>
+    <!--<additional-files value = "ShallowfordRd_RL_NEMA.add.xml" /> -->
+	<!--<additional-files value = "ShallowfordRd_RL_SCIL.add.xml" /> -->
+	<additional-files value = "ShallowfordRd_RL_SCIL.add.xml,e2Detectors_m.add.xml" />
+    <tls.actuated.show-detectors value="true"/>
+  </input>
+    <time>
+      <step-length value= "0.1" />
+      <!-- <end value = "2000"/> -->
+   </time>
+   <random-number>
+      <random value="false" />
+      <seed value="23" />     
+   </random-number>
+   <Processing>
+      <lateral-resolution value = "0.1"/>
+   </Processing>
+   <!-- <report>
+        <log value = "simLog"/>
+   </report>    -->
+   <!-- <output> -->
+      <!-- <netstate-dump value="output_trajectory" />
+      <amitran-output value="output_anitran" />
+      <full-output value="output_fullOutput" />
+      <lanechange-output value="output_laneChange" />
+      <summary-output  value="output_summary" />
+      <link-output value = "output_link" /> -->
+      <!-- <vtk-output value="parkSim_vtk" /> -->
+      <!-- <output-prefix value="TIME" /> -->
+      <!-- <kml-output value = "kml"/> -->
+   <!-- </output>    -->
+</configuration>

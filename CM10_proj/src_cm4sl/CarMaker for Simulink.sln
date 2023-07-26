@@ -1,0 +1,21 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CarMaker for Simulink", "CarMaker for Simulink.vcxproj", "{E5D10841-CCBC-4266-8729-4ADA1A14F6C6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Release|x64 = Release|x64
+		Debug|x64 = Debug|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E5D10841-CCBC-4266-8729-4ADA1A14F6C6}.Release|x64.ActiveCfg = Release|x64
+		{E5D10841-CCBC-4266-8729-4ADA1A14F6C6}.Release|x64.Build.0 = Release|x64
+		{E5D10841-CCBC-4266-8729-4ADA1A14F6C6}.Debug|x64.ActiveCfg = Debug|x64
+		{E5D10841-CCBC-4266-8729-4ADA1A14F6C6}.Debug|x64.Build.0 = Debug|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

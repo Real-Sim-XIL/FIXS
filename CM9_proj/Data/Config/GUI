@@ -1,0 +1,11 @@
+#INFOFILE1.1 - Do not remove this line!
+FileIdent = GUI-Config 9.0
+CM.Exe = src/CarMaker.win64.exe
+CM.Args = -f ../tests/SumoIpg/config_SUMO.yaml
+CM.Exe.History:
+	src/CarMaker.win64.exe
+	CarMaker.win64.exe
+CM.Args.History:
+	-f ../tests/SumoIpg/config_SUMO.yaml
+	""
+GPUParameters.FName =

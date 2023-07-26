@@ -1,0 +1,90 @@
+# READ INSTRUCTIONS BEFORE MODIFYING
+#
+# NOTE: YAML files do not allow tabs. use 2 or 4 spaces for indentation
+#
+# Reserved TCP/IP port by RealSim: 1337, 1338
+# DO NOT use these port when setup clients to RealSim
+#
+# by minimum, RealSim will run as slaves to VISSIM or SUMO. (other simulators IPG, Carla, simulink are optional)
+#
+# TCP/IP connection port config
+#                Fixed     Application     Application             Xil                        Xil
+#                Port      Subscription    Subscription       Subscription                Subscription
+#               1337/1338       IP             Port                  IP                        Port                  
+#
+#   VISSIM/SUMO ---------> Traffic Layer -----------------> Application Layer (controller) -----------> XIL Clients 
+#
+# NOTE: currently, VISSIM/SUMO and Traffic Layer must be run on the same PC, i.e. connected through localhost.
+
+# Global Simulation setup
+SimulationSetup:
+    
+    # Master Switch to turn on/off RealSim interface
+    # if turned off, VISSIM will run without RealSim
+    # currently has no effect to SUMO
+    EnableRealSim: true
+    
+    # Whether or not to save verbose log during the simulation. skip log for performance
+    EnableVerboseLog: false
+    
+    # specify which traffic simulator
+    # VISSIM or SUMO
+    # default SUMO
+    #--------------------------------------------------
+    SelectedTrafficSimulator: 'VISSIM'
+
+    # specify vehicle data field to receive/send
+    # NOTE1: must select id, speed
+    # NOTE2: grade is estimated 
+    # NOTE3: must select at least one of speedDesired, accelerationDesired to enable control. For VISSIM, preferrably use accelerationDesired
+    # Full list of data field:
+    # VehicleMessageField: [id, type, speed, acceleration, positionX, positionY, positionZ, heading, color, linkId, laneId, distanceTravel, speedDesired, accelerationDesired, hasPrecedingVehicle, precedingVehicleId, precedingVehicleDistance, precedingVehicleSpeed, signalLightId, signalLightHeadId, signalLightDistance, signalLightColor, speedLimit, speedLimitNext, speedLimitChangeDistance, linkIdNext, grade]
+    #
+    # Toyota data field
+    VehicleMessageField: [id, speed, speedDesired, accelerationDesired, hasPrecedingVehicle, precedingVehicleDistance, precedingVehicleSpeed, signalLightId, signalLightHeadId, signalLightDistance, signalLightColor, speedLimit, speedLimitNext, speedLimitChangeDistance, heading, linkId, activeLaneChange]
+
+    # if not specified, default will be localhost
+    TrafficSimulatorIP: "127.0.0.1"
+    
+    # if not specified, default will be 1337
+    TrafficSimulatorPort: 1337
+    
+    EnableExternalDynamics: true
+    
+# setup Application Layer
+ApplicationSetup:
+    # turn on/off application layer
+    # NOTE: need to be true if run with Simulink
+    EnableApplicationLayer: true
+
+   
+    ###################################################    
+    # subscribe all information controller needs
+    ###################################################
+    # subscribe all information each controller need. each controller/application essentially is at one port connecting to the Traffic Simulator.
+    # can contain multiple subscription, each has four fields
+    # examples of current support
+    #--------------------------------------------------
+    VehicleSubscription: 
+    # -   type: ego
+        # attribute: {id: ['3'], radius: [0]}
+        # ip: ["127.0.0.1"]
+        # port: [2333]
+    -   type: vehicleType
+        attribute: {id: ['1000'], radius: [0]}
+        ip: ["127.0.0.1"]
+        port: [2333]
+        
+
+# subscription in XilSetup must be subset of ApplicationSetup
+XilSetup:
+    # enable/disable XIL
+    EnableXil: false
+    
+    # Toyota do not need XIL, leave it as empty
+    #--------------------------------------------------
+    VehicleSubscription: 
+
+    
+    
+    

@@ -1,0 +1,56 @@
+Warning: At actuated tlLogic '62808986', linkIndex 15 has no controlling detector
+Warning: At actuated tlLogic '62808986', linkIndex 16 has no controlling detector
+Warning: At actuated tlLogic '62808986', linkIndex 17 has no controlling detector
+Warning: At actuated tlLogic 'cluster_5366032002_62605606_62605641', linkIndex 11 has no controlling detector
+Warning: At actuated tlLogic 'cluster_5366032002_62605606_62605641', linkIndex 12 has no controlling detector
+Warning: At actuated tlLogic 'cluster_5366032002_62605606_62605641', linkIndex 13 has no controlling detector
+Warning: At actuated tlLogic 'cluster_62660780_62660781_62660811_62660813', linkIndex 7 has no controlling detector
+Warning: At actuated tlLogic 'cluster_62660780_62660781_62660811_62660813', linkIndex 8 has no controlling detector
+Warning: At actuated tlLogic 'cluster_62660780_62660781_62660811_62660813', linkIndex 9 has no controlling detector
+Warning: At actuated tlLogic 'cluster_62669158_62891139', linkIndex 2 has no controlling detector
+Warning: At actuated tlLogic 'cluster_62669158_62891139', linkIndex 3 has no controlling detector
+Warning: At actuated tlLogic 'cluster_62669158_62891139', linkIndex 4 has no controlling detector
+Warning: At actuated tlLogic 'cluster_62937014_62937018', linkIndex 2 has no controlling detector
+Warning: At actuated tlLogic 'cluster_62937014_62937018', linkIndex 3 has no controlling detector
+Warning: At actuated tlLogic 'cluster_62937014_62937018', linkIndex 4 has no controlling detector
+Warning: At actuated tlLogic 'cluster_62937051_62937814', linkIndex 16 has no controlling detector
+Warning: At actuated tlLogic 'cluster_62937051_62937814', linkIndex 17 has no controlling detector
+Warning: At actuated tlLogic 'joinedS_1', linkIndex 0 has no controlling detector
+Warning: At actuated tlLogic 'joinedS_1', linkIndex 1 has no controlling detector
+Warning: At actuated tlLogic 'joinedS_1', linkIndex 2 has no controlling detector
+Warning: At actuated tlLogic 'joinedS_1', linkIndex 3 has no controlling detector
+Warning: At actuated tlLogic 'joinedS_1', linkIndex 4 has no controlling detector
+Warning: At actuated tlLogic 'joinedS_1', linkIndex 5 has no controlling detector
+Warning: At actuated tlLogic 'joinedS_1', linkIndex 6 has no controlling detector
+Warning: At actuated tlLogic 'joinedS_1', linkIndex 7 has no controlling detector
+Warning: At actuated tlLogic 'joinedS_1', linkIndex 11 has no controlling detector
+Warning: At actuated tlLogic 'joinedS_1', linkIndex 12 has no controlling detector
+Warning: At actuated tlLogic 'joinedS_1', linkIndex 13 has no controlling detector
+Warning: At actuated tlLogic 'joinedS_1', linkIndex 14 has no controlling detector
+Warning: At actuated tlLogic 'joinedS_1', linkIndex 15 has no controlling detector
+Warning: At actuated tlLogic 'joinedS_1', linkIndex 19 has no controlling detector
+Warning: At actuated tlLogic 'joinedS_1', linkIndex 20 has no controlling detector
+Warning: At actuated tlLogic 'joinedS_1', linkIndex 21 has no controlling detector
+Warning: At actuated tlLogic 'joinedS_1', linkIndex 24 has no controlling detector
+Warning: At actuated tlLogic 'joinedS_1', linkIndex 25 has no controlling detector
+Warning: At actuated tlLogic 'joinedS_1', linkIndex 26 has no controlling detector
+Warning: At actuated tlLogic 'joinedS_1', linkIndex 27 has no controlling detector
+Warning: busStop '6011192213' on lane '257679971#7_0' is too short for vehicle '0_bus_200:0'.
+Warning: busStop '5368243626' on lane '270520143#1_0' is too short for vehicle '0_bus_200:0'.
+Warning: busStop '4928501574' on lane '136467185#2_0' is too short for vehicle '2_bus_275:0'.
+Warning: busStop '5368243625' on lane '257682144#8_0' is too short for vehicle '4_bus_275:2'.
+Warning: busStop '5368243621' on lane '136467168#8_0' is too short for vehicle '8_bus_275:6'.
+Warning: No connection between edge '220276705' and edge '8728423' found.
+Warning: busStop '6011192209' for vehicle '15_bus_200:1' on lane '220276705_0' is not downstream the current route.
+Warning: busStop '6011190850' on lane '121875304#0_0' is too short for vehicle '24_bus_200:10'.
+Warning: No connection between edge '220276705' and edge '8728423' found.
+Warning: busStop '6011192209' for vehicle '20_bus_200:6' on lane '220276705_0' is not downstream the current route.
+Warning: No connection between edge '220276705' and edge '8728423' found.
+Warning: busStop '6011192209' for vehicle '19_bus_200:5' on lane '220276705_0' is not downstream the current route.
+Warning: busStop '5364997030' on lane '120374479#3_0' is too short for vehicle '32_bus_140:0'.
+Warning: busStop '5364996771' on lane '120566901#0_0' is too short for vehicle '32_bus_140:0'.
+Warning: busStop '-4956741074' on lane '-442400161#1_0' is too short for vehicle '32_bus_140:0'.
+Warning: No connection between edge '220276705' and edge '136467176#13' found.
+Warning: busStop '6011192209' for vehicle '30_bus_200:16' on lane '220276705_0' is not downstream the current route.
+Warning: No connection between edge '220276705' and edge '136467176#13' found.
+Warning: busStop '6011192209' for vehicle '31_bus_200:17' on lane '220276705_0' is not downstream the current route.
