@@ -35,8 +35,8 @@ SimulationSetup:
     TrafficSimulatorPort: 1337
 
     # default will send all
-    # VehicleMessageField: [id, speed, acceleration, speedDesired, hasPrecedingVehicle, precedingVehicleDistance, precedingVehicleSpeed, signalLightId, signalLightHeadId, signalLightDistance, signalLightColor, speedLimit, speedLimitNext, speedLimitChangeDistance, heading, grade, activeLaneChange]
-    VehicleMessageField: [id, speed, acceleration, speedDesired]
+    VehicleMessageField: [id, speed, acceleration, speedDesired, hasPrecedingVehicle, precedingVehicleDistance, precedingVehicleSpeed, signalLightId, signalLightHeadId, signalLightDistance, signalLightColor, speedLimit, speedLimitNext, speedLimitChangeDistance, heading, grade, activeLaneChange]
+    # VehicleMessageField: [id, speed, acceleration, speedDesired]
     
 # setup Application Layer
 ApplicationSetup:
@@ -45,10 +45,6 @@ ApplicationSetup:
     
     #--------------------------------------------------
     VehicleSubscription: 
-    -   type: ego
-        attribute: {id: ['t_passenger'], radius: [0]}
-        ip: ["127.0.0.1"]
-        port: [2333]
     # -   type: vehicleType
         # attribute: {id: ['1000'], radius: [0]}
         # ip: ["127.0.0.1"]
@@ -57,7 +53,7 @@ ApplicationSetup:
 # subscription in XilSetup must be subset of ApplicationSetup
 XilSetup:
     # enable/disable XIL
-    EnableXil: false
+    EnableXil: true
     
     # define ego vehicles, which will be simulated in Clients. support: 
     #   1) id of the vehicle (VISSIM id is integer, SUMO id is string). 
@@ -67,6 +63,10 @@ XilSetup:
     # radius 0 means only the ego vehicle is sent to Xil
     #--------------------------------------------------
     VehicleSubscription: 
+    -   type: ego
+        attribute: {id: ['t_passenger'], radius: [0]}
+        ip: ["127.0.0.1"]
+        port: [2333]
 
     
     

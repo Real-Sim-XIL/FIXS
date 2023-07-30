@@ -1177,6 +1177,8 @@ void TrafficHelper::parserSumoSubscription(libsumo::TraCIResults VehDataSubscrib
 	if (VehicleId2EdgeList_um.find(vehId) == VehicleId2EdgeList_um.end()) {
 		vector <string> edgeList = Vehicle::getRoute(vehId);
 		VehicleId2EdgeList_um[vehId] = edgeList;
+		//vector <libsumo::TraCIConnection> nextLinkList = Vehicle::getNextLinks(vehId);
+		//int aa = 1;
 	}
 
 	//libsumo::TraCIResults VehDataSubscribeTraciResults = VehDataSubscribeResults[tempvehId];
