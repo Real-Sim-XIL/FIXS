@@ -85,7 +85,7 @@ def addTrafficObjects(args):
         for line in lines:
             name, var = line.strip().partition("=")[::2]
             if 'FileCreator' in line:
-                cmVersion = var.replace(' ','').split('CarMaker')[1]
+                cmVersion = var.split()[-1]
             if 'Traffic.N' in line:
                 nTraffic = int(var)
             if any(['Traffic.{}'.format(i) in line for i in range(nTraffic)]):
