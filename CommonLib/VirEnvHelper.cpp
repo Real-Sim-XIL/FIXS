@@ -399,7 +399,7 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 				 // RS z is ground of vehicle, CM is CoM
 				 vehDataNext.positionX = Msg_c.VehDataRecv_um[idTs].positionX - TrfObj->Cfg.l * sin(heading * M_PI / 180);
 				 vehDataNext.positionY = Msg_c.VehDataRecv_um[idTs].positionY - TrfObj->Cfg.l * cos(heading * M_PI / 180);
-				 vehDataNext.positionZ = Msg_c.VehDataRecv_um[idTs].positionZ + TrfObj->Cfg.h / 2 + TrfObj->Cfg.zOff;
+				 vehDataNext.positionZ = Msg_c.VehDataRecv_um[idTs].positionZ + TrfObj->Cfg.h / 2 + TrfObj->Cfg.zOff - TrfObj->Cfg.l*sin(Msg_c.VehDataRecv_um[idTs].grade); // 
 				 // RS heading in degree, north is 0 degree, then increasing clockwise. i.e., east is 90 degree.
 				 // convert to east 0 radian, north pi/2 radian, south -pi/2 radian system
 				 vehDataNext.yaw = 0;
