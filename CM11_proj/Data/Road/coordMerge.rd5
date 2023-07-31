@@ -1,120 +1,141 @@
 #INFOFILE1.1 - Do not remove this line!
 FileIdent = IPGRoad 11.0
-FileCreator = CarMaker for Simulink 11.0.1
+FileCreator = CarMaker 11.0.1
 Description:
 	Converted OpenDRIVE File (Revision 1.4)
 	Original File: Data/Road/coordMerge.xodr
 	Version: 1.00
 LibVersion = 11.0.1
 Country = USA
-nLinks = 11
-nJunctions = 9
-nObjects = 425
-nRoutes = 1
-RoadNetworkLength = 6109.25912073
-BBox = -12.7500125856081 613.875998450806 -310.000000003205 5010.00000001442 -11 11
-Route.0.Length = 5300.01068074
+nLinks = 13
+nJunctions = 11
+nObjects = 486
+nRoutes = 2
+RoadNetworkLength = 6412.93854998
+BBox = -12.7500125856081 917.348992336695 -310.000000003205 5010.00000001442 -11 11
+Route.0.Length = 5309.55456724
+Route.1.Length = 5300.01068074
 RST.Unit = kmh
 RST = 50 100 130 30 70 30 0 -1
 Movie = 0.2 1 0.01 0 0 1 1
 PathMode = -1
-Junction.0.ID = 390
+Junction.0.ID = 444
 Junction.0.Type = Direct
 Junction.0.Knot = 4.36295038205192 798.645632544813 0
 Junction.0.RST = Urban
 Junction.0.AddParams = 111.605273204137 0 0 0 0 0
-Junction.0.Arm.0.ID = 391
+Junction.0.Arm.0.ID = 445
 Junction.0.Arm.0 = 0 0 0 35 1
-Junction.0.Arm.1.ID = 392
-Junction.0.Arm.1 = 0 0 0 245 0
+Junction.0.Arm.1.ID = 446
+Junction.0.Arm.1 = 0 0 0 272 0
 Junction.0.MainArms = 0 1
-Junction.1.ID = 393
+Junction.1.ID = 447
 Junction.1.Type = Direct
 Junction.1.Knot = -0.19919626 803.38383471 0
 Junction.1.RST = Urban
 Junction.1.AddParams = 90.597324727881 0 0 0 0 0
-Junction.1.Arm.0.ID = 394
+Junction.1.Arm.0.ID = 448
 Junction.1.Arm.0 = 0 0 0 126 0
-Junction.1.Arm.1.ID = 396
-Junction.1.Arm.1 = 0 0 0 272 1
-Junction.1.Arm.2.ID = 395
-Junction.1.Arm.2 = 0 0 0 245 1
+Junction.1.Arm.1.ID = 450
+Junction.1.Arm.1 = 0 0 0 299 1
+Junction.1.Arm.2.ID = 449
+Junction.1.Arm.2 = 0 0 0 272 1
 Junction.1.MainArms = 0 1
-Junction.2.ID = 397
+Junction.2.ID = 451
 Junction.2.Type = Direct
 Junction.2.Knot = -0.170001287858552 799.5 0
 Junction.2.RST = Urban
 Junction.2.AddParams = 90.0000001836389 0 0 0 0 0
-Junction.2.Arm.0.ID = 398
+Junction.2.Arm.0.ID = 452
 Junction.2.Arm.0 = 0 0 0 0 1
-Junction.2.Arm.1.ID = 399
-Junction.2.Arm.1 = 0 0 0 272 0
+Junction.2.Arm.1.ID = 453
+Junction.2.Arm.1 = 0 0 0 299 0
 Junction.2.MainArms = 0 1
-Junction.3.ID = 400
+Junction.3.ID = 454
 Junction.3.Type = Direct
 Junction.3.Knot = -1.74824038607223 951.96377974501 0
 Junction.3.RST = Urban
 Junction.3.AddParams = 90.5973247278811 0 0 0 0 0
-Junction.3.Arm.0.ID = 401
+Junction.3.Arm.0.ID = 455
 Junction.3.Arm.0 = 0 0 0 126 1
-Junction.3.Arm.1.ID = 402
-Junction.3.Arm.1 = 0 0 0 299 0
+Junction.3.Arm.1.ID = 456
+Junction.3.Arm.1 = 0 0 0 326 0
 Junction.3.MainArms = 0 1
-Junction.4.ID = 403
+Junction.4.ID = 457
 Junction.4.Type = Direct
 Junction.4.Knot = -1.60146499 959.98458406 0
 Junction.4.RST = Urban
 Junction.4.AddParams = 90.0752306880552 0 0 0 0 0
-Junction.4.Arm.0.ID = 404
+Junction.4.Arm.0.ID = 458
 Junction.4.Arm.0 = 0 0 0 164 0
-Junction.4.Arm.1.ID = 405
-Junction.4.Arm.1 = 0 0 0 299 1
+Junction.4.Arm.1.ID = 459
+Junction.4.Arm.1 = 0 0 0 326 1
 Junction.4.MainArms = 0 1
-Junction.5.ID = 406
+Junction.5.ID = 460
 Junction.5.Type = Direct
 Junction.5.Knot = -0.180000961050271 -0.149999999999977 0
 Junction.5.RST = Urban
 Junction.5.AddParams = 90.0000001836389 0 0 0 0 0
-Junction.5.Arm.0.ID = 407
+Junction.5.Arm.0.ID = 461
 Junction.5.Arm.0 = 0 0 0 218 1
-Junction.5.Arm.1.ID = 408
-Junction.5.Arm.1 = 0 0 0 337 0
+Junction.5.Arm.1.ID = 462
+Junction.5.Arm.1 = 0 0 0 364 0
 Junction.5.MainArms = 0 1
-Junction.6.ID = 409
+Junction.6.ID = 463
 Junction.6.Type = Direct
 Junction.6.Knot = -0.18 0.15 0
 Junction.6.RST = Urban
 Junction.6.AddParams = 90.0000001836389 0 0 0 0 0
-Junction.6.Arm.0.ID = 342
+Junction.6.Arm.0.ID = 369
 Junction.6.Arm.0 = 0 0 0 0 0
-Junction.6.Arm.1.ID = 412
-Junction.6.Arm.1 = 0 0 0 337 1
+Junction.6.Arm.1.ID = 466
+Junction.6.Arm.1 = 0 0 0 364 1
 Junction.6.MainArms = 0 1
-Junction.7.ID = 413
+Junction.7.ID = 467
 Junction.7.Type = Direct
-Junction.7.Knot = -1.74980145769841 1072.95774544537 0
+Junction.7.Knot = 605.194794252883 369.19498879242 0
 Junction.7.RST = Urban
-Junction.7.AddParams = 90.0752306880552 0 0 0 0 0
-Junction.7.Arm.0.ID = 414
-Junction.7.Arm.0 = 0 0 0 164 1
-Junction.7.Arm.1.ID = 415
-Junction.7.Arm.1 = 0 0 0 363 0
+Junction.7.AddParams = 180.198162815746 0 0 0 0 0
+Junction.7.Arm.0.ID = 468
+Junction.7.Arm.0 = 0 0 0 245 1
+Junction.7.Arm.1.ID = 469
+Junction.7.Arm.1 = 0 0 0 390 0
 Junction.7.MainArms = 0 1
-Junction.8.ID = 416
+Junction.8.ID = 470
 Junction.8.Type = Direct
-Junction.8.Knot = -1.75 1073.2599569 0
+Junction.8.Knot = 602.23206154 369.1077817 0
 Junction.8.RST = Urban
-Junction.8.AddParams = 90.0000001836389 0 0 0 0 0
-Junction.8.Arm.0.ID = 417
-Junction.8.Arm.0 = 0 0 0 191 0
-Junction.8.Arm.1.ID = 418
-Junction.8.Arm.1 = 0 0 0 363 1
+Junction.8.AddParams = 177.373924516682 0 0 0 0 0
+Junction.8.Arm.0.ID = 471
+Junction.8.Arm.0 = 0 0 0 35 0
+Junction.8.Arm.1.ID = 472
+Junction.8.Arm.1 = 0 0 0 390 1
 Junction.8.MainArms = 0 1
+Junction.9.ID = 473
+Junction.9.Type = Direct
+Junction.9.Knot = -1.74980145769841 1072.95774544537 0
+Junction.9.RST = Urban
+Junction.9.AddParams = 90.0752306880552 0 0 0 0 0
+Junction.9.Arm.0.ID = 474
+Junction.9.Arm.0 = 0 0 0 164 1
+Junction.9.Arm.1.ID = 475
+Junction.9.Arm.1 = 0 0 0 417 0
+Junction.9.MainArms = 0 1
+Junction.10.ID = 476
+Junction.10.Type = Direct
+Junction.10.Knot = -1.75 1073.2599569 0
+Junction.10.RST = Urban
+Junction.10.AddParams = 90.0000001836389 0 0 0 0 0
+Junction.10.Arm.0.ID = 477
+Junction.10.Arm.0 = 0 0 0 191 0
+Junction.10.Arm.1.ID = 478
+Junction.10.Arm.1 = 0 0 0 417 1
+Junction.10.MainArms = 0 1
 Link.0.ID = 0
 Link.0.Node0 = -0.18 0.15 0 90.0000001836389
 Link.0.Node1 = -0.170001287858552 799.5 0 90.0000001836389
 Link.0.RST = Urban
-Link.0.Tag = odrRoadId:70
+Link.0.Tag = odrRoadId:80
 Link.0.RL.ID = 1
 Link.0.Seg.0.ID = 5
 Link.0.Seg.0.Type = PointList
@@ -156,16 +177,16 @@ Link.0.ElevationProfile:
 	28 -1 0 0 0 0 0
 	29 -1 0 1 0 0 0
 Link.1.ID = 35
-Link.1.Node0 = 603.66981917 369.04183781 0 177.373924516682
+Link.1.Node0 = 602.23206154 369.1077817 0 177.373924516682
 Link.1.Node1 = 4.36295038205192 798.645632544813 0 111.605273204137
 Link.1.RST = Urban
-Link.1.Tag = odrRoadId:71
+Link.1.Tag = odrRoadId:81
 Link.1.RL.ID = 36
 Link.1.Seg.0.ID = 40
 Link.1.Seg.0.Type = PointList
 Link.1.Seg.0.Param = -0.998949821504941 0.0458176179569216 1 0 0 0 0 0
 Link.1.Seg.0.PointList:
-	41 120.34599658 483.45020737 374.55580474
+	41 118.90672746 483.45020737 374.55580474
 Link.1.Seg.1.ID = 42
 Link.1.Seg.1.Type = PointList
 Link.1.Seg.1.Param = -0.995008620492134 0.0997890031333094 1 0 0 0 0 0
@@ -342,9 +363,9 @@ Link.1.ElevationProfile:
 	120 -1 0 1 0 0 0
 Link.2.ID = 126
 Link.2.Node0 = -0.19919626 803.38383471 0 90.597324727881
-Link.2.Node1 = -1.7482403860721 951.96377974501 0 90.597324727881
+Link.2.Node1 = -1.74824038607223 951.96377974501 0 90.597324727881
 Link.2.RST = Urban
-Link.2.Tag = odrRoadId:72
+Link.2.Tag = odrRoadId:82
 Link.2.RL.ID = 127
 Link.2.Seg.0.ID = 131
 Link.2.Seg.0.Type = Straight
@@ -372,9 +393,9 @@ Link.2.ElevationProfile:
 	157 -1 0 1 0 0 0
 Link.3.ID = 164
 Link.3.Node0 = -1.60146499 959.98458406 0 90.0752306880552
-Link.3.Node1 = -1.74980145769846 1072.95774544537 0 90.0752306880552
+Link.3.Node1 = -1.74980145769841 1072.95774544537 0 90.0752306880552
 Link.3.RST = Urban
-Link.3.Tag = odrRoadId:73
+Link.3.Tag = odrRoadId:83
 Link.3.RL.ID = 165
 Link.3.Seg.0.ID = 169
 Link.3.Seg.0.Type = Straight
@@ -399,7 +420,7 @@ Link.4.ID = 191
 Link.4.Node0 = -1.75 1073.2599569 0 90.0000001836389
 Link.4.Node1 = -1.75001258560808 5000 0 90.0000001836389
 Link.4.RST = Urban
-Link.4.Tag = odrRoadId:74
+Link.4.Tag = odrRoadId:84
 Link.4.RL.ID = 192
 Link.4.Seg.0.ID = 196
 Link.4.Seg.0.Type = Straight
@@ -424,7 +445,7 @@ Link.5.ID = 218
 Link.5.Node0 = -0.18 -300 0 90.0000001836389
 Link.5.Node1 = -0.180000961050271 -0.149999999999977 0 90.0000001836389
 Link.5.RST = Urban
-Link.5.Tag = odrRoadId:75
+Link.5.Tag = odrRoadId:85
 Link.5.RL.ID = 219
 Link.5.Seg.0.ID = 223
 Link.5.Seg.0.Type = Straight
@@ -446,25 +467,23 @@ Link.5.ElevationProfile:
 	238 -1 0 0 0 0 0
 	239 -1 0 1 0 0 0
 Link.6.ID = 245
-Link.6.Node0 = 4.36295035 798.64563253 0 111.605273204137
-Link.6.Node1 = 3.30061356042571 803.420322527086 0 90.597324727881
+Link.6.Node0 = 907.34553375 370.24000957 0 180.198162815746
+Link.6.Node1 = 605.194794252883 369.19498879242 0 180.198162815746
 Link.6.RST = Urban
-Link.6.Tag = odrRoadId:76
+Link.6.Tag = odrRoadId:86
 Link.6.RL.ID = 246
 Link.6.Seg.0.ID = 250
-Link.6.Seg.0.Type = PointList
-Link.6.Seg.0.Param = -0.0104250943581539 0.999945657227243 1 0 0 0 0 0
-Link.6.Seg.0.PointList:
-	251 4.94404371 3.30061356042571 803.420322527086
-Link.6.LaneSection.0.ID = 252
+Link.6.Seg.0.Type = Straight
+Link.6.Seg.0.Param = 302.15254665 0 0 0 0 0 0 0
+Link.6.LaneSection.0.ID = 251
 Link.6.LaneSection.0.Start = 0
 Link.6.LaneSection.0.LaneL.0.ID = 263
 Link.6.LaneSection.0.LaneL.0 = 0 1 1 5 0 0 0
 Link.6.LaneSection.0.LaneR.0.ID = 253
-Link.6.LaneSection.0.LaneR.0 = 0 3.5 3.5 0 0 0 0
+Link.6.LaneSection.0.LaneR.0 = 0 3.2 3.2 0 0 0 0
 Link.6.LaneSection.0.LaneR.0.ARP = 254 255 256 257 258 259
 Link.6.LaneSection.0.LaneR.0.Width:
-	261 -1 0 0 4 3.5 0 0 0
+	261 -1 0 0 4 3.2 0 0 0
 Link.6.LaneSection.0.LaneR.1.ID = 264
 Link.6.LaneSection.0.LaneR.1 = 0 1 1 5 0 0 0
 Link.6.ElevationProfile.ID = 247
@@ -473,16 +492,16 @@ Link.6.ElevationProfile:
 	265 -1 0 0 0 0 0
 	266 -1 0 1 0 0 0
 Link.7.ID = 272
-Link.7.Node0 = -0.17 799.5 0 90.0000001836389
-Link.7.Node1 = -0.199196272448092 803.383834709906 0 90.597324727881
+Link.7.Node0 = 4.36295035 798.64563253 0 111.605273204137
+Link.7.Node1 = 3.30061356042571 803.420322527086 0 90.597324727881
 Link.7.RST = Urban
-Link.7.Tag = odrRoadId:77
+Link.7.Tag = odrRoadId:87
 Link.7.RL.ID = 273
 Link.7.Seg.0.ID = 277
 Link.7.Seg.0.Type = PointList
 Link.7.Seg.0.Param = -0.0104250943581539 0.999945657227243 1 0 0 0 0 0
 Link.7.Seg.0.PointList:
-	278 3.88398249 -0.199196272448092 803.383834709906
+	278 4.94404371 3.30061356042571 803.420322527086
 Link.7.LaneSection.0.ID = 279
 Link.7.LaneSection.0.Start = 0
 Link.7.LaneSection.0.LaneL.0.ID = 290
@@ -500,75 +519,75 @@ Link.7.ElevationProfile:
 	292 -1 0 0 0 0 0
 	293 -1 0 1 0 0 0
 Link.8.ID = 299
-Link.8.Node0 = -1.74824011 951.96377974 0 90.5973247278811
-Link.8.Node1 = -1.60146500556323 959.984584047059 0 90.0752306880552
+Link.8.Node0 = -0.17 799.5 0 90.0000001836389
+Link.8.Node1 = -0.199196272448093 803.383834709906 0 90.5973247278811
 Link.8.RST = Urban
-Link.8.Tag = odrRoadId:78
+Link.8.Tag = odrRoadId:88
 Link.8.RL.ID = 300
 Link.8.Seg.0.ID = 304
 Link.8.Seg.0.Type = PointList
-Link.8.Seg.0.Param = -0.0013130228278216 0.999999137985155 1 0 0 0 0 0
+Link.8.Seg.0.Param = -0.0104250943581539 0.999945657227243 1 0 0 0 0 0
 Link.8.Seg.0.PointList:
-	305 8.02316484 -1.60146500556323 959.984584047059
+	305 3.88398249 -0.199196272448092 803.383834709906
 Link.8.LaneSection.0.ID = 306
 Link.8.LaneSection.0.Start = 0
-Link.8.LaneSection.0.LaneL.0.ID = 327
+Link.8.LaneSection.0.LaneL.0.ID = 317
 Link.8.LaneSection.0.LaneL.0 = 0 1 1 5 0 0 0
 Link.8.LaneSection.0.LaneR.0.ID = 307
 Link.8.LaneSection.0.LaneR.0 = 0 3.5 3.5 0 0 0 0
 Link.8.LaneSection.0.LaneR.0.ARP = 308 309 310 311 312 313
 Link.8.LaneSection.0.LaneR.0.Width:
 	315 -1 0 0 4 3.5 0 0 0
-Link.8.LaneSection.0.LaneR.1.ID = 317
-Link.8.LaneSection.0.LaneR.1 = 0 3.5 3.5 0 0 0 0
-Link.8.LaneSection.0.LaneR.1.ARP = 318 319 320 321 322 323
-Link.8.LaneSection.0.LaneR.1.Width:
-	325 -1 0 0 4 3.5 0 0 0
-Link.8.LaneSection.0.LaneR.2.ID = 328
-Link.8.LaneSection.0.LaneR.2 = 0 1 1 5 0 0 0
+Link.8.LaneSection.0.LaneR.1.ID = 318
+Link.8.LaneSection.0.LaneR.1 = 0 1 1 5 0 0 0
 Link.8.ElevationProfile.ID = 301
 Link.8.ElevationProfile.Params = 0 0
 Link.8.ElevationProfile:
-	329 -1 0 0 0 0 0
-	330 -1 0 1 0 0 0
-Link.9.ID = 337
-Link.9.Node0 = -0.18 -0.15 0 90.0000001836389
-Link.9.Node1 = -0.180000000961531 0.15 0 90.0000001836389
+	319 -1 0 0 0 0 0
+	320 -1 0 1 0 0 0
+Link.9.ID = 326
+Link.9.Node0 = -1.74824011 951.96377974 0 90.5973247278811
+Link.9.Node1 = -1.60146500556323 959.984584047059 0 90.0752306880552
 Link.9.RST = Urban
-Link.9.Tag = odrRoadId:79
-Link.9.RL.ID = 338
-Link.9.Seg.0.ID = 410
+Link.9.Tag = odrRoadId:89
+Link.9.RL.ID = 327
+Link.9.Seg.0.ID = 331
 Link.9.Seg.0.Type = PointList
-Link.9.Seg.0.Param = -3.20510345469386e-009 1 1 0 0 0 0 0
+Link.9.Seg.0.Param = -0.0013130228278216 0.999999137985155 1 0 0 0 0 0
 Link.9.Seg.0.PointList:
-	411 0.3 -0.180000000961531 0.15
-Link.9.LaneSection.0.ID = 343
+	332 8.02316484 -1.60146500556323 959.984584047059
+Link.9.LaneSection.0.ID = 333
 Link.9.LaneSection.0.Start = 0
 Link.9.LaneSection.0.LaneL.0.ID = 354
 Link.9.LaneSection.0.LaneL.0 = 0 1 1 5 0 0 0
-Link.9.LaneSection.0.LaneR.0.ID = 344
+Link.9.LaneSection.0.LaneR.0.ID = 334
 Link.9.LaneSection.0.LaneR.0 = 0 3.5 3.5 0 0 0 0
-Link.9.LaneSection.0.LaneR.0.ARP = 345 346 347 348 349 350
+Link.9.LaneSection.0.LaneR.0.ARP = 335 336 337 338 339 340
 Link.9.LaneSection.0.LaneR.0.Width:
+	342 -1 0 0 4 3.5 0 0 0
+Link.9.LaneSection.0.LaneR.1.ID = 344
+Link.9.LaneSection.0.LaneR.1 = 0 3.5 3.5 0 0 0 0
+Link.9.LaneSection.0.LaneR.1.ARP = 345 346 347 348 349 350
+Link.9.LaneSection.0.LaneR.1.Width:
 	352 -1 0 0 4 3.5 0 0 0
-Link.9.LaneSection.0.LaneR.1.ID = 355
-Link.9.LaneSection.0.LaneR.1 = 0 1 1 5 0 0 0
-Link.9.ElevationProfile.ID = 339
+Link.9.LaneSection.0.LaneR.2.ID = 355
+Link.9.LaneSection.0.LaneR.2 = 0 1 1 5 0 0 0
+Link.9.ElevationProfile.ID = 328
 Link.9.ElevationProfile.Params = 0 0
 Link.9.ElevationProfile:
 	356 -1 0 0 0 0 0
 	357 -1 0 1 0 0 0
-Link.10.ID = 363
-Link.10.Node0 = -1.74980159 1072.95774544 0 90.0752306880552
-Link.10.Node1 = -1.74999999072997 1073.25995691001 0 90.0000001836389
+Link.10.ID = 364
+Link.10.Node0 = -0.18 -0.15 0 90.0000001836389
+Link.10.Node1 = -0.180000000961531 0.15 0 90.0000001836389
 Link.10.RST = Urban
-Link.10.Tag = odrRoadId:80
-Link.10.RL.ID = 364
-Link.10.Seg.0.ID = 368
+Link.10.Tag = odrRoadId:90
+Link.10.RL.ID = 365
+Link.10.Seg.0.ID = 464
 Link.10.Seg.0.Type = PointList
 Link.10.Seg.0.Param = -3.20510345469386e-009 1 1 0 0 0 0 0
 Link.10.Seg.0.PointList:
-	369 0.30221157 -1.74999999072997 1073.25995691001
+	465 0.3 -0.180000000961531 0.15
 Link.10.LaneSection.0.ID = 370
 Link.10.LaneSection.0.Start = 0
 Link.10.LaneSection.0.LaneL.0.ID = 381
@@ -580,11 +599,65 @@ Link.10.LaneSection.0.LaneR.0.Width:
 	379 -1 0 0 4 3.5 0 0 0
 Link.10.LaneSection.0.LaneR.1.ID = 382
 Link.10.LaneSection.0.LaneR.1 = 0 1 1 5 0 0 0
-Link.10.ElevationProfile.ID = 365
+Link.10.ElevationProfile.ID = 366
 Link.10.ElevationProfile.Params = 0 0
 Link.10.ElevationProfile:
 	383 -1 0 0 0 0 0
 	384 -1 0 1 0 0 0
+Link.11.ID = 390
+Link.11.Node0 = 605.19479426 369.19498741 0 180.198162815746
+Link.11.Node1 = 602.232061538613 369.107781700459 0 177.373924516682
+Link.11.RST = Urban
+Link.11.Tag = odrRoadId:91
+Link.11.RL.ID = 391
+Link.11.Seg.0.ID = 395
+Link.11.Seg.0.Type = PointList
+Link.11.Seg.0.Param = -0.998949821504941 0.0458176179569216 1 0 0 0 0 0
+Link.11.Seg.0.PointList:
+	396 2.96615172 602.232061538613 369.107781700459
+Link.11.LaneSection.0.ID = 397
+Link.11.LaneSection.0.Start = 0
+Link.11.LaneSection.0.LaneL.0.ID = 408
+Link.11.LaneSection.0.LaneL.0 = 0 1 1 5 0 0 0
+Link.11.LaneSection.0.LaneR.0.ID = 398
+Link.11.LaneSection.0.LaneR.0 = 0 3.2 3.496615172 0 0 0 0
+Link.11.LaneSection.0.LaneR.0.ARP = 399 400 401 402 403 404
+Link.11.LaneSection.0.LaneR.0.Width:
+	406 -1 0 0 4 3.2 0.1 0 0
+Link.11.LaneSection.0.LaneR.1.ID = 409
+Link.11.LaneSection.0.LaneR.1 = 0 1 1 5 0 0 0
+Link.11.ElevationProfile.ID = 392
+Link.11.ElevationProfile.Params = 0 0
+Link.11.ElevationProfile:
+	410 -1 0 0 0 0 0
+	411 -1 0 1 0 0 0
+Link.12.ID = 417
+Link.12.Node0 = -1.74980159 1072.95774544 0 90.0752306880552
+Link.12.Node1 = -1.74999999072997 1073.25995691001 0 90.0000001836389
+Link.12.RST = Urban
+Link.12.Tag = odrRoadId:92
+Link.12.RL.ID = 418
+Link.12.Seg.0.ID = 422
+Link.12.Seg.0.Type = PointList
+Link.12.Seg.0.Param = -3.20510345469386e-009 1 1 0 0 0 0 0
+Link.12.Seg.0.PointList:
+	423 0.30221157 -1.74999999072997 1073.25995691001
+Link.12.LaneSection.0.ID = 424
+Link.12.LaneSection.0.Start = 0
+Link.12.LaneSection.0.LaneL.0.ID = 435
+Link.12.LaneSection.0.LaneL.0 = 0 1 1 5 0 0 0
+Link.12.LaneSection.0.LaneR.0.ID = 425
+Link.12.LaneSection.0.LaneR.0 = 0 3.5 3.5 0 0 0 0
+Link.12.LaneSection.0.LaneR.0.ARP = 426 427 428 429 430 431
+Link.12.LaneSection.0.LaneR.0.Width:
+	433 -1 0 0 4 3.5 0 0 0
+Link.12.LaneSection.0.LaneR.1.ID = 436
+Link.12.LaneSection.0.LaneR.1 = 0 1 1 5 0 0 0
+Link.12.ElevationProfile.ID = 419
+Link.12.ElevationProfile.Params = 0 0
+Link.12.ElevationProfile:
+	437 -1 0 0 0 0 0
+	438 -1 0 1 0 0 0
 LanePath.0 = 23 16 2.75 1 1 1 -1
 LanePath.1 = 114 107 2.75 1 1 1 -1
 LanePath.2 = 141 134 2.75 1 1 1 -1
@@ -595,21 +668,39 @@ LanePath.6 = 233 226 2.75 1 1 1 -1
 LanePath.7 = 260 253 2.75 1 1 1 -1
 LanePath.8 = 287 280 2.75 1 1 1 -1
 LanePath.9 = 314 307 2.75 1 1 1 -1
-LanePath.10 = 324 317 2.75 1 1 1 -1
+LanePath.10 = 341 334 2.75 1 1 1 -1
 LanePath.11 = 351 344 2.75 1 1 1 -1
 LanePath.12 = 378 371 2.75 1 1 1 -1
-Route.0.ID = 422
-Route.0.Name = Route_0
-Route.0.DrvPath.ID = 423
+LanePath.13 = 405 398 2.75 1 1 1 -1
+LanePath.14 = 432 425 2.75 1 1 1 -1
+ConPath.0 = 485 126 151 114.911 0 141 136.307 0 0 1 -1 -1 -1
+Route.0.ID = 483
+Route.0.Name = ramp
+Route.0.DrvPath.ID = 484
 Route.0.DrvPath:
-	233
-	351
-	23
+	260
+	405
+	114
 	287
+	151
+	485
 	141
-	314
+	341
 	179
+	432
+	206
+Route.1.ID = 488
+Route.1.Name = main
+Route.1.DrvPath.ID = 489
+Route.1.DrvPath:
+	233
 	378
+	23
+	314
+	141
+	341
+	179
+	432
 	206
 RL.1.RoadMarking.0.ID = 15 14
 RL.1.RoadMarking.0 = 0 0 0 1 0 0 0.13 0 1 0 0 0 0 1 1 0 ""
@@ -650,32 +741,31 @@ RL.219.RoadMarking.0.Material.0 = white 0 0 0 0 0 0 0 0 0 0 0
 RL.219.RoadMarking.1.ID = 235 226
 RL.219.RoadMarking.1 = 0 0 0 1 0 -1 0.13 0 1 0 0 0 0 1 1 0 ""
 RL.219.RoadMarking.1.Material.0 = white 0 0 0 0 0 0 0 0 0 0 0
-RL.219.Mount.0.ID = 3 219
-RL.219.Mount.0 = 250 0 0 -1 1 1 0 0 0 0 2.4
-RL.219.Mount.0.0.ID = 4
-RL.219.Mount.0.0 = 0 2 0 0 0 0 0 98 1 1 Milepost M "" 0 0 0 - - "" 0 0 0 - - "" 0 0 0
-RL.219.Mount.0.0.Size = 0.609600007534027 0.304800003767014
-RL.246.RoadMarking.0.ID = 262 253
-RL.246.RoadMarking.0 = 0 0 0 1 0 -1 0.13 0 1 0 0 0 0 1 1 0 ""
+RL.246.RoadMarking.0.ID = 252 251
+RL.246.RoadMarking.0 = 0 0 0 1 0 0 0.13 0 1 0 0 0 0 1 1 0 ""
 RL.246.RoadMarking.0.Material.0 = white 0 0 0 0 0 0 0 0 0 0 0
+RL.246.RoadMarking.1.ID = 262 253
+RL.246.RoadMarking.1 = 0 0 0 1 0 -1 0.13 0 1 0 0 0 0 1 1 0 ""
+RL.246.RoadMarking.1.Material.0 = white 0 0 0 0 0 0 0 0 0 0 0
 RL.273.RoadMarking.0.ID = 289 280
-RL.273.RoadMarking.0 = 0 0 0 1 0 -1 0.13 0 2 0 0 1 1 1 1 0 ""
+RL.273.RoadMarking.0 = 0 0 0 1 0 -1 0.13 0 1 0 0 0 0 1 1 0 ""
 RL.273.RoadMarking.0.Material.0 = white 0 0 0 0 0 0 0 0 0 0 0
 RL.300.RoadMarking.0.ID = 316 307
 RL.300.RoadMarking.0 = 0 0 0 1 0 -1 0.13 0 2 0 0 1 1 1 1 0 ""
 RL.300.RoadMarking.0.Material.0 = white 0 0 0 0 0 0 0 0 0 0 0
-RL.300.RoadMarking.1.ID = 326 317
-RL.300.RoadMarking.1 = 0 0 0 1 0 -1 0.13 0 1 0 0 0 0 1 1 0 ""
-RL.300.RoadMarking.1.Material.0 = white 0 0 0 0 0 0 0 0 0 0 0
-RL.338.RoadMarking.0.ID = 353 344
-RL.338.RoadMarking.0 = 0 0 0 1 0 -1 0.13 0 1 0 0 0 0 1 1 0 ""
-RL.338.RoadMarking.0.Material.0 = white 0 0 0 0 0 0 0 0 0 0 0
-RL.338.Mount.0.ID = 30 338
-RL.338.Mount.0 = 0 0 0 -1 1 1 0 0 0 0 2.4
-RL.338.Mount.0.0.ID = 31
-RL.338.Mount.0.0 = 0 2 0 0 0 0 0 98 1 1 Milepost M "" 0 0 0 - - "" 0 0 0 - - "" 0 0 0
-RL.338.Mount.0.0.Size = 0.609600007534027 0.304800003767014
-RL.364.RoadMarking.0.ID = 380 371
-RL.364.RoadMarking.0 = 0 0 0 1 0 -1 0.13 0 1 0 0 0 0 1 1 0 ""
-RL.364.RoadMarking.0.Material.0 = white 0 0 0 0 0 0 0 0 0 0 0
-MaxUsedObjId = 423
+RL.327.RoadMarking.0.ID = 343 334
+RL.327.RoadMarking.0 = 0 0 0 1 0 -1 0.13 0 2 0 0 1 1 1 1 0 ""
+RL.327.RoadMarking.0.Material.0 = white 0 0 0 0 0 0 0 0 0 0 0
+RL.327.RoadMarking.1.ID = 353 344
+RL.327.RoadMarking.1 = 0 0 0 1 0 -1 0.13 0 1 0 0 0 0 1 1 0 ""
+RL.327.RoadMarking.1.Material.0 = white 0 0 0 0 0 0 0 0 0 0 0
+RL.365.RoadMarking.0.ID = 380 371
+RL.365.RoadMarking.0 = 0 0 0 1 0 -1 0.13 0 1 0 0 0 0 1 1 0 ""
+RL.365.RoadMarking.0.Material.0 = white 0 0 0 0 0 0 0 0 0 0 0
+RL.391.RoadMarking.0.ID = 407 398
+RL.391.RoadMarking.0 = 0 0 0 1 0 -1 0.13 0 1 0 0 0 0 1 1 0 ""
+RL.391.RoadMarking.0.Material.0 = white 0 0 0 0 0 0 0 0 0 0 0
+RL.418.RoadMarking.0.ID = 434 425
+RL.418.RoadMarking.0 = 0 0 0 1 0 -1 0.13 0 1 0 0 0 0 1 1 0 ""
+RL.418.RoadMarking.0.Material.0 = white 0 0 0 0 0 0 0 0 0 0 0
+MaxUsedObjId = 489
