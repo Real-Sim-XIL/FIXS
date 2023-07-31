@@ -175,6 +175,8 @@ def addTrafficObjects(args):
             else:
                 fileHandler.write(line)
 
+    print("RealSim Parser Completed: generated new testrun {}".format(args.output_testrun))
+
     pass
 
 
