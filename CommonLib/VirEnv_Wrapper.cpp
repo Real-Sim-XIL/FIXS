@@ -26,15 +26,21 @@ extern "C" {
 				VirEnv_readConfig(VirEnv_c, fp);
 			}
 			fclose(fp);
+
+
+			const char* errorMsg;
+			if (VirEnv_c->initialization(&errorMsg) < 0) {
+				VirEnv_c->CM_LogErrF(errorMsg);
+				VirEnv_c->CM_Log("RealSim error initialization \n");
+			}
 		#else
-			
+			const char* errorMsg;
+			if (VirEnv_c->initialization(&errorMsg, configPath) < 0) {
+				VirEnv_c->CM_LogErrF(errorMsg);
+				VirEnv_c->CM_Log("RealSim error initialization \n");
+			}
 		#endif
-		
-		const char* errorMsg;
-		if (VirEnv_c->initialization(&errorMsg) < 0){
-			VirEnv_c->CM_LogErrF(errorMsg);
-			VirEnv_c->CM_Log("RealSim error initialization \n");
-		}	
+	
 	}
 
 	void VirEnv_runStep(VirEnvHelper* VirEnv_c, double simTime) {
@@ -49,7 +55,7 @@ extern "C" {
 		return VirEnv_c->veryFirstStep;
 	}
 
-
+#ifdef RS_DSPACE
 	int VirEnv_readConfig(VirEnvHelper* VirEnv_c, FILE *fp){
 		char buf[1024];
 		while (fgets(buf, sizeof buf, fp)) {
@@ -111,4 +117,6 @@ extern "C" {
 	
 		return 0;
 	}
+#endif
+
 }

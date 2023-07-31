@@ -31,7 +31,11 @@ void VirEnvHelper::shutdown() {
 	TrafficSimulatorId2Remove.clear();
 }
 
+#ifndef RS_DSPACE
+int VirEnvHelper::initialization(const char** errorMsg, const char* configPathInput) {
+#else
 int VirEnvHelper::initialization(const char** errorMsg) {
+#endif
 	//TCHAR NPath[MAX_PATH];
 	//GetCurrentDirectory(MAX_PATH, NPath);
 
@@ -71,6 +75,7 @@ int VirEnvHelper::initialization(const char** errorMsg) {
 	f.close();
 
 #ifndef RS_DSPACE
+	configPath = configPathInput;
 	if (Config_c.getConfig(configPath) < 0) {
 		errorMsgStr = "RealSim: Read Configuration Yaml File Failed";
 		*errorMsg = errorMsgStr.c_str();

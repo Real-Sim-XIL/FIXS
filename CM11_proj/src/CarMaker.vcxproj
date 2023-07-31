@@ -47,41 +47,33 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\CommonLib;..\..\CommonLib\yaml-cpp\include;..\..\CommonLib\yaml-cpp\build\include;$(CARMAKER_INC_DIR)/Car;$(CARMAKER_INC_DIR);$(MATSUPP_DIR)/include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\CommonLib;$(CARMAKER_INC_DIR)/Car;$(CARMAKER_INC_DIR);$(MATSUPP_DIR)/include</AdditionalIncludeDirectories>
       <LanguageStandard>Default</LanguageStandard>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>..\CommonLib;"$(CARMAKER_LIB_DIR)";"$(MATSUPP_DIR)"</AdditionalLibraryDirectories>
-      <AdditionalDependencies>..\..\CommonLib\yaml-cpp\build\Release\yaml-cpp.lib;%(AdditionalDependencies);winspool.lib</AdditionalDependencies>
+      <AdditionalDependencies>..\..\VirtualEnvironment\x64\Release\VirtualEnvironment.lib;%(AdditionalDependencies);winspool.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\CommonLib;..\..\CommonLib\yaml-cpp\include;..\..\CommonLib\yaml-cpp\build\include;$(CARMAKER_INC_DIR)/Car;$(CARMAKER_INC_DIR);$(MATSUPP_DIR)/include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\CommonLib;$(CARMAKER_INC_DIR)/Car;$(CARMAKER_INC_DIR);$(MATSUPP_DIR)/include</AdditionalIncludeDirectories>
       <LanguageStandard>Default</LanguageStandard>
       <TreatWarningAsError>false</TreatWarningAsError>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>..\..\CommonLib;"$(CARMAKER_LIB_DIR)";"$(MATSUPP_DIR)"</AdditionalLibraryDirectories>
-      <AdditionalDependencies>..\..\CommonLib\yaml-cpp\build\Release\yaml-cpp.lib;%(AdditionalDependencies);winspool.lib</AdditionalDependencies>
+      <AdditionalDependencies>%(AdditionalDependencies);winspool.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\CommonLib\ConfigHelper.cpp" />
-    <ClCompile Include="..\..\CommonLib\MsgHelper.cpp" />
-    <ClCompile Include="..\..\CommonLib\RealSimCmHelper.cpp" />
-    <ClCompile Include="..\..\CommonLib\SocketHelper.cpp" />
-    <ClCompile Include="CM_Main.cpp" />
-    <ClCompile Include="CM_Vehicle.cpp" />
     <ClCompile Include="app_tmp.c" />
-    <ClCompile Include="User.cpp" />
+    <ClCompile Include="CM_Main.c" />
+    <ClCompile Include="CM_Vehicle.c" />
+    <ClCompile Include="User.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\CommonLib\ConfigHelper.h" />
-    <ClInclude Include="..\..\CommonLib\MsgHelper.h" />
-    <ClInclude Include="..\..\CommonLib\RealSimCmHelper.h" />
-    <ClInclude Include="..\..\CommonLib\SocketHelper.h" />
-    <ClInclude Include="..\..\CommonLib\VehDataMsgDefs.h" />
+    <ClInclude Include="..\..\CommonLib\VirEnv_Wrapper.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

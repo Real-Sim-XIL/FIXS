@@ -162,6 +162,7 @@ CM*_proj/**/Release/*
 
 **/app_tmp.c
 **/.version_win64
+**/.version_dsrt
 
 **/.vs/*
 tests/DelayedConnection/coordMerge.xml

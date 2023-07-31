@@ -90,7 +90,11 @@
 		//
         void shutdown();
 
+#ifndef RS_DSPACE
+        int initialization(const char** errorMsgChar, const char* configPathInput);
+#else
         int initialization(const char** errorMsgChar);
+#endif
 
         int runStep(double simTime, const char** errorMsgChar);
 		//

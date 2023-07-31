@@ -15,43 +15,19 @@
     <ClCompile Include="app_tmp.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CM_Main.cpp">
+    <ClCompile Include="CM_Main.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CM_Vehicle.cpp">
+    <ClCompile Include="CM_Vehicle.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="User.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\CommonLib\MsgHelper.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\CommonLib\ConfigHelper.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\CommonLib\SocketHelper.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\CommonLib\RealSimCmHelper.cpp">
+    <ClCompile Include="User.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\CommonLib\VehDataMsgDefs.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\CommonLib\MsgHelper.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\CommonLib\ConfigHelper.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\CommonLib\SocketHelper.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\CommonLib\RealSimCmHelper.h">
-      <Filter>Source Files</Filter>
+    <ClInclude Include="..\..\CommonLib\VirEnv_Wrapper.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
