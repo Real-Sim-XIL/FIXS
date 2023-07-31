@@ -1,0 +1,159 @@
+#INFOFILE1.1 - Do not remove this line!
+FileIdent = IPGRoad 11.0
+FileCreator = CarMaker 11.0.1
+LibVersion = 11.0.1
+Country = USA
+nLinks = 2
+nJunctions = 1
+nObjects = 141
+nRoutes = 1
+RoadNetworkLength = 3904.602
+BBox = -10.0558324907653 3919.15850755616 -45.689458713848 16.9997773345282 -11.0004845567121 50.077832736748
+Route.0.Length = 3909.22806971956
+RST.Unit = kmh
+RST = 50 100 130 30 70 30 0 -1
+Movie = 0.2 1 0.01 1.5 1.5 1 1
+PathMode = -1
+Junction.0.ID = 112
+Junction.0.Type = Standard
+Junction.0.Knot = 304.594 -2.253 0
+Junction.0.RST = Countryroad
+Junction.0.Arm.0.ID = 113 117
+Junction.0.Arm.0 = 0 0.25 0 0 1
+Junction.0.Arm.1.ID = 114 119
+Junction.0.Arm.1 = 0 0.25 0 56 0
+Junction.0.MainArms = 0 1
+Junction.0.RL.0.ID = 115
+Junction.0.RL.0 = 2.30599999999998 0.158 179.577 0 -2.30661587201769 -0.158142065839473 179.543 0 0
+Junction.0.RL.0.RefObject = 114 113
+Junction.0.RL.0.Seg.0.ID = 116
+Junction.0.RL.0.Seg.0.Type = Connect
+Junction.0.RL.0.Seg.0.Param = 0 0 0 0 0 0 0 0
+Junction.0.RL.1.ID = 117
+Junction.0.RL.1 = -2.34250818750968 -4.65799892375047 359.543 0 2.27277795948413 -4.34187736455383 359.577 0 0
+Junction.0.RL.1.RefObject = -1 -1
+Junction.0.RL.1.Seg.0.ID = 118
+Junction.0.RL.1.Seg.0.Type = Connect
+Junction.0.RL.1.Seg.0.Param = 0 0 0 0 0 0 0 0
+Junction.0.RL.2.ID = 119
+Junction.0.RL.2 = 2.33922204051584 4.65787736455384 179.577 0 -2.2707235565257 4.34171479207152 179.543 0 0
+Junction.0.RL.2.RefObject = -1 -1
+Junction.0.RL.2.Seg.0.ID = 120
+Junction.0.RL.2.Seg.0.Type = Connect
+Junction.0.RL.2.Seg.0.Param = 0 0 0 0 0 0 0 0
+Junction.0.RL.3.ID = 122
+Junction.0.RL.3 = 2.3189196824228 1.9079523084376 179.577 0 -2.29265774932634 1.59180226779258 179.543 0 0
+Junction.0.RL.3.RefObject = 70 14
+Junction.0.RL.3.Seg.0.ID = 123
+Junction.0.RL.3.Seg.0.Type = Connect
+Junction.0.RL.3.Seg.0.Param = 0 0 0 0 0 0 0 0
+Junction.0.RL.4.ID = 125
+Junction.0.RL.4 = -2.32057399470904 -1.90808639947153 359.543 0 2.29308031757716 -1.5919523084376 359.577 0 0
+Junction.0.RL.4.RefObject = 32 88
+Junction.0.RL.4.Seg.0.ID = 126
+Junction.0.RL.4.Seg.0.Type = Connect
+Junction.0.RL.4.Seg.0.Param = 0 0 0 0 0 0 0 0
+Link.0.ID = 0
+Link.0.Node0 = 0 0 0 359.543
+Link.0.Node1 = 302.287384127982 -2.41114206583947 0 359.543
+Link.0.RST = Countryroad
+Link.0.RL.ID = 1
+Link.0.Seg.0.ID = 5
+Link.0.Seg.0.Type = Straight
+Link.0.Seg.0.Param = 302.297 0 0 0 0 0 0 0
+Link.0.LaneSection.0.ID = 6
+Link.0.LaneSection.0.Start = 0
+Link.0.LaneSection.0.LaneL.0.ID = 7
+Link.0.LaneSection.0.LaneL.0 = 0 3.5 3.5 0 0 0 0
+Link.0.LaneSection.0.LaneL.0.ARP = 8 9 10 11 12 13
+Link.0.LaneSection.0.LaneL.1.ID = 16
+Link.0.LaneSection.0.LaneL.1 = 0 1 1 4 0 0 0
+Link.0.LaneSection.0.LaneL.1.ARP = 17 18 19 20 21 22
+Link.0.LaneSection.0.LaneL.2.ID = 24
+Link.0.LaneSection.0.LaneL.2 = 0 2.5 2.5 5 0 0 0
+Link.0.LaneSection.0.LaneR.0.ID = 25
+Link.0.LaneSection.0.LaneR.0 = 0 3.5 3.5 0 0 0 0
+Link.0.LaneSection.0.LaneR.0.ARP = 26 27 28 29 30 31
+Link.0.LaneSection.0.LaneR.1.ID = 34
+Link.0.LaneSection.0.LaneR.1 = 0 1 1 4 0 0 0
+Link.0.LaneSection.0.LaneR.1.ARP = 35 36 37 38 39 40
+Link.0.LaneSection.0.LaneR.2.ID = 42
+Link.0.LaneSection.0.LaneR.2 = 0 2.5 2.5 5 0 0 0
+Link.0.ElevationProfile.ID = 2
+Link.0.ElevationProfile.Params = 0 0
+Link.0.ElevationProfile:
+	133 -1 302.297 0 0 0 -999
+Link.1.ID = 56
+Link.1.Node0 = 306.9 -2.095 0 359.577
+Link.1.Node1 = 3909.10682882647 -28.6896494800976 0 359.577
+Link.1.RST = Countryroad
+Link.1.RL.ID = 57
+Link.1.Seg.0.ID = 61
+Link.1.Seg.0.Type = Straight
+Link.1.Seg.0.Param = 3602.305 0 0 0 0 0 0 0
+Link.1.LaneSection.0.ID = 62
+Link.1.LaneSection.0.Start = 0
+Link.1.LaneSection.0.LaneL.0.ID = 63
+Link.1.LaneSection.0.LaneL.0 = 0 3.5 3.5 0 0 0 0
+Link.1.LaneSection.0.LaneL.0.ARP = 64 65 66 67 68 69
+Link.1.LaneSection.0.LaneL.1.ID = 72
+Link.1.LaneSection.0.LaneL.1 = 0 1 1 4 0 0 0
+Link.1.LaneSection.0.LaneL.1.ARP = 73 74 75 76 77 78
+Link.1.LaneSection.0.LaneL.2.ID = 80
+Link.1.LaneSection.0.LaneL.2 = 0 2.5 2.5 5 0 0 0
+Link.1.LaneSection.0.LaneR.0.ID = 81
+Link.1.LaneSection.0.LaneR.0 = 0 3.5 3.5 0 0 0 0
+Link.1.LaneSection.0.LaneR.0.ARP = 82 83 84 85 86 87
+Link.1.LaneSection.0.LaneR.1.ID = 90
+Link.1.LaneSection.0.LaneR.1 = 0 1 1 4 0 0 0
+Link.1.LaneSection.0.LaneR.1.ARP = 91 92 93 94 95 96
+Link.1.LaneSection.0.LaneR.2.ID = 98
+Link.1.LaneSection.0.LaneR.2 = 0 2.5 2.5 5 0 0 0
+Link.1.ElevationProfile.ID = 58
+Link.1.ElevationProfile.Params = 0 0
+Link.1.ElevationProfile:
+	134 -1 106.589 0 0 5 -999
+	135 -1 300 0 0 0 -999
+	136 -1 500 0 0 10 -999
+	137 -1 800 0 0 3 -999
+	138 -1 1000 0 0 8 -999
+	139 -1 1500 0 0 5 -999
+	140 -1 2000 0 0 15 -999
+LanePath.0 = 14 7 2 10 0.1 0.1 -1
+LanePath.1 = 23 16 0.25 10 0.1 0.1 -1
+LanePath.2 = 32 25 2 10 0.1 0.1 -1
+LanePath.3 = 41 34 0.25 10 0.1 0.1 -1
+LanePath.4 = 70 63 2 10 0.1 0.1 -1
+LanePath.5 = 79 72 0.25 10 0.1 0.1 -1
+LanePath.6 = 88 81 2 10 0.1 0.1 -1
+LanePath.7 = 97 90 0.25 10 0.1 0.1 -1
+ConPath.0 = 121 112 70 0 1 14 0 0 31 1 -1 -1 -1
+ConPath.0.RL = 122
+ConPath.1 = 124 112 32 0 1 88 0 0 31 1 -1 -1 -1
+ConPath.1.RL = 125
+Route.0.ID = 131
+Route.0.Name = Route_0
+Route.0.DrvPath.ID = 132
+Route.0.DrvPath:
+	32
+	124
+	88
+RL.1.RoadMarking.0.ID = 15 7
+RL.1.RoadMarking.0 = 0 0 0 1 0 1 0.15 0 1 0 0 2 4 1 1 0 ""
+RL.1.RoadMarking.0.Material.0 = 1.0,1.0,1.0 0 0 0 0 0 0 1 1 0 0 0
+RL.1.RoadMarking.1.ID = 33 25
+RL.1.RoadMarking.1 = 0 0 0 1 0 -1 0.15 0 1 0 0 2 4 1 1 0 ""
+RL.1.RoadMarking.1.Material.0 = 1.0,1.0,1.0 0 0 0 0 0 0 1 1 0 0 0
+RL.1.RoadMarking.2.ID = 43 6
+RL.1.RoadMarking.2 = 0 0 0 1 0 0 0.15 0 2 0 0 2 4 1 1 0 ""
+RL.1.RoadMarking.2.Material.0 = 1.0,1.0,1.0 0 0 0 0 0 0 1 1 0 0 0
+RL.57.RoadMarking.0.ID = 71 63
+RL.57.RoadMarking.0 = 0 0 0 1 0 1 0.15 0 1 0 0 2 4 1 1 0 ""
+RL.57.RoadMarking.0.Material.0 = 1.0,1.0,1.0 0 0 0 0 0 0 1 1 0 0 0
+RL.57.RoadMarking.1.ID = 89 81
+RL.57.RoadMarking.1 = 0 0 0 1 0 -1 0.15 0 1 0 0 2 4 1 1 0 ""
+RL.57.RoadMarking.1.Material.0 = 1.0,1.0,1.0 0 0 0 0 0 0 1 1 0 0 0
+RL.57.RoadMarking.2.ID = 99 62
+RL.57.RoadMarking.2 = 0 0 0 1 0 0 0.15 0 2 0 0 2 4 1 1 0 ""
+RL.57.RoadMarking.2.Material.0 = 1.0,1.0,1.0 0 0 0 0 0 0 1 1 0 0 0
+MaxUsedObjId = 140
