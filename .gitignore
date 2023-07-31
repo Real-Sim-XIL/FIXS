@@ -166,3 +166,4 @@ CM*_proj/**/Release/*
 
 **/.vs/*
 tests/DelayedConnection/coordMerge.xml
+CM11_proj/tmp.obj

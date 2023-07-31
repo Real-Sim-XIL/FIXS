@@ -14,6 +14,11 @@ REM call conda deactivate
 
 REM pause
 
-
-start sumo-gui -c ..\..\tests\SumoIpg\coordMerge.sumocfg --remote-port 1337 --step-length 0.1 --start --num-clients 1
-start cmd /c ..\..\TrafficLayer\x64\Debug\TrafficLayer.exe -f ..\..\tests\SumoIpg\config_SUMO.yaml
+REM set RealSimAppPath=..\..\tests\SumoIpg
+REM start sumo-gui -c %RealSimAppPath%\coordMerge.sumocfg --remote-port 1337 --step-length 0.1 --start --num-clients 1
+REM set RealSimAppPath=..\..\tests\TurnSignal
+REM start sumo-gui -c %RealSimAppPath%\turnSignal.sumocfg --remote-port 1337 --step-length 0.1 --start --num-clients 1
+REM set RealSimAppPath=..\..\tests\Elevation
+REM start sumo-gui -c %RealSimAppPath%\elevation.sumocfg --remote-port 1337 --step-length 0.1 --start --num-clients 1
+start sumo-gui -c ..\..\tests\ShallowfordRdSCIL\sumoFiles\ShallowfordRd_RL.sumocfg --remote-port 1337 --step-length 0.1 --start --num-clients 1 --begin 39600
+start cmd /c ..\..\TrafficLayer\x64\Debug\TrafficLayer.exe -f ..\..\tests\Elevation\config_SUMO.yaml

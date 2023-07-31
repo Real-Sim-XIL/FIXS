@@ -9,13 +9,13 @@ CM_HIL.Args.History:
 DSRT.System =
 DSRT.System.History:
 GPUParameters.FName =
-CM.Exe = src_lib_c/CarMaker.win64.exe
+CM.Exe = src/CarMaker.win64.exe
 CM.Args =
 CM.Exe.History:
-	src_lib_c/CarMaker.win64.exe
-	src_lib/CarMaker.win64.exe
 	src/CarMaker.win64.exe
 	CarMaker.win64.exe
+	src_lib_c/CarMaker.win64.exe
+	src_lib/CarMaker.win64.exe
 CM.Args.History:
 	""
 	-f ../tests/SumoIpg/config_SUMO.yaml

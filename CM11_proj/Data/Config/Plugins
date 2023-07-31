@@ -8,5 +8,5 @@ VhclOperator.IPGOperator =
 VhclOperator.IPGOperator.Info =
 VhclOperator.IPGOperator.Tags =
 HydBrakeSystem.HydESP = 3
-HydBrakeSystem.HydESP.Info = HydESP
+HydBrakeSystem.HydESP.Info =
 HydBrakeSystem.HydESP.Tags =
