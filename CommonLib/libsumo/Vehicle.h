@@ -1,5 +1,5 @@
 /****************************************************************************/
-// Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.org/sumo
+// Eclipse SUMO, Simulation of Urban MObility; see https://eclipse.dev/sumo
 // Copyright (C) 2012-2023 German Aerospace Center (DLR) and others.
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
@@ -91,7 +91,7 @@ public:
     static std::vector<libsumo::TraCIConnection> getNextLinks(const std::string& vehID);
     static std::vector<libsumo::TraCINextStopData> getStops(const std::string& vehID, int limit = 0);
     static int getStopState(const std::string& vehID);
-    static std::string getStopParameter(const std::string& vehID, int nextStopIndex, const std::string& param);
+    static std::string getStopParameter(const std::string& vehID, int nextStopIndex, const std::string& param, bool customParam = false);
 
     static double getDistance(const std::string& vehID);
     static double getDrivingDistance(const std::string& vehID, const std::string& edgeID, double position, int laneIndex = 0);
@@ -155,7 +155,8 @@ public:
                            int teleport = 0);
 
     static void setStopParameter(const std::string& vehID, int nextStopIndex,
-                                 const std::string& param, const std::string& value);
+                                 const std::string& param, const std::string& value,
+                                 bool customParam = false);
 
     static void rerouteParkingArea(const std::string& vehID,
                                    const std::string& parkingAreaID);

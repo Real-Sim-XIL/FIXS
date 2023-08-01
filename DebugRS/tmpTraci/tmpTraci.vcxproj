@@ -116,7 +116,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\..\CommonLib\libsumo;..\..\CommonLib</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\CommonLib\libsumo; ..\..\CommonLib; ..\..\..\..\src_ext\sumo</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

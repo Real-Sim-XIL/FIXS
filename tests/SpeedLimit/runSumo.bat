@@ -1,3 +1,3 @@
-start sumo-gui -c .\speedLimit.sumocfg --remote-port 1337 --step-length 0.1 --start --num-clients 1
+start ..\..\..\..\src_ext\sumo\bin\sumo-guiD -c .\speedLimit.sumocfg --remote-port 1337 --step-length 0.1 --start --num-clients 1
 
 REM start sumo-gui -c .\speedLimit.sumocfg --step-length 0.1 --start --netstate-dump speedLimit.xml 

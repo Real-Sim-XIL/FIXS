@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-#include <libsumo/libtraci.h>
+#include <libsumo\libtraci.h>
 #include <windows.h>
 using namespace std;
 
@@ -19,7 +19,7 @@ int main()
 
 
 	while (1) {
-		try {
+		//try {
 			Simulation::step();
 
 			vector <string> vehIdList = Vehicle::getIDList();
@@ -28,13 +28,13 @@ int main()
 				vector <string> edgeList = Vehicle::getRoute(vehId);
 				vector <libsumo::TraCIConnection> nextLinkList = Vehicle::getNextLinks(vehId);
 
-				int a = 1;
+				//int a = 1;
 			}
-		}
-		catch (const std::exception& e) {
-			std::cout << e.what();
-			return -1;
-		}
+		//}
+		//catch (const std::exception& e) {
+		//	std::cout << e.what();
+		//	return -1;
+		//}
 	}
 
     return 0;
