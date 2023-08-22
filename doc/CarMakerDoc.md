@@ -5,8 +5,7 @@ Please start with reading through the documentation, and playwith included Examp
 Contacts
 =======================
 Yunli Shao\
-Oak Ridge National Laboratory\
-shaoy@ornl.gov
+realsimxil@gmail.com
 
 Table of Contents
 =======================

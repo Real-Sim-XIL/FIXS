@@ -2,8 +2,7 @@
 
 ## Contacts
 Yunli Shao\
-University of Georgia\
-yunli.shao@uga.edu
+realsimxil@gmail.com
 
 Table of Contents
 =======================
