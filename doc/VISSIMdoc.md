@@ -2,12 +2,14 @@
 
 ## Contacts
 Yunli Shao\
-Oak Ridge National Laboratory\
-shaoy@ornl.gov
+University of Georgia\
+yunli.shao@uga.edu
 
 Table of Contents
 =======================
 * [Simulation Setups](#simulation-setups)
+    * [Compile Source Code](#compile-source-code)
+    * [Interface Setup](#interface-setup)
 * [Run Simulation Manually](#run-simulation-manually)
     * [Start Simulation](#start-simulation)
     * [Stop Simulation](#stop-simulation)
@@ -22,6 +24,11 @@ Table of Contents
 
 
 ## Simulation Setups
+
+### Compile Source Code
+Currently, only compiled VISSIM dll is provided. Detailed instruction on user compiled source code will be provided later. 
+
+### Interface Setup
 1. Select the message data fields, ip address and port of the TrafficLayer, vehicle id of interest in the config.yaml. In this example, vehicle id '6' is selected, ip address is '127.0.0.1', port is 2333.  
 ```yaml
 # Global Simulation setup
