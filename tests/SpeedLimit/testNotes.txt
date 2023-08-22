@@ -1,0 +1,8 @@
+test1:
+    select vehicle #6, follow sine wave
+
+test2:
+    add and select egoCAV type 1000
+
+test3:
+    select vehicle #6, external dynamics, i.e., vissim is the driver

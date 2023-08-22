@@ -1,0 +1,10 @@
+
+
+<types>
+	<type id="var_vclass" speed="22.22">
+		<restriction vClass="passenger" speed="22.22"/>
+		<restriction vClass="private" speed="20"/>
+		<restriction vClass="truck" speed="15"/>
+		<restriction vClass="custom1" speed="25"/>
+	</type>
+</types>

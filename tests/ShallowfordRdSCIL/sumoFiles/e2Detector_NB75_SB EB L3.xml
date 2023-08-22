@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 2023-05-31 07:55:18 by Eclipse SUMO GUI Version 1.13.0
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+
+    <input>
+        <net-file value="./sumoFiles/ShallowfordRd_RL.net.xml"/>
+        <route-files value="./sumoFiles/Trips.2021-07-26_mod.xml"/>
+        <additional-files value="./sumoFiles/ShallowfordRd_RL_SCIL.add.xml,./sumoFiles/e2Detectors_m.add.xml"/>
+    </input>
+
+    <time>
+        <begin value="39600"/>
+        <step-length value="0.1"/>
+    </time>
+
+    <processing>
+        <lateral-resolution value="0.1"/>
+        <tls.actuated.show-detectors value="true"/>
+    </processing>
+
+    <traci_server>
+        <remote-port value="1337"/>
+    </traci_server>
+
+    <random_number>
+        <random value="false"/>
+        <seed value="23"/>
+    </random_number>
+
+    <gui_only>
+        <start value="true"/>
+        <tracker-interval value="0.1"/>
+    </gui_only>
+
+</configuration>
+-->
+
+<detector xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/det_e2_file.xsd">
+   <interval begin="39600.00" end="39671.90" id="NB75_SB EB L3" sampledSeconds="16.97" nVehEntered="3" nVehLeft="0" nVehSeen="3" meanSpeed="2.82" meanTimeLoss="4.89" meanOccupancy="4.46" maxOccupancy="60.00" meanMaxJamLengthInVehicles="0.08" meanMaxJamLengthInMeters="0.46" maxJamLengthInVehicles="2" maxJamLengthInMeters="13.00" jamLengthInVehiclesSum="59" jamLengthInMetersSum="328.68" meanHaltingDuration="2.70" maxHaltingDuration="5.70" haltingDurationSum="8.10" meanIntervalHaltingDuration="2.70" maxIntervalHaltingDuration="5.70" intervalHaltingDurationSum="8.10" startedHalts="3.00" meanVehicleNumber="0.24" maxVehicleNumber="3" />
+</detector>
