@@ -334,6 +334,18 @@ int ConfigHelper::getConfig(string configName) {
 		//printf("\nCarMaker IP not specified! Will use localhost 127.0.0.1 as default!\n");
 	}
 
+	if (node["SynchronizeTrafficSignal"]) {
+		CarMakerSetup.SynchronizeTrafficSignal = parserFlag(node, "SynchronizeTrafficSignal");
+	}
+	else {
+		CarMakerSetup.SynchronizeTrafficSignal = false;
+	}
+	SubscriptionSignalList.subAllSignalFlag = CarMakerSetup.SynchronizeTrafficSignal;
+
+	if (CarMakerSetup.SynchronizeTrafficSignal) {
+		//SocketPort2SubscriptionList_um[CarMakerSetup.CarMakerPort].SignalList.subAllSignalFlag = true;
+		SocketPort2SubscriptionList_um[2444].SignalList.subAllSignalFlag = true;
+	}
 
 	// ===========================================================================
 	// 			READ Sumo Setup Section
@@ -586,6 +598,10 @@ void ConfigHelper::getVehSubscriptionList(Subscription_t VehSub, std::unordered_
 	for (size_t iSub = 0; iSub < VehSub.size(); iSub++) {
 		string type;
 		type = get<0>(VehSub[iSub]);
+
+		vector <int> port_v;
+		port_v = get<3>(VehSub[iSub]);
+		
 		if (type.compare("ego") == 0) {
 			SubAttMap_t att = get<1>(VehSub[iSub]);
 			if (att.find("id") != att.end() && att.find("radius") != att.end()) {
@@ -608,7 +624,30 @@ void ConfigHelper::getVehSubscriptionList(Subscription_t VehSub, std::unordered_
 
 						}
 					}
+
+
+					// get port map
+					for (auto it : port_v) {
+						// if does not has socket port, then need to initialize
+						if (SocketPort2SubscriptionList_um.find(it) == SocketPort2SubscriptionList_um.end()) {
+							SubscriptionAllList_t subAllList;
+							SocketPort2SubscriptionList_um[it] = subAllList;
+						}
+						for (size_t i = 0; i < idlist.size(); i++) {
+							double radius = strtod(radiuslist[i].c_str(), NULL);
+							if (SocketPort2SubscriptionList_um[it].VehicleList.vehicleSubscribeId_v.find(idlist[i]) == SocketPort2SubscriptionList_um[it].VehicleList.vehicleSubscribeId_v.end()) {
+								SocketPort2SubscriptionList_um[it].VehicleList.vehicleSubscribeId_v[idlist[i]] = radius;
+							}
+							else {
+								// ERROR HANDLING
+								// this means the vehicle already subscribed, then just use the larger radius of the two
+								SocketPort2SubscriptionList_um[it].VehicleList.vehicleSubscribeId_v[idlist[i]] = max(radius, SocketPort2SubscriptionList_um[it].VehicleList.vehicleSubscribeId_v[idlist[i]]);
+
+							}
+						}
+					}
 				}
+
 			}
 			else if (att.find("all") != att.end()) {
 				vector <string> flaglist = att["all"];
@@ -630,6 +669,17 @@ void ConfigHelper::getVehSubscriptionList(Subscription_t VehSub, std::unordered_
 						subAllFlag = true;
 					}
 					subscribeAllVehicle = make_pair(subAllFlag, strtod(radiuslist[0].c_str(), NULL));
+
+
+					// get port map
+					for (auto it : port_v) {
+						// if does not has socket port, then need to initialize
+						if (SocketPort2SubscriptionList_um.find(it) == SocketPort2SubscriptionList_um.end()) {
+							SubscriptionAllList_t subAllList;
+							SocketPort2SubscriptionList_um[it] = subAllList;
+						}
+						SocketPort2SubscriptionList_um[it].VehicleList.subscribeAllVehicle = make_pair(subAllFlag, strtod(radiuslist[0].c_str(), NULL));
+					}
 				}
 
 			}
@@ -640,6 +690,18 @@ void ConfigHelper::getVehSubscriptionList(Subscription_t VehSub, std::unordered_
 				vector <string> idlist = att["id"];
 				for (size_t iId = 0; iId < idlist.size(); iId++) {
 					edgeSubscribeId_v.insert(idlist[iId]);
+				}
+
+				// get port map
+				for (auto it : port_v) {
+					// if does not has socket port, then need to initialize
+					if (SocketPort2SubscriptionList_um.find(it) == SocketPort2SubscriptionList_um.end()) {
+						SubscriptionAllList_t subAllList;
+						SocketPort2SubscriptionList_um[it] = subAllList;
+					}
+					for (size_t iId = 0; iId < idlist.size(); iId++) {
+						SocketPort2SubscriptionList_um[it].VehicleList.edgeSubscribeId_v.insert(idlist[iId]);
+					}
 				}
 			}
 			else {
@@ -669,6 +731,23 @@ void ConfigHelper::getVehSubscriptionList(Subscription_t VehSub, std::unordered_
 						string poiName = "RealSimPOI_" + ss.str();
 
 						pointSubscribeId_v[poiName] = make_tuple(strtod(xlist[i].c_str(), NULL), strtod(ylist[i].c_str(), NULL), strtod(zlist[i].c_str(), NULL), strtod(rlist[i].c_str(), NULL));
+					}
+					// get port map
+					for (auto it : port_v) {
+						// if does not has socket port, then need to initialize
+						if (SocketPort2SubscriptionList_um.find(it) == SocketPort2SubscriptionList_um.end()) {
+							SubscriptionAllList_t subAllList;
+							SocketPort2SubscriptionList_um[it] = subAllList;
+						}
+						for (size_t i = 0; i < xlist.size(); i++) {
+							stringstream ss;
+							//int len = (int) pointSubscribeId_v.size();
+							ss << pointSubscribeId_v.size();
+							//string poiName = "RealSimPOI_" + to_string(pointSubscribeId_v.size());
+							string poiName = "RealSimPOI_" + ss.str();
+
+							SocketPort2SubscriptionList_um[it].VehicleList.pointSubscribeId_v[poiName] = make_tuple(strtod(xlist[i].c_str(), NULL), strtod(ylist[i].c_str(), NULL), strtod(zlist[i].c_str(), NULL), strtod(rlist[i].c_str(), NULL));
+						}
 					}
 				}
 			}
@@ -713,23 +792,55 @@ void ConfigHelper::getSigSubscriptionList(Subscription_t SigSub) {
 	for (size_t iSub = 0; iSub < SigSub.size(); iSub++) {
 		string type;
 		type = get<0>(SigSub[iSub]);
+		vector <string> idlist;
 		if (type.compare("intersection") == 0) {
 			SubAttMap_t att = get<1>(SigSub[iSub]);
 			if (att.find("name") != att.end()) {
-				vector <string> idlist = att["name"];
-
+				idlist = att["name"];
 				for (size_t i = 0; i < idlist.size(); i++) {
 					if (SubscriptionSignalList.signalId_v.find(idlist[i]) == SubscriptionSignalList.signalId_v.end()) {
 						SubscriptionSignalList.signalId_v.insert(idlist[i]);
 					}
 				}
 			}
+
+			// get port map
+			vector <int> port_v;
+			port_v = get<3>(SigSub[iSub]);
+
+			for (auto it : port_v) {
+				// if already has this socket port, then no need to initialize
+				if (SocketPort2SubscriptionList_um.find(it) != SocketPort2SubscriptionList_um.end()) {
+
+				}
+				else {
+					SubscriptionAllList_t subAllList;
+					SocketPort2SubscriptionList_um[it] = subAllList;
+				}
+
+				for (size_t i = 0; i < idlist.size(); i++) {
+					if (SocketPort2SubscriptionList_um[it].SignalList.signalId_v.find(idlist[i]) == SocketPort2SubscriptionList_um[it].SignalList.signalId_v.end()) {
+						SocketPort2SubscriptionList_um[it].SignalList.signalId_v.insert(idlist[i]);
+					}
+				}
+			}
+
 		}
 		else {
 			// ERROR HANDLING
 
 		}
+
+		
 	}
+
+	////if (CarMakerSetup.EnableCosimulation && CarMakerSetup.SynchronizeTrafficSignal){
+	//if (CarMakerSetup.SynchronizeTrafficSignal) {
+	//	SubscriptionSignalList.subAllSignalFlag = true;
+	//}
+	//else {
+	//	SubscriptionSignalList.subAllSignalFlag = false;
+	//}
 }
 
 void ConfigHelper::getDetSubscriptionList(Subscription_t DetSub) {
@@ -739,14 +850,36 @@ void ConfigHelper::getDetSubscriptionList(Subscription_t DetSub) {
 	for (size_t iSub = 0; iSub < DetSub.size(); iSub++) {
 		string type;
 		type = get<0>(DetSub[iSub]);
+		vector <string> idlist;
 		if (type.compare("detector") == 0) {
 			SubAttMap_t att = get<1>(DetSub[iSub]);
 			if (att.find("pattern") != att.end()) {
-				vector <string> idlist = att["pattern"];
+				idlist = att["pattern"];
 
 				for (size_t i = 0; i < idlist.size(); i++) {
 					if (SubscriptionDetectorList.pattern_v.find(idlist[i]) == SubscriptionDetectorList.pattern_v.end()) {
 						SubscriptionDetectorList.pattern_v.insert(idlist[i]);
+					}
+				}
+			}
+
+			// get port map
+			vector <int> port_v;
+			port_v = get<3>(DetSub[iSub]);
+
+			for (auto it : port_v) {
+				// if already has this socket port, then no need to initialize
+				if (SocketPort2SubscriptionList_um.find(it) != SocketPort2SubscriptionList_um.end()) {
+
+				}
+				else {
+					SubscriptionAllList_t subAllList;
+					SocketPort2SubscriptionList_um[it] = subAllList;
+				}
+
+				for (size_t i = 0; i < idlist.size(); i++) {
+					if (SocketPort2SubscriptionList_um[it].DetectorList.pattern_v.find(idlist[i]) == SocketPort2SubscriptionList_um[it].DetectorList.pattern_v.end()) {
+						SocketPort2SubscriptionList_um[it].DetectorList.pattern_v.insert(idlist[i]);
 					}
 				}
 			}

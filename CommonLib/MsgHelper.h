@@ -43,14 +43,15 @@ public:
 	void clearSendStorage();
 	void clearStorage();
 
+
+	// the reason to define such format is that we will only get everything together from VISSIM
 	std::unordered_map <std::string, VehFullData_t> VehDataRecv_um;
 	std::unordered_map <std::string, TrafficLightData_t> TlsDataRecv_um;
 	std::unordered_map <std::string, TlsDetector_t> DetDataRecv_um;
 
-
 	// when receive, no need to distinguish where we get the data, so always combine the data
 	// when send out, essentially separate all received information into different subsets according to subscription of each client/server
-
+	std::unordered_map <int, std::vector<TrafficLightData_t>> TlsDataRecvAssigned_um;
 
 	// the size of these containers should be the same as the number of clients. essentially we could send different messages to different clients, these storages will be able to handle that. e.g. VehDataSend_v[0] contains a vector of vehicle data to be sent to the first client
 	std::unordered_map <int, std::vector <VehFullData_t> > VehDataSend_um;

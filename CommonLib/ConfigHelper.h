@@ -99,6 +99,8 @@ struct CarMakerSetup_t {
 
 	std::string EgoType;
 
+	bool SynchronizeTrafficSignal;
+
 };
 
 
@@ -108,13 +110,37 @@ struct SumoSetup_t {
 
 };
 
+typedef struct SubscriptionVehicleList_t {
+	std::unordered_set <std::string> edgeSubscribeId_v;
+
+	// vehicle id -> radius
+	std::unordered_map <std::string, double > vehicleSubscribeId_v;
+
+	std::pair <bool, double> subscribeAllVehicle = { std::make_pair(false, 0) };
+
+	// tuple x, y, z, radius
+	// name of the point -> x, y, z, r
+	std::unordered_map <std::string, std::tuple<double, double, double, double> > pointSubscribeId_v;
+	//std::vector <std::string> pointNamePoi_v;
+
+	std::unordered_map <std::string, double> vehicleTypeSubscribedId_v;
+};
 
 typedef struct SubscriptionSignalList_t {
 	std::unordered_set <std::string> signalId_v;
+
+	bool subAllSignalFlag; 
 };
 
 typedef struct SubscriptionDetectorList_t {
 	std::unordered_set <std::string> pattern_v;;
+};
+
+typedef struct SubscriptionAllList_t {
+	SubscriptionVehicleList_t VehicleList;
+	SubscriptionSignalList_t SignalList = { {}, false };
+	SubscriptionDetectorList_t DetectorList;
+
 };
 
 class ConfigHelper
@@ -155,25 +181,16 @@ public:
 	}FlagSetup;
 
 
-	struct SubscriptionVehicleList {
-		std::unordered_set <std::string> edgeSubscribeId_v;
-
-		// vehicle id -> radius
-		std::unordered_map <std::string, double > vehicleSubscribeId_v;
-
-		std::pair <bool, double> subscribeAllVehicle = { std::make_pair(false, 0) };
-
-		// tuple x, y, z, radius
-		// name of the point -> x, y, z, r
-		std::unordered_map <std::string, std::tuple<double, double, double, double> > pointSubscribeId_v;
-		//std::vector <std::string> pointNamePoi_v;
-
-		std::unordered_map <std::string, double> vehicleTypeSubscribedId_v;
-	}SubscriptionVehicleList;
+	SubscriptionVehicleList_t SubscriptionVehicleList;
 
 	SubscriptionSignalList_t SubscriptionSignalList;
 
 	SubscriptionDetectorList_t SubscriptionDetectorList;
+
+
+	// creat maps to hold socket port -> subscription list so that can use it to distribute messages
+
+	std::unordered_map <int, SubscriptionAllList_t> SocketPort2SubscriptionList_um;
 
 	void resetConfig();
 

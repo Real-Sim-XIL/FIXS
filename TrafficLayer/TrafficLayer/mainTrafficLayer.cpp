@@ -399,10 +399,10 @@ int main(int argc, char* argv[]) {
 	/********************************************
 	* Connection Setups
 	*********************************************/
-	if (selfServerPortUserInput.size() > 1 && !ENABLE_VEH_SIMULATOR) {
-		printf("\nERROR: currently only support one application layer\n");
-		exit(-1);
-	}
+	//if (selfServerPortUserInput.size() > 1 && !ENABLE_VEH_SIMULATOR) {
+	//	printf("\nERROR: currently only support one application layer\n");
+	//	exit(-1);
+	//}
 
 	TrafficHelper Traffic_c;
 	if (ENABLE_VISSIM) {
@@ -662,6 +662,8 @@ int main(int argc, char* argv[]) {
 
 					//MsgClient_c.VehDataSend_um[Sock_c.clientSock[iC]] = MsgServer_c.VehDataRecvAll_v;
 
+					int curPort = selfServerPortUserInput[iC];
+
 					MsgClient_c.VehDataSend_um[actualClientSock[iC]] = {};
 					MsgClient_c.TlsDataSend_um[actualClientSock[iC]] = {};
 					MsgClient_c.DetDataSend_um[actualClientSock[iC]] = {};
@@ -671,7 +673,7 @@ int main(int argc, char* argv[]) {
 							if (it.second.id.compare(Config_c.CarMakerSetup.EgoId) == 0 && selfServerPortUserInput[iC] != Config_c.CarMakerSetup.CarMakerPort && Config_c.CarMakerSetup.EnableEgoSimulink) {
 								MsgClient_c.VehDataSend_um[actualClientSock[iC]].push_back(it.second);
 							}
-							// if the second scoket (vehicle simulator) or only have one socket (both vehicle simualtor and XIL), send it
+							// if is the CarMakerPort or only have one socket (both vehicle simualtor and XIL), send it
 							else if (selfServerPortUserInput[iC] == Config_c.CarMakerSetup.CarMakerPort || actualClientSock.size() == 1) {
 								MsgClient_c.VehDataSend_um[actualClientSock[iC]].push_back(it.second);
 							}
@@ -681,7 +683,19 @@ int main(int argc, char* argv[]) {
 						}
 					}
 					for (auto it : MsgServer_c.TlsDataRecv_um) {
-						MsgClient_c.TlsDataSend_um[actualClientSock[iC]].push_back(it.second);
+						// assign Tls data to each client
+						// if all signal, then add it to send list
+						if (Config_c.SocketPort2SubscriptionList_um[curPort].SignalList.subAllSignalFlag) {
+							MsgClient_c.TlsDataSend_um[actualClientSock[iC]].push_back(it.second);
+						}
+						// else, only assign Tls that is needed for current port/socket
+						else {
+							// check if current signal light is included
+							if (Config_c.SocketPort2SubscriptionList_um[curPort].SignalList.signalId_v.find(it.first) != Config_c.SocketPort2SubscriptionList_um[curPort].SignalList.signalId_v.end()) {
+								MsgClient_c.TlsDataSend_um[actualClientSock[iC]].push_back(it.second);
+							}
+						}
+						
 					}
 					for (auto it : MsgServer_c.DetDataRecv_um) {
 						MsgClient_c.DetDataSend_um[actualClientSock[iC]].push_back(it.second);

@@ -954,7 +954,7 @@ int SocketHelper::sendData(int sock, int iClient, float simTimeSend, uint8_t sim
 	}
 
 	// pack header
-	Msg_c.packHeader(simStateSend, simTimeSend, MSG_HEADER_SIZE + tempVehDataByte + tempDetDataByte, sendBuffer, &iByte);
+	Msg_c.packHeader(simStateSend, simTimeSend, MSG_HEADER_SIZE + tempVehDataByte + tempTlsDataByte + tempDetDataByte, sendBuffer, &iByte);
 	sendMsgSize = MSG_HEADER_SIZE;
 
 	// pack vehicle data
