@@ -1,2 +1,0 @@
-::sumo-gui -c ./coordMerge_v1.sumocfg --remote-port 1337 --step-length 0.1 --start
-sumo-gui -c ./Town10HD.sumocfg --remote-port 1337 --step-length 0.1 --start --num-clients 2 --netstate-dump Town10HD.xml --lateral-resolution 0.25 --collision.check-junctions

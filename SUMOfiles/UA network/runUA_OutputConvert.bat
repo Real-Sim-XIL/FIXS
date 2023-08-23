@@ -1,1 +1,0 @@
-python ..\xml2csv.py UAdemoRealSim_Orig_as0p1.xml
