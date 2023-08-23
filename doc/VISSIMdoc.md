@@ -2,12 +2,13 @@
 
 ## Contacts
 Yunli Shao\
-Oak Ridge National Laboratory\
-shaoy@ornl.gov
+realsimxil@gmail.com
 
 Table of Contents
 =======================
 * [Simulation Setups](#simulation-setups)
+    * [Compile Source Code](#compile-source-code)
+    * [Interface Setup](#interface-setup)
 * [Run Simulation Manually](#run-simulation-manually)
     * [Start Simulation](#start-simulation)
     * [Stop Simulation](#stop-simulation)
@@ -22,6 +23,11 @@ Table of Contents
 
 
 ## Simulation Setups
+
+### Compile Source Code
+Currently, only compiled VISSIM dll is provided. Detailed instruction on user compiled source code will be provided later. 
+
+### Interface Setup
 1. Select the message data fields, ip address and port of the TrafficLayer, vehicle id of interest in the config.yaml. In this example, vehicle id '6' is selected, ip address is '127.0.0.1', port is 2333.  
 ```yaml
 # Global Simulation setup
@@ -67,15 +73,15 @@ XilSetup:
     VehicleSubscription: 
 ```
 <!-- 1. Modify the RealSimInitSimulink.m to read the config.yaml from the correct path.  
-```    ![](doc/img/SimulinkScriptSetup.png)``` -->
+```    ![](img/SimulinkScriptSetup.png)``` -->
 1. Open the VISSIM network file wants to simulate, for all the vehicle types of interest, enable driver model dll, select the RealSimDriverModel.dll and config.yaml.  
-    ![](doc/img/VissimDrivermodelSetup.png)
+    ![](img/VissimDrivermodelSetup.png)
 1. Create an empty subdirectory DriverModelData\ in the directory of vissim.exe if it does not exit.  
 <!--
 1. Setup vehicle id in the RealSimPack to be the same id selected in the config.yaml. In this example, vehicle id '8' is selected.  
-![](doc/img/PackSetup.png)
+![](img/PackSetup.png)
 1. Make sure the ip address and port of RealSimSocket are the same as those specified in config.yaml. In this example, ip address is '127.0.0.1', port is 2333.  
-![](doc/img/SocketSetup.png)
+![](img/SocketSetup.png)
 -->
 
 ## Run Simulation Manually
@@ -218,10 +224,10 @@ VISSIM does not provide an out-of-box approach to precisely control just an ego 
 1. create a dedicated vehicle type and vehicle class for the ego vehicle
 
     create dedicated vehicle type, id ``1000`` in this example, do not forget to select external driver model and configuration file:
-    ![](doc/img/VissimDedicatedVehicleType.png)
+    ![](img/VissimDedicatedVehicleType.png)
 
     create dedicated vehicle class, id ``70`` in this example, and assign the vehicle type ``1000`` we define to this vehicle class:
-    ![](doc/img/VissimDedicatedVehicleClass.png)
+    ![](img/VissimDedicatedVehicleClass.png)
 
 1. use COM commands to add that vehicle to VISSIM simulation at a particular simulation on a particular link, lane, and initial speed. When using automation script, the commands shall be part of the ``startVissim.m``. Essentially, break VISSIM simulation at the simulation time you want the ego vehicle enters the simulation, start the simulation until it breaks, then add ego vehicle. For example:
 
@@ -261,7 +267,7 @@ For vehicles that enter the network as part of 'Vehicle Inputs' of VISSIM, the r
 
 1. Make exemption for that particular vehicle class from all 'static route decisions'. The ``setVissimStaticRouteExemption.py`` is an example script showing how to do it programmatically. You do need to make changes based on the specific vehicle class id and VISSIM files to use. Say the particular ego vehicle class is with id ``70``, Figure below shows what it should look like in VISSIM after this vehicle class exempted from 'static route decisions'. 
 
-    ![](doc/img/VissimStaticRouteExemptedBeforeAfter.png)
+    ![](img/VissimStaticRouteExemptedBeforeAfter.png)
 
     **NOTE:** VISSIM manual says that if using command ``Vissim.Net.Vehicles.AddVehicleAtLinkPosition``, ``A vehicle placed this way doesn't travel with a specific path, so it will use only connectors with direction "All" before it passes a routing decision.``. My experience is that it may still make a turn in some cases. This static route exemption approach is more reliable. 
 

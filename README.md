@@ -3,11 +3,17 @@ This contains all source codes of the Real-Sim Interface.
 
 ## Contacts
 Yunli Shao\
-Oak Ridge National Laboratory\
-shaoy@ornl.gov
+realsimxil@gmail.com
+
+## Abouut Real-Sim
+Real-Sim is a core-capability project of United States Department of Energy (U.S. DOE) Vehicle Technologies Office (VTO) Energy Efficient Mobility Systems (EEMS) program. Real-Sim develops a multi-resolution X-in-the-loop (XIL) simulation framework to support inclusive testing and evaluation of emerging technologies such as connected and automated vehicles. The Real-Sim framework connects different simulation components and integrates various traffic and vehicle simulation tools, virtual environments, and XIL systems through a Flexible Interface for XIL Simulation (FIXS). Connections among different tools are transparent to users and handled by the interface behind the scenes. Co-simulation of various vehicle and traffic simulation tools with different XIL systems can be easily achieved and become a transparent "plug-and-play" process to users. 
+
+Links to project presentation https://www1.eere.energy.gov/vehiclesandfuels/downloads/2023_AMR/eems101_Shao_2023_o_v2%20-%20Yunli%20Shao.pdf_ADW373C.tmp.pdf
+
+Publication list is upcoming...
 
 
-Here the general information of the interface is introduced. For specific documentation of different simulators, check the following links:
+This README contains general information of the interface. For specific documentation of different simulators, check the following links:
 * ### [VISSIM Interface](doc/VISSIMdoc.md)
 * ### [SUMO Interface](doc/SUMOdoc.md)
 * ### [CarMaker](doc/CarMakerDoc.md)

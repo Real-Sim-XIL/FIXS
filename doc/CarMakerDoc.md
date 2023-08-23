@@ -5,8 +5,7 @@ Please start with reading through the documentation, and playwith included Examp
 Contacts
 =======================
 Yunli Shao\
-Oak Ridge National Laboratory\
-shaoy@ornl.gov
+realsimxil@gmail.com
 
 Table of Contents
 =======================
@@ -44,13 +43,13 @@ Another option is that users can modify the CarMaker User.cpp by themselves and 
 For both Office and Simulink, need to make sure compiler/IDE include the followings:
 - source files (in \CommonLib folder)
     
-    ![](doc/img/CM_VS_Sources.png)
+    ![](img/CM_VS_Sources.png)
 - dependencies folders
     
-    ![](doc/img/CM_VS_IncludeDependencies.png)  
+    ![](img/CM_VS_IncludeDependencies.png)  
 - libraries
     
-    ![](doc/img/CM_VS_Inputs.png)
+    ![](img/CM_VS_Inputs.png)
 
 Then, modify the User.cpp to include the following codes
 - at beginning of the file, add the followings, ``need to make sure RealSimCmHelper.h is included before including the windows.h!``
@@ -201,7 +200,7 @@ RealSimPara.smoothWindow = 1; % number of moving average data point, 1 essential
 ```
 
 Best practice is to call this function as ```InitFcn``` in your Simulink model 
-![](doc/img/SimulinkInitFcn.png)
+![](img/SimulinkInitFcn.png)
 
 3\. The dSPACE build process will be similar to typical CM dSPACE build, which will involve a CM_BuildConifg.py. This script needs to be updated for RealSim implementation. You can use the one inside \CarMaker folder. If want to modify your own:
 - define these macros
@@ -231,17 +230,17 @@ inside the Initialize(self) function in the CM_BuildConifg.py where it has the f
 ```
 
 You could also add these manually in the ConfigurationDesk
-![](doc/img/CM_DS_BuildConfig.png)
+![](img/CM_DS_BuildConfig.png)
 
 - set number of accepted overruns to be -1 in ConfigurationDesk:
-![](doc/img/DS_SCLX_NO_OVERRUN.png)
+![](img/DS_SCLX_NO_OVERRUN.png)
 
 - if use RealSim Simulink blocks in the simulink, need to setup dSPACE TCP connetions as the following screenshots. Please refer to the dSPACE ConfigurationDesk project RS_DS_CM11_SimulinkRS and Simulink model RS_DS_CM11_SimulinkRS.slx to see how the dSPACE and RealSim are set up. 
-![](doc/img/DS_SCLX_Eth_1.png)
-![](doc/img/DS_SCLX_Eth_2.png)
-![](doc/img/DS_SCLX_Eth_3.png)
-![](doc/img/DS_SCLX_Eth_4.png)
-![](doc/img/DS_SCLX_Eth_5.png)
+![](img/DS_SCLX_Eth_1.png)
+![](img/DS_SCLX_Eth_2.png)
+![](img/DS_SCLX_Eth_3.png)
+![](img/DS_SCLX_Eth_4.png)
+![](img/DS_SCLX_Eth_5.png)
 
 ### Prepare User.c
 For dSPACE application, we always need to modify the source code of User.c as the ConfigurationDesk will compile from Source Code for dSPACE to execute. There are few places that User.c needs to be modified:
@@ -347,13 +346,13 @@ CarMakerSetup:
 ## Office
 Make sure select the compiled ```CarMaker.win64.exe``` and specify command line options to the desired config.yaml file 
 
-![](doc/img/CM_GUI_Config.png)
+![](img/CM_GUI_Config.png)
 
 ## Simulink
 
 Make sure compiled libcarmaker4sl.mexw64 is in the search directory, which can be checked by ```which libcarmaker4sl.mexw64``` in Matlab. Then, specify command line options to the desired config.yaml file 
 
-![](doc/img/CM_Simulink_Config.png)
+![](img/CM_Simulink_Config.png)
 
 ```CM11_proj\src_cm4sl\RealSimGeneric.mdl```  is a good example simulink model to develop user applications
 

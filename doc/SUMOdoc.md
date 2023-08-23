@@ -2,8 +2,7 @@
 
 ## Contacts
 Yunli Shao\
-Oak Ridge National Laboratory\
-shaoy@ornl.gov
+realsimxil@gmail.com
 
 Table of Contents
 =======================
@@ -154,9 +153,9 @@ traci.setOrder(2)
 There should be no need to modify anything on the Real-Sim side. In the future, the setOrder of Real-Sim can be one argument user can change in the yaml. For more information, check the following screenshots from SUMO documentation
 
 https://sumo.dlr.de/docs/TraCI.html
-![](doc/img/SUMOtraciMultiDoc1.png)
+![](img/SUMOtraciMultiDoc1.png)
 https://sumo.dlr.de/docs/TraCI/Interfacing_TraCI_from_Python.html
-![](doc/img/SUMOtraciMultiDoc2.png)
+![](img/SUMOtraciMultiDoc2.png)
 
 
 ## SumoSetup in config.yaml
