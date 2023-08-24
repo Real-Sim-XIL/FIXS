@@ -455,6 +455,7 @@ void MsgHelper::packTrafficLightData(TrafficLightData_t TrafficLightData, char* 
 	// 2 bytes, uint16_t, unique number of signal light  
 	tempUint16 = TrafficLightData.id;
 	memcpy(buffer + *iByte, (char*)&tempUint16, sizeof(uint16_t));
+	*iByte = *iByte + sizeof(uint16_t);
 
 	// 1 byte, uint8_t, length of the string of signal state.order of each phase need to be referred to an additional file
 	// X bytes, string, string of signal state
