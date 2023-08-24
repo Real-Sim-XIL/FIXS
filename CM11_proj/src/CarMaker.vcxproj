@@ -60,10 +60,13 @@
       <AdditionalIncludeDirectories>..\..\CommonLib;$(CARMAKER_INC_DIR)/Car;$(CARMAKER_INC_DIR);$(MATSUPP_DIR)/include</AdditionalIncludeDirectories>
       <LanguageStandard>Default</LanguageStandard>
       <TreatWarningAsError>false</TreatWarningAsError>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <PreprocessorDefinitions>WIN64;_CRT_NONSTDC_NO_WARNINGS;_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);</PreprocessorDefinitions>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>..\..\CommonLib;"$(CARMAKER_LIB_DIR)";"$(MATSUPP_DIR)"</AdditionalLibraryDirectories>
-      <AdditionalDependencies>%(AdditionalDependencies);winspool.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\CommonLib;$(CARMAKER_LIB_DIR);$(MATSUPP_DIR)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>..\..\VirtualEnvironment\x64\Debug\VirtualEnvironment.lib;%(AdditionalDependencies);winspool.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
