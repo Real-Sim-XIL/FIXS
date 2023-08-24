@@ -63,10 +63,10 @@ XilSetup:
         # ip: ["127.0.0.1"]
         # port: [2333]
     SignalSubscription:
-    -   type: intersection
-        attribute: {name: ['2117']}
-        ip: ['127.0.0.1']
-        port: [7331]
+    # -   type: intersection
+        # attribute: {name: ['2117']}
+        # ip: ['127.0.0.1']
+        # port: [7331]
     -   type: intersection
         attribute: {name: ['2881']}
         ip: ['127.0.0.1']
@@ -74,7 +74,7 @@ XilSetup:
 
 CarMakerSetup:
     # whether or not enable CarMaker (default: false)
-    EnableCosimulation: false
+    EnableCosimulation: true
     
     # if true, ego state is sent from Simulink.
     # if false, ego state is sent from User.cpp 

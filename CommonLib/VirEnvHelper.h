@@ -31,7 +31,11 @@
 
         int veryFirstStep = 1;
 
+        // if this flag is true, then ego send to simulink, traffic send to this c code
         bool ENABLE_SEPARATE_EGO_TRAFFIC = false;
+
+        bool SYNCHRONIZE_TRAFFIC_SIGNAL = true;
+
 
         // map vehicle id from traffic simulator to carmaker
         std::unordered_map <std::string, int> TrafficSimulatorId2CarMakerId;
@@ -115,12 +119,13 @@
             ERROR_STEP_REMOVE_ID = -3,
             ERROR_STEP_UPDATE_STATE = -4,
             ERROR_STEP_SEND_EGO = -5,
-            ERROR_STEP_REFRESH_TRAFFIC = -6
+            ERROR_STEP_REFRESH_TRAFFIC = -6,
+            ERROR_STEP_SYNC_TRAFFIC_SIGNAL = -7
 
         };
 
     private:
-
+        tTLState tlsChar2CmState(char charState);
     };
 
 
