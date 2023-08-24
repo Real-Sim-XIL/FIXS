@@ -7,15 +7,16 @@ Description:
 	Version: 1.00
 LibVersion = 11.0.1
 Country = USA
-nLinks = 112
+nLinks = 113
 nJunctions = 83
-nObjects = 7558
-nRoutes = 3
-RoadNetworkLength = 6780.80573582
+nObjects = 7583
+nRoutes = 4
+RoadNetworkLength = 6801.18173582001
 BBox = 28078.6958864613 29186.4874017173 29907.7553072837 30912.9644709742 202.719999996363 246.080000091411
 Route.0.Length = 1142.10828290529
 Route.1.Length = 192.419
 Route.2.Length = 193.09331234
+Route.3.Length = 20.376
 GCSProjection.Method = PROJ
 GCSProjection.PROJ.String = \n +proj=utm +zone=16 +ellps=WGS84 +datum=WGS84 +units=m +no_defs\n
 GCSProjection.PROJ.Offset = -639371.48 -3848823.33 0 0
@@ -7685,6 +7686,23 @@ Link.111.LaneSection.0.LaneL.1.ID = 3412
 Link.111.LaneSection.0.LaneL.1 = 0 2.5 2.5 5 0 0 0
 Link.111.LaneSection.0.LaneR.0.ID = 3545
 Link.111.LaneSection.0.LaneR.0 = 0 2.5 2.5 5 0 0 0
+Link.112.ID = 2319
+Link.112.Node0 = 28610.402 30568.919 221.978 171.152
+Link.112.Node1 = 28590.2684770579 30572.0531075187 221.808 171.152
+Link.112.RST = Countryroad
+Link.112.RL.ID = 2320
+Link.112.Seg.0.ID = 2324
+Link.112.Seg.0.Type = Straight
+Link.112.Seg.0.Param = 20.376 0 0 0 0 0 0 0
+Link.112.LaneSection.0.ID = 2328
+Link.112.LaneSection.0.Start = 0
+Link.112.LaneSection.0.LaneL.0.ID = 2329
+Link.112.LaneSection.0.LaneL.0 = 0 3.5 3.5 0 0 0 0
+Link.112.LaneSection.0.LaneL.0.ARP = 2382 2446 2447 2453 2454 2516
+Link.112.LaneSection.0.LaneL.1.ID = 2773
+Link.112.LaneSection.0.LaneL.1 = 0 2.5 2.5 5 0 0 0
+Link.112.LaneSection.0.LaneR.0.ID = 3063
+Link.112.LaneSection.0.LaneR.0 = 0 2.5 2.5 5 0 0 0
 LanePath.0 = 43 36 2.75 1 1 1 -1
 LanePath.1 = 100 93 2.75 1 1 1 -1
 LanePath.2 = 135 128 2.75 1 1 1 -1
@@ -7978,6 +7996,7 @@ LanePath.289 = 2520 2449 2 10 0.1 0.1 -1
 LanePath.290 = 2844 2834 2 10 0.1 0.1 -1
 LanePath.291 = 2990 2902 2 10 0.1 0.1 -1
 LanePath.292 = 3353 3306 2 10 0.1 0.1 -1
+LanePath.293 = 2517 2329 2 10 0.1 0.1 -1
 ConPath.0 = 6832 6751 1549 0 1 2250 0 0 31 1 -1 -1 -1
 ConPath.0.Tag = odrJuncId:13 odrRoadId:505
 ConPath.0.RL = 6833
@@ -8428,6 +8447,11 @@ Route.2.Name = Route_2
 Route.2.DrvPath.ID = 2104
 Route.2.DrvPath:
 	182
+Route.3.ID = 2591
+Route.3.Name = Route_3
+Route.3.DrvPath.ID = 2595
+Route.3.DrvPath:
+	2517
 RL.1.RoadMarking.0.ID = 35 34
 RL.1.RoadMarking.0 = 0 0 0 1 0 0 0.13 0 1 0 0 0 0 1 1 0 ""
 RL.1.RoadMarking.0.Material.0 = white 0 0 0 0 0 0 0 0 0 0 0
@@ -10238,7 +10262,7 @@ RL.7497.RoadMarking.0.Material.0 = white 0 0 0 0 0 0 0 0 0 0 0
 RL.7512.RoadMarking.0.ID = 7524 7511
 RL.7512.RoadMarking.0 = 0 0 20.5092996094728 0 0 -1 0.13 0 2 0 0 1 1 1 1 0 ""
 RL.7512.RoadMarking.0.Material.0 = white 0 0 0 0 0 0 0 0 0 0 0
-Control.TrfLight.0 = 2105 3586_13 "" 1 0 15 3 15 3
-Control.TrfLight.1 = 2260 3586_14 "" 1 0 15 3 15 3
-Control.TrfLight.2 = 2261 3586_15 "" 1 0 15 3 15 3
+Control.TrfLight.0 = 2105 3586_13 "" 0 0 0 0 0 0
+Control.TrfLight.1 = 2260 3586_14 "" 0 0 0 0 0 0
+Control.TrfLight.2 = 2261 3586_15 "" 0 0 0 0 0 0
 MaxUsedObjId = 7545
