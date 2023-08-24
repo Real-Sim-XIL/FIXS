@@ -52,6 +52,10 @@ struct SimulationSetup_t {
 	int SimulationMode;
 
 	double SimulationModeParameter;
+
+	std::string TrafficLayerIP;
+
+	int TrafficLayerPort;
 };
 
 struct ApplicationSetup_t {
@@ -100,6 +104,8 @@ struct CarMakerSetup_t {
 	std::string EgoType;
 
 	bool SynchronizeTrafficSignal;
+
+	int TrafficSignalPort;
 
 };
 
@@ -172,6 +178,9 @@ public:
 	XilSetup_t XilSetup;
 	CarMakerSetup_t CarMakerSetup;
 	SumoSetup_t SumoSetup;
+
+
+
 
 	// default containers to facilitate loop over each subscribed element, e.g., each vehicle id
 
