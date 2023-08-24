@@ -34,6 +34,15 @@ if %BUILD_STATUS%==0 (
 	exit -1
 )
 
+msbuild ..\VirtualEnvironment\VirtualEnvironment.sln /p:Configuration=Release 
+set BUILD_STATUS=%ERRORLEVEL% 
+if %BUILD_STATUS%==0 (
+	echo ===^> VirtualEnvironment built success>> testsResults.log 
+)else (
+	echo VirtualEnvironment built failed>> testsResults.log 
+	exit -1
+)
+
 :: Build CarMaker 11
 msbuild ..\CM11_proj\src\CarMaker.sln /target:CarMaker /p:Configuration=Release 
 set BUILD_STATUS=%ERRORLEVEL% 
