@@ -58,7 +58,15 @@ CarObjectList = []
 TruckObjectList = []
 BusObjectList = []
 
+def setupCarMaker(args):
+    # modify the CarMaker testrun file to add traffic objects that will sync with sumo traffic 
+    addTrafficObjects(args)
+    # create signal table that sync traffic signal id between CarMaker and Sumo
+    createSignalTable(args)
 
+def createSignalTable(args):
+    sumoFilePath = args.sumoFilePath
+    
 def addTrafficObjects(args):
     nCar = int(args.car)
     nTruck = int(args.truck)
@@ -215,11 +223,13 @@ if __name__ == '__main__':
     argparser.add_argument('--overwrite-testrun',
                         action='store_true',
                         help='if set original testrun file will be overwritten')
+    argparser.add_argument('--sumo-file-path',
+                        metavar = 'PATH', 
+                        type=str, 
+                        help='sumo configuration file path')
     arguments = argparser.parse_args()
 
-    addTrafficObjects(arguments)
-
-
+    setupCarMaker(arguments)
 
 
 # TrafficObjectTemplate = {'ObjectKind': 'Movable',
