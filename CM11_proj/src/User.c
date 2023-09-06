@@ -76,6 +76,9 @@
 
 struct VirEnvHelper* VirEnv_c;
 
+char RS_configFile[] = "../tests/SignalIpg/RS_config.yaml";
+char RS_signalTable[] = "./Data/Road/RS_ShallowfordRd_sumo_signal_RSsignalTable.csv";
+
 // ===========================================================================
 // ===========================================================================
 #endif
@@ -417,7 +420,7 @@ User_TestRun_Start_atEnd (void)
     // 			 RealSim 
     // ===========================================================================	   
     if (VirEnv_isVeryFirstStep && SimCore.State >= SCState_StartWait) {
-		VirEnv_initialization(VirEnv_c, "../tests/SignalIpg/RS_config.yaml");
+		VirEnv_initialization(VirEnv_c, RS_configFile, RS_signalTable);
     }
     // ===========================================================================
     // ===========================================================================

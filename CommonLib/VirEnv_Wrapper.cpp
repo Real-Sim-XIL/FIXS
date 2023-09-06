@@ -13,7 +13,7 @@ extern "C" {
 		VirEnv_c->shutdown();
 	};
 
-	void VirEnv_initialization(VirEnvHelper* VirEnv_c, const char* configPath) {
+	void VirEnv_initialization(VirEnvHelper* VirEnv_c, const char* configPath, const char* signalTablePath) {
         VirEnv_c->CM_Log("RealSim start initialization\n");
 
 		#ifdef DSRTLX
@@ -29,13 +29,13 @@ extern "C" {
 
 
 			const char* errorMsg;
-			if (VirEnv_c->initialization(&errorMsg) < 0) {
+			if (VirEnv_c->initialization(&errorMsg, signalTablePath) < 0) {
 				VirEnv_c->CM_LogErrF(errorMsg);
 				VirEnv_c->CM_Log("RealSim error initialization \n");
 			}
 		#else
 			const char* errorMsg;
-			if (VirEnv_c->initialization(&errorMsg, configPath) < 0) {
+			if (VirEnv_c->initialization(&errorMsg, configPath, signalTablePath) < 0) {
 				VirEnv_c->CM_LogErrF(errorMsg);
 				VirEnv_c->CM_Log("RealSim error initialization \n");
 			}

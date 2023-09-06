@@ -11,7 +11,7 @@ extern "C"{
 
 	void VirEnv_shutdown(VirEnvHelper* VirEnv_c);
 
-	void VirEnv_initialization(VirEnvHelper* VirEnv_c, const char* configPath);
+	void VirEnv_initialization(VirEnvHelper* VirEnv_c, const char* configPath, const char* signalTablePath);
 
 	void VirEnv_runStep(VirEnvHelper* VirEnv_c, double simTime);
 
