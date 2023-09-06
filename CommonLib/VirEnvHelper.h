@@ -66,7 +66,6 @@
 
 
 
-
         std::vector <std::string> serverAddr = { "127.0.0.1" };
         std::vector <int> serverPort = { 7331 };
 
@@ -95,9 +94,9 @@
         void shutdown();
 
 #ifndef RS_DSPACE
-        int initialization(const char** errorMsgChar, const char* configPathInput);
+        int initialization(const char** errorMsgChar, const char* configPathInput, const char* signalTablePathInput);
 #else
-        int initialization(const char** errorMsgChar);
+        int initialization(const char** errorMsgChar, const char* signalTablePathInput);
 #endif
 
         int runStep(double simTime, const char** errorMsgChar);
@@ -125,7 +124,22 @@
         };
 
     private:
+        // signal controller map
+        // sumo controller id -> head id, trflight index
+        std::unordered_map <std::string, std::vector <std::pair<int, int>> > SignalController2HeadIdTrfLightIndex;
+
         tTLState tlsChar2CmState(char charState);
+
+        int readSignalTable(const char* signalTablePathInput);
+
+        typedef struct SignalTable_t {
+            std::string signalControllerName;
+            int signalGroupId;
+            int signalHeadId;
+            int cmTrafficLightIndex;
+            std::string cmControllerId;
+        };
+
     };
 
 

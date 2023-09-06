@@ -32,9 +32,9 @@ void VirEnvHelper::shutdown() {
 }
 
 #ifndef RS_DSPACE
-int VirEnvHelper::initialization(const char** errorMsg, const char* configPathInput) {
+int VirEnvHelper::initialization(const char** errorMsg, const char* configPathInput, const char* signalTablePathInput) {
 #else
-int VirEnvHelper::initialization(const char** errorMsg) {
+int VirEnvHelper::initialization(const char** errorMsg, const char* signalTablePathInput) {
 #endif
 	//TCHAR NPath[MAX_PATH];
 	//GetCurrentDirectory(MAX_PATH, NPath);
@@ -112,6 +112,11 @@ int VirEnvHelper::initialization(const char** errorMsg) {
 	}
 
 
+	// read signal table
+	readSignalTable(signalTablePathInput);
+
+
+	// try to start RealSim socket connection
 	try {
 #ifndef RS_DSPACE
 		// vehicle data port
@@ -169,7 +174,58 @@ int VirEnvHelper::initialization(const char** errorMsg) {
 	return 0;
 }
 
+int VirEnvHelper::readSignalTable(const char* signalTablePathInput) {
 
+	// Open an existing file
+	ifstream SignalTableFile(signalTablePathInput);
+
+	if (!SignalTableFile) {
+		return -1;
+	}
+
+	string curLine;
+	getline(SignalTableFile, curLine); // ignore the first line
+	while (getline(SignalTableFile, curLine)) {
+
+		istringstream lineString(curLine);
+
+		string element;
+
+		SignalTable_t Sig;
+
+		// 'signalControllerName' : string
+		getline(lineString, element, ',');
+		Sig.signalControllerName = (element);
+
+		//'signalGroupId' : int,
+		getline(lineString, element, ',');
+		Sig.signalGroupId = stoi(element);
+
+		//'signalHeadId' : int,
+		getline(lineString, element, ',');
+		Sig.signalHeadId = stoi(element);
+
+		//'CmTrafficLightIndex' : int,
+		getline(lineString, element, ',');
+		Sig.cmTrafficLightIndex = stoi(element);
+
+		//'CmControllerId' : string,
+		getline(lineString, element, ',');
+		Sig.cmControllerId = (element);
+
+		// if has CM traffic light
+		if (Sig.cmTrafficLightIndex > -1) {
+			if (SignalController2HeadIdTrfLightIndex.find(Sig.signalControllerName) != SignalController2HeadIdTrfLightIndex.end()) {
+				SignalController2HeadIdTrfLightIndex[Sig.signalControllerName].push_back(make_pair(Sig.signalHeadId, Sig.cmTrafficLightIndex));
+			}
+			else {
+				SignalController2HeadIdTrfLightIndex[Sig.signalControllerName] = { make_pair(Sig.signalHeadId, Sig.cmTrafficLightIndex) };
+			}
+		}
+	}
+
+	return 0;
+}
 
 int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 	//FOR veh in RealSimReceived
@@ -474,10 +530,12 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 			string tlsId = it.second.name;
 			string tlsState = it.second.state;
 
-			if (tlsId.compare("3586") == 0) {
-				TrfLight.Objs[0].State = tlsChar2CmState(tlsState.at(13));
-				TrfLight.Objs[1].State = tlsChar2CmState(tlsState.at(14));
-				TrfLight.Objs[2].State = tlsChar2CmState(tlsState.at(15));
+			// if can find the tlsId, then synchronize it
+			if (SignalController2HeadIdTrfLightIndex.find(tlsId) != SignalController2HeadIdTrfLightIndex.end()) {
+				// the unordered_map contains a list of head id and TrfLight index pair, so loop over each to synchronize
+				for (auto it : SignalController2HeadIdTrfLightIndex[tlsId]) {
+					TrfLight.Objs[get<1>(it)].State = tlsChar2CmState(tlsState.at(get<0>(it)));
+				}
 			}
 
 		}
