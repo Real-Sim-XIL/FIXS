@@ -11,7 +11,8 @@ import os
 import glob
 import pathlib
 import random
-
+import xml.etree.ElementTree as ET
+import pandas as pd
 
 TrafficObjectTemplate = {'ObjectKind': 'Movable',
     'ObjectClass': 'Car',
@@ -60,14 +61,89 @@ BusObjectList = []
 
 def setupCarMaker(args):
     # modify the CarMaker testrun file to add traffic objects that will sync with sumo traffic 
-    addTrafficObjects(args)
+    CmObj = addTrafficObjects(args)
     # create signal table that sync traffic signal id between CarMaker and Sumo
-    createSignalTable(args)
+    createSignalTable(args, CmObj)
 
-def createSignalTable(args):
-    sumoFilePath = args.sumoFilePath
-    
+def createSignalTable(args, CmObj):
+    ###
+    ###
+    # CmTrafficLightIndex -> CmTrafficLightIndex
+    CmTrafficSignalTable = {
+    }
+
+    # read Cm road file to get Cm signal light information
+    roadFile = os.path.join(args.cm_project_path, 'Data\\Road', CmObj['roadFile'])
+    testrunFileOrig = os.path.join(args.cm_project_path, 'Data\\TestRun', args.testrun)
+
+    # get all lines of current road file
+    with open(roadFile, 'r') as fileHandler:
+        lines = fileHandler.readlines()
+
+        # get all traffic light controller
+        for line in lines:
+            if 'Control.TrfLight.' in line:
+                CmTrafficSignalTable[line.split('=')[1].split()[1]] = int(line.split('Control.TrfLight.')[1].split('=')[0])
+
+    ###
+    ###
+    # create signal table
+    sumoFilePath = args.sumo_file_path
+
+    sumoNetTree = ET.parse(sumoFilePath)
+    sumoNetRoot = sumoNetTree.getroot()
+
+    # dictionary to store traffic light table
+    # Controller: each intersection has 1 controller
+    # Group: essentially each group mean a phase of a controller
+    # Head: each phase/group can have multiple heads
+    #
+    # CarMaker has two id
+    #   traffic signal index is Nb in TrfLight.Objs[Nb], see CM ReferenceManual.pdf UAQ
+    #   controller id is the id defined in the Scenario editor
+    TrafficSignalTable_dict = {
+        'SignalControllerId': [],
+        'SignalGroupId': [],
+        'SignalHeadId': [],
+        'CmTrafficLightIndex': [],
+        'CmControllerId': []
+    }
+
+
+    # loop over tlLogic
+    for tl in sumoNetRoot.findall('tlLogic'):
+        if tl.find('phase') is None:
+           print('Cannot find tlLogic in Sumo file!')
+           return
+        
+        for id, s in enumerate(tl.find('phase').attrib['state']):
+            TrafficSignalTable_dict['SignalControllerId'].append(tl.attrib['id'])
+            TrafficSignalTable_dict['SignalGroupId'].append(-1)
+            TrafficSignalTable_dict['SignalHeadId'].append(id)
+            CmControllerId = '{}_{}'.format(tl.attrib['id'], id)
+            if CmControllerId in CmTrafficSignalTable.keys():
+                TrafficSignalTable_dict['CmTrafficLightIndex'].append(CmTrafficSignalTable[CmControllerId])
+                TrafficSignalTable_dict['CmControllerId'].append(CmControllerId)
+            else:
+                TrafficSignalTable_dict['CmTrafficLightIndex'].append(-1)
+                TrafficSignalTable_dict['CmControllerId'].append('')
+
+    # output
+    TrafficSignalTableDf = pd.DataFrame.from_dict(TrafficSignalTable_dict)
+    TrafficSignalTableDf.astype(dtype={'SignalControllerId' : str, 
+                    'SignalGroupId': int,
+                    'SignalHeadId': int,
+                    'CmTrafficLightIndex': int,
+                    'CmControllerId': str})
+    TrafficSignalTableDf.to_csv(os.path.join(args.cm_project_path, 'Data\\Road', CmObj['roadFile'].split('.')[0]+'_RSsignalTable.csv'), index=False)
+
+    pass
+
 def addTrafficObjects(args):
+    # fix random seed so that have repeated testrun
+    random.seed(42)
+
+    # read args
     nCar = int(args.car)
     nTruck = int(args.truck)
     isNoRandomTraffic = args.no_random_traffic
@@ -185,7 +261,16 @@ def addTrafficObjects(args):
 
     print("RealSim Parser Completed: generated new testrun {}".format(args.output_testrun))
 
-    pass
+    # output
+    CmObj = {}
+    # get name of road file
+    with open(testrunFileNew, 'r') as fileHandler:
+        for line in lines:
+            if 'Road.FName' in line:
+                CmObj['roadFile'] = line.split()[-1]
+                break
+
+    return CmObj
 
 
 
@@ -226,7 +311,7 @@ if __name__ == '__main__':
     argparser.add_argument('--sumo-file-path',
                         metavar = 'PATH', 
                         type=str, 
-                        help='sumo configuration file path')
+                        help='path to sumo file that contains tlLogic')
     arguments = argparser.parse_args()
 
     setupCarMaker(arguments)
