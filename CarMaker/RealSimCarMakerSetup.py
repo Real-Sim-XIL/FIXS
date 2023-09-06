@@ -90,6 +90,15 @@ def createSignalTable(args, CmObj):
     # create signal table
     sumoFilePath = args.sumo_file_path
 
+    # corner cases and error handling
+    if sumoFilePath is None:
+        print('Sumo file not specified, skipping signal table generation')
+        return
+
+    if not os.path.isfile(sumoFilePath):
+        print('ERROR: Cannot find sumo file! Skipping...')
+        return
+    
     sumoNetTree = ET.parse(sumoFilePath)
     sumoNetRoot = sumoNetTree.getroot()
 
@@ -113,7 +122,7 @@ def createSignalTable(args, CmObj):
     # loop over tlLogic
     for tl in sumoNetRoot.findall('tlLogic'):
         if tl.find('phase') is None:
-           print('Cannot find tlLogic in Sumo file!')
+           print('Cannot find tlLogic in Sumo file! Skipping...')
            return
         
         for id, s in enumerate(tl.find('phase').attrib['state']):
@@ -158,6 +167,18 @@ def addTrafficObjects(args):
         testrunFileNew = os.path.join(args.cm_project_path, 'Data\\TestRun', args.testrun+'_RS')
     cmInstallPath = args.cm_install_path
 
+    # corner cases and error handling
+    if testrunFileOrig is None:
+        print('test run file not specified, skipping traffic generation')
+        return
+
+    if not os.path.isfile(testrunFileOrig):
+        print('ERROR: Cannot find test run file! Skipping...')
+        return
+
+    ###
+    ###
+    # start processing test run
     nTraffic = 0
     cmVersion='11.0.1'
     # get all lines of current testrun file
@@ -280,6 +301,7 @@ if __name__ == '__main__':
     argparser.add_argument('--cm-project-path', '-p', 
                         metavar = 'PATH', 
                         type=str, 
+                        default='.\\',
                         help='CM project path')
     argparser.add_argument('--cm-install-path', 
                         metavar = 'PATH', 
