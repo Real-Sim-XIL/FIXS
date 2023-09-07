@@ -1,0 +1,23 @@
+[
+   {
+      "Key": "MetaData",
+      "Value": [
+         {
+            "Key": "ProjectAuthor",
+            "Value": "y0n"
+         },
+         {
+            "Key": "ProjectManager",
+            "Value": "v2"
+         },
+         {
+            "Key": "ProjectIdentifier",
+            "Value": "85805d924e6147a49d372d2b9fc83250"
+         },
+         {
+            "Key": "DefaultApplication",
+            "Value": "RS_DS_CM11_SimulinkRS"
+         }
+      ]
+   }
+]

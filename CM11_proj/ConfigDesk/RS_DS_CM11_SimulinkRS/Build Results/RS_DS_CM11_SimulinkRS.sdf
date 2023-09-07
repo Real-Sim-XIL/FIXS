@@ -1,0 +1,15 @@
+[System]
+Version=2.2
+SystemType=SingleProcessorSystem
+DAQService=DsDAQ
+DsDAQBackground=1
+Status=Start
+File=RS_DS_CM11_SimulinkRS.rta
+RTP=1
+
+[1]
+ID=2f1cfecc-82e3-422a-9cc1-f56c79e0c968
+Type=DSRTPC
+ServiceID=1
+TraceFile=RS_DS_CM11_SimulinkRS.trc
+

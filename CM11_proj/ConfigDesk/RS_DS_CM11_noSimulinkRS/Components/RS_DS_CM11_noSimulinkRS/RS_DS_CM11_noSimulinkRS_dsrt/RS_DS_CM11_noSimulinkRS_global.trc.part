@@ -1,0 +1,288 @@
+-- ******** Tunable Parameters ************************************************
+
+group "Tunable Parameters"
+
+	p_1_RS_DS_CM11_noSimulinkRS_struct_GphLW54WCcJjc0lEaqz83B_0[0]
+	{
+	 type:    struct RS_DS_CM11_noSimulinkRS_struct_GphLW54WCcJjc0lEaqz83B*
+	 alias:   "RealSimPara"
+	 flags:   PARAM
+	}
+
+endgroup
+
+-- ******** State Machine Data ************************************************
+
+group "State Machine Data"
+
+
+endgroup
+
+
+-- ******** Labels ************************************************************
+
+group "Labels"
+
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[584]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "AccelPedalCmd"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/IPG Vehicle/Driver and Drive Cycle/Driver and PI with FF Control/Vehicle Speed Controller/AcceleratorPedalPos"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[548]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "AccelPedalCmd_pct"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/IPG Vehicle/Actuation and Outputs/AR_limit/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[583]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "AcceleratorPedalPosPre_pct"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/IPG Vehicle/Driver and Drive Cycle/Driver and PI with FF Control/Vehicle Speed Controller/Switch1/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[584]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "AcceleratorPedalPos_pct"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/IPG Vehicle/Driver and Drive Cycle/Driver and PI with FF Control/Vehicle Speed Controller/Switch3/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[585]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "BrakePedalCmd"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/IPG Vehicle/Driver and Drive Cycle/Driver and PI with FF Control/Vehicle Speed Controller/BrakePedalPos"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[551]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "BrakePedalCmd_pct"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/IPG Vehicle/Actuation and Outputs/BR_limit/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[582]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "BrakePedalPosPre_pct"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/IPG Vehicle/Driver and Drive Cycle/Driver and PI with FF Control/Vehicle Speed Controller/Switch2/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[585]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "BrakePedalPos_pct"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/IPG Vehicle/Driver and Drive Cycle/Driver and PI with FF Control/Vehicle Speed Controller/Switch4/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[442]
+	{
+	 type:    RS_DS_CM11_noSimulinkRS_ArrayDT0_6*
+	 alias:   "Car.Hitch.FrcTrq"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/IPG Vehicle/CarAndTrailer/Trailer/CreateBus Car.Hitch.FrcTrq/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[561]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "CycleMode"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/RealSimHILCycle/CycleMode"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[564]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "Drive"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/IPG Vehicle/Driver and Drive Cycle/Driver and PI with FF Control/Constant/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[572]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "Driver_FdfwdTerm_pct"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/IPG Vehicle/Driver and Drive Cycle/Driver and PI with FF Control/Vehicle Speed Controller/FeedforwardGain/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[573]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "Driver_IntTerm_pct"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/IPG Vehicle/Driver and Drive Cycle/Driver and PI with FF Control/Vehicle Speed Controller/Limits [-50,50]/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[578]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "Driver_PropTerm_pct"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/IPG Vehicle/Driver and Drive Cycle/Driver and PI with FF Control/Vehicle Speed Controller/Product1/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[579]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "Driver_TotCmdPreLim_pct"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/IPG Vehicle/Driver and Drive Cycle/Driver and PI with FF Control/Vehicle Speed Controller/Sum1/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[542]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "HIL_SpeedCmd_kph"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/Gain3/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[586]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "RefSpd [mph]"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/IPG Vehicle/Driver and Drive Cycle/Driver and PI with FF Control/km to miles/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[71]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "SimCore_State"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/Read CM Dict7/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[575]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "SpdErr"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/IPG Vehicle/Driver and Drive Cycle/Driver and PI with FF Control/Vehicle Speed Controller/Sum/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[559]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "Trf_FOL_ObjId"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/Read CM Dict5/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[560]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "Trf_FOL_State"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/Read CM Dict6/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[556]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "Trf_FOL_Targ_Dtct"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/Read CM Dict1/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[557]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "Trf_FOL_dDist"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/Read CM Dict2/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[558]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "Trf_FOL_dSpeed"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/Read CM Dict4/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[574]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "VS_Flt"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/IPG Vehicle/Driver and Drive Cycle/Driver and PI with FF Control/Vehicle Speed Controller/Lowpass Filter/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[590]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "Vehicle_SpdDmd_mph"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/IPG Vehicle/Driver and Drive Cycle/Gain1/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[563]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "Vehicle_Spd_kph"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/IPG Vehicle/Driver and Drive Cycle/Data Type Conversion11/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[587]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "Vehicle_Spd_mph"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/IPG Vehicle/Driver and Drive Cycle/Gain/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[353]
+	{
+	 type:    RS_DS_CM11_noSimulinkRS_ArrayDT0_15*
+	 alias:   "Vhcl.Motion"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/IPG Vehicle/CarAndTrailer/Trailer/CreateBus Vhcl.Motion/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[368]
+	{
+	 type:    RS_DS_CM11_noSimulinkRS_ArrayDT0_18*
+	 alias:   "Vhcl.PoI"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/IPG Vehicle/CarAndTrailer/Trailer/CreateBus Vhcl.PoI/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[349]
+	{
+	 type:    RS_DS_CM11_noSimulinkRS_ArrayDT0_4*
+	 alias:   "Vhcl.Steering"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/IPG Vehicle/CarAndTrailer/Trailer/CreateBus Vhcl.Steering/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[386]
+	{
+	 type:    RS_DS_CM11_noSimulinkRS_ArrayDT0_14*
+	 alias:   "Vhcl.Wheel.FL"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/IPG Vehicle/CarAndTrailer/Trailer/CreateBus Vhcl.Wheel.FL/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[400]
+	{
+	 type:    RS_DS_CM11_noSimulinkRS_ArrayDT0_14*
+	 alias:   "Vhcl.Wheel.FR"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/IPG Vehicle/CarAndTrailer/Trailer/CreateBus Vhcl.Wheel.FR/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[414]
+	{
+	 type:    RS_DS_CM11_noSimulinkRS_ArrayDT0_14*
+	 alias:   "Vhcl.Wheel.RL"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/IPG Vehicle/CarAndTrailer/Trailer/CreateBus Vhcl.Wheel.RL/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[428]
+	{
+	 type:    RS_DS_CM11_noSimulinkRS_ArrayDT0_14*
+	 alias:   "Vhcl.Wheel.RR"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/IPG Vehicle/CarAndTrailer/Trailer/CreateBus Vhcl.Wheel.RR/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[72]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "distanceTravel"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/Read CM Dict8/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_real_T_0[73]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "driverSourceFinal"
+	 origin:  "RS_DS_CM11_noSimulinkRS/CarMaker/VehicleControl/Switch2/Out1"
+	 flags:   READONLY
+	}
+
+endgroup
+
+

@@ -1,0 +1,153 @@
+-- ******** Tunable Parameters ************************************************
+
+group "Tunable Parameters"
+
+
+endgroup
+
+-- ******** State Machine Data ************************************************
+
+-- No Stateflow chart within the model.
+
+
+-- ******** Labels ************************************************************
+
+group "Labels"
+
+	p_0_RS_DS_CM11_noSimulinkRS_useManeuver_real_T_0[506]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "CM_Time"
+	 origin:  "RS_DS_CM11_noSimulinkRS_useManeuver/CarMaker/Read CM Dict3/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_useManeuver_real_T_0[403]
+	{
+	 type:    RS_DS_CM11_noSimulinkRS_useManeuver_ArrayDT0_6*
+	 alias:   "Car.Hitch.FrcTrq"
+	 origin:  "RS_DS_CM11_noSimulinkRS_useManeuver/CarMaker/IPG Vehicle/CarAndTrailer/Trailer/CreateBus Car.Hitch.FrcTrq/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_useManeuver_real_T_0[507]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "SimCore_State"
+	 origin:  "RS_DS_CM11_noSimulinkRS_useManeuver/CarMaker/Read CM Dict7/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_useManeuver_real_T_0[512]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "Trf_FOL_ObjId"
+	 origin:  "RS_DS_CM11_noSimulinkRS_useManeuver/CarMaker/Read CM Dict5/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_useManeuver_real_T_0[513]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "Trf_FOL_State"
+	 origin:  "RS_DS_CM11_noSimulinkRS_useManeuver/CarMaker/Read CM Dict6/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_useManeuver_real_T_0[509]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "Trf_FOL_Targ_Dtct"
+	 origin:  "RS_DS_CM11_noSimulinkRS_useManeuver/CarMaker/Read CM Dict1/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_useManeuver_real_T_0[510]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "Trf_FOL_dDist"
+	 origin:  "RS_DS_CM11_noSimulinkRS_useManeuver/CarMaker/Read CM Dict2/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_useManeuver_real_T_0[511]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "Trf_FOL_dSpeed"
+	 origin:  "RS_DS_CM11_noSimulinkRS_useManeuver/CarMaker/Read CM Dict4/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_useManeuver_real_T_0[503]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "VehSpd"
+	 origin:  "RS_DS_CM11_noSimulinkRS_useManeuver/CarMaker/Read CM Dict/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_useManeuver_real_T_0[504]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "VehSpdKph"
+	 origin:  "RS_DS_CM11_noSimulinkRS_useManeuver/CarMaker/Gain1/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_useManeuver_real_T_0[505]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "VehSpdMph"
+	 origin:  "RS_DS_CM11_noSimulinkRS_useManeuver/CarMaker/Gain2/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_useManeuver_real_T_0[314]
+	{
+	 type:    RS_DS_CM11_noSimulinkRS_useManeuver_ArrayDT0_15*
+	 alias:   "Vhcl.Motion"
+	 origin:  "RS_DS_CM11_noSimulinkRS_useManeuver/CarMaker/IPG Vehicle/CarAndTrailer/Trailer/CreateBus Vhcl.Motion/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_useManeuver_real_T_0[329]
+	{
+	 type:    RS_DS_CM11_noSimulinkRS_useManeuver_ArrayDT0_18*
+	 alias:   "Vhcl.PoI"
+	 origin:  "RS_DS_CM11_noSimulinkRS_useManeuver/CarMaker/IPG Vehicle/CarAndTrailer/Trailer/CreateBus Vhcl.PoI/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_useManeuver_real_T_0[310]
+	{
+	 type:    RS_DS_CM11_noSimulinkRS_useManeuver_ArrayDT0_4*
+	 alias:   "Vhcl.Steering"
+	 origin:  "RS_DS_CM11_noSimulinkRS_useManeuver/CarMaker/IPG Vehicle/CarAndTrailer/Trailer/CreateBus Vhcl.Steering/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_useManeuver_real_T_0[347]
+	{
+	 type:    RS_DS_CM11_noSimulinkRS_useManeuver_ArrayDT0_14*
+	 alias:   "Vhcl.Wheel.FL"
+	 origin:  "RS_DS_CM11_noSimulinkRS_useManeuver/CarMaker/IPG Vehicle/CarAndTrailer/Trailer/CreateBus Vhcl.Wheel.FL/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_useManeuver_real_T_0[361]
+	{
+	 type:    RS_DS_CM11_noSimulinkRS_useManeuver_ArrayDT0_14*
+	 alias:   "Vhcl.Wheel.FR"
+	 origin:  "RS_DS_CM11_noSimulinkRS_useManeuver/CarMaker/IPG Vehicle/CarAndTrailer/Trailer/CreateBus Vhcl.Wheel.FR/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_useManeuver_real_T_0[375]
+	{
+	 type:    RS_DS_CM11_noSimulinkRS_useManeuver_ArrayDT0_14*
+	 alias:   "Vhcl.Wheel.RL"
+	 origin:  "RS_DS_CM11_noSimulinkRS_useManeuver/CarMaker/IPG Vehicle/CarAndTrailer/Trailer/CreateBus Vhcl.Wheel.RL/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_useManeuver_real_T_0[389]
+	{
+	 type:    RS_DS_CM11_noSimulinkRS_useManeuver_ArrayDT0_14*
+	 alias:   "Vhcl.Wheel.RR"
+	 origin:  "RS_DS_CM11_noSimulinkRS_useManeuver/CarMaker/IPG Vehicle/CarAndTrailer/Trailer/CreateBus Vhcl.Wheel.RR/Out1"
+	 flags:   READONLY
+	}
+	p_0_RS_DS_CM11_noSimulinkRS_useManeuver_real_T_0[508]
+	{
+	 type:    flt(64,IEEE)*
+	 alias:   "distanceTravel"
+	 origin:  "RS_DS_CM11_noSimulinkRS_useManeuver/CarMaker/Read CM Dict8/Out1"
+	 flags:   READONLY
+	}
+
+endgroup
+
+

@@ -1,0 +1,279 @@
+
+
+-- Type definitions for structures
+
+typedef RS_DS_CM11_SimulinkRS_VehDataBus_id_0 uint(8)[50]
+
+struct RS_DS_CM11_SimulinkRS_VehDataBus
+{
+  array-incr: -1
+}
+    structField0 
+    {
+      alias:   "id"
+      type:    RS_DS_CM11_SimulinkRS_VehDataBus_id_0
+      offs:    -1
+    }
+    structField1 
+    {
+      alias:   "idLength"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField2 
+    {
+      alias:   "type"
+      type:    RS_DS_CM11_SimulinkRS_VehDataBus_id_0
+      offs:    -1
+    }
+    structField3 
+    {
+      alias:   "typeLength"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField4 
+    {
+      alias:   "vehicleClass"
+      type:    RS_DS_CM11_SimulinkRS_VehDataBus_id_0
+      offs:    -1
+    }
+    structField5 
+    {
+      alias:   "vehicleClassLength"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField6 
+    {
+      alias:   "speed"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField7 
+    {
+      alias:   "acceleration"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField8 
+    {
+      alias:   "positionX"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField9 
+    {
+      alias:   "positionY"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField10 
+    {
+      alias:   "positionZ"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField11 
+    {
+      alias:   "heading"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField12 
+    {
+      alias:   "color"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField13 
+    {
+      alias:   "linkId"
+      type:    RS_DS_CM11_SimulinkRS_VehDataBus_id_0
+      offs:    -1
+    }
+    structField14 
+    {
+      alias:   "linkIdLength"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField15 
+    {
+      alias:   "laneId"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField16 
+    {
+      alias:   "distanceTravel"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField17 
+    {
+      alias:   "speedDesired"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField18 
+    {
+      alias:   "accelerationDesired"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField19 
+    {
+      alias:   "hasPrecedingVehicle"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField20 
+    {
+      alias:   "precedingVehicleId"
+      type:    RS_DS_CM11_SimulinkRS_VehDataBus_id_0
+      offs:    -1
+    }
+    structField21 
+    {
+      alias:   "precedingVehicleIdLength"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField22 
+    {
+      alias:   "precedingVehicleDistance"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField23 
+    {
+      alias:   "precedingVehicleSpeed"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField24 
+    {
+      alias:   "signalLightId"
+      type:    RS_DS_CM11_SimulinkRS_VehDataBus_id_0
+      offs:    -1
+    }
+    structField25 
+    {
+      alias:   "signalLightIdLength"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField26 
+    {
+      alias:   "signalLightHeadId"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField27 
+    {
+      alias:   "signalLightDistance"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField28 
+    {
+      alias:   "signalLightColor"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField29 
+    {
+      alias:   "speedLimit"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField30 
+    {
+      alias:   "speedLimitNext"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField31 
+    {
+      alias:   "speedLimitChangeDistance"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField32 
+    {
+      alias:   "linkIdNext"
+      type:    RS_DS_CM11_SimulinkRS_VehDataBus_id_0
+      offs:    -1
+    }
+    structField33 
+    {
+      alias:   "linkIdNextLength"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField34 
+    {
+      alias:   "grade"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField35 
+    {
+      alias:   "activeLaneChange"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+endstruct
+
+struct RS_DS_CM11_SimulinkRS_struct_GphLW54WCcJjc0lEaqz83B
+{
+  array-incr: -1
+}
+    structField0 
+    {
+      alias:   "speedInit"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField1 
+    {
+      alias:   "tLookahead"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+    structField2 
+    {
+      alias:   "smoothWindow"
+      type:    flt(64,IEEE)
+      offs:    -1
+    }
+endstruct
+
+
+-- Type definitions for arrays
+typedef RS_DS_CM11_SimulinkRS_ArrayDT0_14 flt(64,IEEE)[14]
+typedef RS_DS_CM11_SimulinkRS_ArrayDT0_17 flt(64,IEEE)[17]
+typedef RS_DS_CM11_SimulinkRS_ArrayDT0_29 flt(64,IEEE)[29]
+typedef RS_DS_CM11_SimulinkRS_ArrayDT0_5 flt(64,IEEE)[5]
+typedef RS_DS_CM11_SimulinkRS_ArrayDT0_12 flt(64,IEEE)[12]
+typedef RS_DS_CM11_SimulinkRS_ArrayDT0_11 flt(64,IEEE)[11]
+typedef RS_DS_CM11_SimulinkRS_ArrayDT0_2 flt(64,IEEE)[2]
+typedef RS_DS_CM11_SimulinkRS_ArrayDT0_21 flt(64,IEEE)[21]
+typedef RS_DS_CM11_SimulinkRS_ArrayDT0_7 flt(64,IEEE)[7]
+typedef RS_DS_CM11_SimulinkRS_ArrayDT0_8 flt(64,IEEE)[8]
+typedef RS_DS_CM11_SimulinkRS_ArrayDT0_13 flt(64,IEEE)[13]
+typedef RS_DS_CM11_SimulinkRS_ArrayDT0_16 flt(64,IEEE)[16]
+typedef RS_DS_CM11_SimulinkRS_ArrayDT0_24 flt(64,IEEE)[24]
+typedef RS_DS_CM11_SimulinkRS_ArrayDT0_6 flt(64,IEEE)[6]
+typedef RS_DS_CM11_SimulinkRS_ArrayDT0_4 flt(64,IEEE)[4]
+typedef RS_DS_CM11_SimulinkRS_ArrayDT0_15 flt(64,IEEE)[15]
+typedef RS_DS_CM11_SimulinkRS_ArrayDT0_18 flt(64,IEEE)[18]
+typedef RS_DS_CM11_SimulinkRS_ArrayDT0_9 flt(64,IEEE)[9]
+typedef RS_DS_CM11_SimulinkRS_ArrayDT0_20 flt(64,IEEE)[20]
+typedef RS_DS_CM11_SimulinkRS_ArrayDT0_42 flt(64,IEEE)[42]
+typedef RS_DS_CM11_SimulinkRS_ArrayDT3_1024 uint(8)[1024]
+typedef RS_DS_CM11_SimulinkRS_ArrayDT3_200_1_Col col uint(8)[200][1]
+typedef RS_DS_CM11_SimulinkRS_ArrayDT0_3 flt(64,IEEE)[3]
+
+

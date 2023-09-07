@@ -1,0 +1,26 @@
+[
+   {
+      "Key": "MetaData",
+      "Value": [
+         {
+            "Key": "ApplicationAuthor",
+            "Value": "y0n"
+         },
+         {
+            "Key": "TopologyState",
+            "ValueCollection": [
+               "Hardware",
+               "Model"
+            ]
+         },
+         {
+            "Key": "ProjectManager",
+            "Value": "v2"
+         },
+         {
+            "Key": "ApplicationModifiedTimeStamp",
+            "Value": "638203681798391263"
+         }
+      ]
+   }
+]

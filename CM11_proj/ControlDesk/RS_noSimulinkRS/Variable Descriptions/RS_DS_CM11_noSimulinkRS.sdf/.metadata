@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<VariableDescriptionMetaData SchemaVersion="1">
+  <SerializedFileName>RS_DS_CM11_noSimulinkRS.vdp</SerializedFileName>
+  <IsActive>true</IsActive>
+  <FileName>RS_DS_CM11_noSimulinkRS.sdf</FileName>
+  <VariableDescriptionSourcePathAndFileName>..\ConfigDesk\RS_DS_CM11_noSimulinkRS\Build Results\RS_DS_CM11_noSimulinkRS.sdf</VariableDescriptionSourcePathAndFileName>
+  <ImportOptions>
+    <DisableLookupDetection>false</DisableLookupDetection>
+  </ImportOptions>
+</VariableDescriptionMetaData>

@@ -1,0 +1,358 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Sequence>
+  <SetGlobalFilter />
+  <ConfigureWindowManager DocWindowState="Maximized" />
+  <ControlBars>
+    <ControlBar Guid="76d09aba-a3dc-4813-a85d-23c1bd31d8ff">
+      <String Role="ArgName">ColumnFilters</String>
+      <ColumnFilters Role="ArgValue" />
+      <String Role="ArgName">ApplicableFilters</String>
+      <StringNTuple Role="ArgValue" StringValues="" />
+      <String Role="ArgName">IncludeChildren</String>
+      <Int Role="ArgValue">1</Int>
+      <String Role="ArgName">ExpansionState</String>
+      <ExpansionState Role="ArgValue" />
+    </ControlBar>
+    <ControlBar Guid="ba307a6c-8a91-4024-bd46-1cae3ae446b0">
+      <String Role="ArgName">ColumnFilters</String>
+      <ColumnFilters Role="ArgValue" />
+      <String Role="ArgName">ApplicableFilters</String>
+      <StringNTuple Role="ArgValue" StringValues="SupportedByHardwareFilter" />
+      <String Role="ArgName">IncludeChildren</String>
+      <Int Role="ArgValue">1</Int>
+      <String Role="ArgName">ExpansionState</String>
+      <ExpansionState Role="ArgValue">
+        <Node Index="0" />
+      </ExpansionState>
+    </ControlBar>
+    <ControlBar Guid="61c0bfb2-0221-4436-925f-b2179057de28">
+      <String Role="ArgName">ColumnFilters</String>
+      <ColumnFilters Role="ArgValue" />
+      <String Role="ArgName">ApplicableFilters</String>
+      <StringNTuple Role="ArgValue" StringValues="" />
+      <String Role="ArgName">IncludeChildren</String>
+      <Int Role="ArgValue">1</Int>
+      <String Role="ArgName">ExpansionState</String>
+      <ExpansionState Role="ArgValue" />
+    </ControlBar>
+    <ControlBar Guid="ff3a266c-bbb3-461a-9b72-71849a6bc9b4" />
+    <ControlBar Guid="dd898775-1207-4a7e-8610-4f481c80e986">
+      <String Role="ArgName">ColumnFilters</String>
+      <ColumnFilters Role="ArgValue" />
+      <String Role="ArgName">ApplicableFilters</String>
+      <StringNTuple Role="ArgValue" StringValues="" />
+      <String Role="ArgName">IncludeChildren</String>
+      <Int Role="ArgValue">1</Int>
+      <String Role="ArgName">ExpansionState</String>
+      <ExpansionState Role="ArgValue">
+        <Node Index="0" />
+      </ExpansionState>
+    </ControlBar>
+    <ControlBar Guid="c06b13f2-66c5-48d4-ba17-6273053a5697" />
+    <ControlBar Guid="33a6c0a5-0db8-42e6-a020-c3f32f0dffb3" />
+    <ControlBar Guid="252391d5-ad38-40af-9b5d-ea29e7fee780">
+      <String Role="ArgName">AssignedTreeView</String>
+      <CreateExtendedDictionaryStringToObject Role="ArgValue">
+        <String Role="ArgName">ColumnFilters</String>
+        <ColumnFilters Role="ArgValue" />
+        <String Role="ArgName">ApplicableFilters</String>
+        <StringNTuple Role="ArgValue" StringValues="" />
+        <String Role="ArgName">IncludeChildren</String>
+        <Int Role="ArgValue">1</Int>
+        <String Role="ArgName">ExpansionState</String>
+        <ExpansionState Role="ArgValue">
+          <Node Index="0">
+            <Node Index="0">
+              <Node Index="3">
+                <Node Index="1" />
+                <Node Index="2">
+                  <Node Index="0" />
+                  <Node Index="1">
+                    <Node Index="2" />
+                  </Node>
+                  <Node Index="5" />
+                </Node>
+                <Node Index="3">
+                  <Node Index="0" />
+                </Node>
+              </Node>
+              <Node Index="4" />
+            </Node>
+          </Node>
+        </ExpansionState>
+      </CreateExtendedDictionaryStringToObject>
+      <String Role="ArgName">UnassignedTreeView</String>
+      <CreateExtendedDictionaryStringToObject Role="ArgValue">
+        <String Role="ArgName">ColumnFilters</String>
+        <ColumnFilters Role="ArgValue" />
+        <String Role="ArgName">ApplicableFilters</String>
+        <StringNTuple Role="ArgValue" StringValues="" />
+        <String Role="ArgName">IncludeChildren</String>
+        <Int Role="ArgValue">1</Int>
+        <String Role="ArgName">ExpansionState</String>
+        <ExpansionState Role="ArgValue" />
+      </CreateExtendedDictionaryStringToObject>
+    </ControlBar>
+    <ControlBar Guid="436918f1-8939-4a9b-b885-919ea55c93df">
+      <String Role="ArgName">ColumnFilters</String>
+      <ColumnFilters Role="ArgValue" />
+      <String Role="ArgName">ApplicableFilters</String>
+      <StringNTuple Role="ArgValue" StringValues="" />
+      <String Role="ArgName">IncludeChildren</String>
+      <Int Role="ArgValue">1</Int>
+      <String Role="ArgName">ExpansionState</String>
+      <ExpansionState Role="ArgValue">
+        <Node Index="2">
+          <Node Index="0" />
+        </Node>
+      </ExpansionState>
+    </ControlBar>
+    <ControlBar Guid="ab5596a2-fabd-4423-b30b-38d1d070b960">
+      <String Role="ArgName">ColumnFilters</String>
+      <ColumnFilters Role="ArgValue" />
+      <String Role="ArgName">ApplicableFilters</String>
+      <StringNTuple Role="ArgValue" StringValues="" />
+      <String Role="ArgName">IncludeChildren</String>
+      <Int Role="ArgValue">1</Int>
+      <String Role="ArgName">ExpansionState</String>
+      <ExpansionState Role="ArgValue" />
+    </ControlBar>
+    <ControlBar Guid="68e4159b-9a6f-4a1a-9238-c0cd9ce52d98">
+      <String Role="ArgName">ColumnFilters</String>
+      <ColumnFilters Role="ArgValue" />
+      <String Role="ArgName">ApplicableFilters</String>
+      <StringNTuple Role="ArgValue" StringValues="" />
+      <String Role="ArgName">IncludeChildren</String>
+      <Int Role="ArgValue">1</Int>
+      <String Role="ArgName">ExpansionState</String>
+      <ExpansionState Role="ArgValue">
+        <Node Index="0" />
+      </ExpansionState>
+    </ControlBar>
+    <ControlBar Guid="7845bf16-e729-442a-ac93-2bfb5d231f30">
+      <String Role="ArgName">ColumnFilters</String>
+      <ColumnFilters Role="ArgValue" />
+      <String Role="ArgName">ApplicableFilters</String>
+      <StringNTuple Role="ArgValue" StringValues="" />
+      <String Role="ArgName">IncludeChildren</String>
+      <Int Role="ArgValue">1</Int>
+      <String Role="ArgName">ExpansionState</String>
+      <ExpansionState Role="ArgValue">
+        <Node Index="0" />
+      </ExpansionState>
+    </ControlBar>
+    <ControlBar Guid="acd3d92b-4ee2-428e-9362-977b5706308d">
+      <String Role="ArgName">ColumnFilters</String>
+      <ColumnFilters Role="ArgValue" />
+      <String Role="ArgName">ApplicableFilters</String>
+      <StringNTuple Role="ArgValue" StringValues="" />
+      <String Role="ArgName">IncludeChildren</String>
+      <Int Role="ArgValue">1</Int>
+      <String Role="ArgName">ExpansionState</String>
+      <ExpansionState Role="ArgValue">
+        <Node Index="0">
+          <Node Index="0" />
+        </Node>
+      </ExpansionState>
+    </ControlBar>
+    <ControlBar Guid="55cc3145-0f0a-4f8b-94a8-b60f28382dd2">
+      <String Role="ArgName">ColumnFilters</String>
+      <ColumnFilters Role="ArgValue" />
+      <String Role="ArgName">ApplicableFilters</String>
+      <StringNTuple Role="ArgValue" StringValues="" />
+      <String Role="ArgName">IncludeChildren</String>
+      <Int Role="ArgValue">1</Int>
+      <String Role="ArgName">ExpansionState</String>
+      <ExpansionState Role="ArgValue" />
+    </ControlBar>
+    <ControlBar Guid="5281cdb5-f6c6-495b-ba05-d5c9cc59664f">
+      <String Role="ArgName">ColumnFilters</String>
+      <ColumnFilters Role="ArgValue" />
+      <String Role="ArgName">ApplicableFilters</String>
+      <StringNTuple Role="ArgValue" StringValues="" />
+      <String Role="ArgName">IncludeChildren</String>
+      <Int Role="ArgValue">1</Int>
+      <String Role="ArgName">ExpansionState</String>
+      <ExpansionState Role="ArgValue" />
+    </ControlBar>
+    <ControlBar Guid="558a59cc-676b-4ec1-9b3c-967b321b124b">
+      <String Role="ArgName">ColumnFilters</String>
+      <ColumnFilters Role="ArgValue" />
+      <String Role="ArgName">ApplicableFilters</String>
+      <StringNTuple Role="ArgValue" StringValues="" />
+      <String Role="ArgName">IncludeChildren</String>
+      <Int Role="ArgValue">1</Int>
+      <String Role="ArgName">ExpansionState</String>
+      <ExpansionState Role="ArgValue" />
+    </ControlBar>
+    <ControlBar Guid="3eb31ead-1223-4ba6-8a4b-95d393b2b0e1">
+      <String Role="ArgName">ComMatrix</String>
+      <CreateExtendedDictionaryStringToObject Role="ArgValue">
+        <String Role="ArgName">Hierarchy</String>
+        <StringNTuple Role="ArgValue" StringValues="Hierarchy,BusManager,ComMatrix,-&gt;NetworkTopology" />
+        <String Role="ArgName">Columns</String>
+        <StringNTuple Role="ArgValue" StringValues="Columns,ComMatrix,ByClusters" />
+        <String Role="ArgName">ColumnFilters</String>
+        <ColumnFilters Role="ArgValue" />
+        <String Role="ArgName">ApplicableFilters</String>
+        <StringNTuple Role="ArgValue" StringValues="" />
+        <String Role="ArgName">IncludeChildren</String>
+        <Int Role="ArgValue">1</Int>
+        <String Role="ArgName">ExpansionState</String>
+        <ExpansionState Role="ArgValue" />
+      </CreateExtendedDictionaryStringToObject>
+    </ControlBar>
+    <ControlBar Guid="9e79d7a9-5944-4763-876c-ed5780e916d4">
+      <String Role="ArgName">ColumnFilters</String>
+      <ColumnFilters Role="ArgValue" />
+      <String Role="ArgName">ApplicableFilters</String>
+      <StringNTuple Role="ArgValue" StringValues="" />
+      <String Role="ArgName">IncludeChildren</String>
+      <Int Role="ArgValue">1</Int>
+      <String Role="ArgName">ExpansionState</String>
+      <ExpansionState Role="ArgValue" />
+    </ControlBar>
+    <ControlBar Guid="d1aba602-86e7-47fc-b798-6f6b4ff92881">
+      <String Role="ArgName">ColumnFilters</String>
+      <ColumnFilters Role="ArgValue" />
+      <String Role="ArgName">ApplicableFilters</String>
+      <StringNTuple Role="ArgValue" StringValues="" />
+      <String Role="ArgName">IncludeChildren</String>
+      <Int Role="ArgValue">1</Int>
+      <String Role="ArgName">ExpansionState</String>
+      <ExpansionState Role="ArgValue" />
+    </ControlBar>
+    <ControlBar Guid="524bab53-7f70-4769-8a68-64a575570d1e">
+      <String Role="ArgName">BusFeaturesSimulation</String>
+      <CreateExtendedDictionaryStringToObject Role="ArgValue">
+        <String Role="ArgName">Hierarchy</String>
+        <StringNTuple Role="ArgValue" StringValues="Hierarchy,BusManager,SelectedBusConfiguration,BusFeaturesSimulation,-&gt;PduTopology" />
+        <String Role="ArgName">Columns</String>
+        <StringNTuple Role="ArgValue" StringValues="Columns,BusConfiguration,BusFeaturesSimulation,-&gt;PduTopology" />
+        <String Role="ArgName">ColumnFilters</String>
+        <ColumnFilters Role="ArgValue" />
+        <String Role="ArgName">ApplicableFilters</String>
+        <StringNTuple Role="ArgValue" StringValues="" />
+        <String Role="ArgName">IncludeChildren</String>
+        <Int Role="ArgValue">1</Int>
+        <String Role="ArgName">ExpansionState</String>
+        <ExpansionState Role="ArgValue" />
+      </CreateExtendedDictionaryStringToObject>
+    </ControlBar>
+    <ControlBar Guid="a74107e9-64a5-4aec-97d7-eee1d0789e46">
+      <String Role="ArgName">BusFeaturesInspection</String>
+      <CreateExtendedDictionaryStringToObject Role="ArgValue">
+        <String Role="ArgName">Hierarchy</String>
+        <StringNTuple Role="ArgValue" StringValues="Hierarchy,BusManager,SelectedBusConfiguration,BusFeaturesInspection,-&gt;PduTopology" />
+        <String Role="ArgName">Columns</String>
+        <StringNTuple Role="ArgValue" StringValues="Columns,BusConfiguration,BusFeaturesInspection,-&gt;PduTopology" />
+        <String Role="ArgName">ColumnFilters</String>
+        <ColumnFilters Role="ArgValue" />
+        <String Role="ArgName">ApplicableFilters</String>
+        <StringNTuple Role="ArgValue" StringValues="" />
+        <String Role="ArgName">IncludeChildren</String>
+        <Int Role="ArgValue">1</Int>
+        <String Role="ArgName">ExpansionState</String>
+        <ExpansionState Role="ArgValue" />
+      </CreateExtendedDictionaryStringToObject>
+    </ControlBar>
+    <ControlBar Guid="0b1e3f4e-5e1f-4c9f-8e57-275c38b9990e">
+      <String Role="ArgName">BusFeaturesManipulation</String>
+      <CreateExtendedDictionaryStringToObject Role="ArgValue">
+        <String Role="ArgName">Hierarchy</String>
+        <StringNTuple Role="ArgValue" StringValues="Hierarchy,BusManager,SelectedBusConfiguration,BusFeaturesManipulation,-&gt;PduTopology" />
+        <String Role="ArgName">Columns</String>
+        <StringNTuple Role="ArgValue" StringValues="Columns,BusConfiguration,BusFeaturesManipulation,-&gt;PduTopology" />
+        <String Role="ArgName">ColumnFilters</String>
+        <ColumnFilters Role="ArgValue" />
+        <String Role="ArgName">ApplicableFilters</String>
+        <StringNTuple Role="ArgValue" StringValues="" />
+        <String Role="ArgName">IncludeChildren</String>
+        <Int Role="ArgValue">1</Int>
+        <String Role="ArgName">ExpansionState</String>
+        <ExpansionState Role="ArgValue" />
+      </CreateExtendedDictionaryStringToObject>
+    </ControlBar>
+    <ControlBar Guid="3faaae2c-5054-4c07-abb5-5d0b4a6baa73">
+      <String Role="ArgName">ColumnFilters</String>
+      <ColumnFilters Role="ArgValue" />
+      <String Role="ArgName">ApplicableFilters</String>
+      <StringNTuple Role="ArgValue" StringValues="" />
+      <String Role="ArgName">IncludeChildren</String>
+      <Int Role="ArgValue">1</Int>
+      <String Role="ArgName">ExpansionState</String>
+      <ExpansionState Role="ArgValue" />
+    </ControlBar>
+    <ControlBar Guid="245e7c72-a4ad-43df-ab8e-7ec7b4ff2e44">
+      <String Role="ArgName">ColumnFilters</String>
+      <ColumnFilters Role="ArgValue" />
+      <String Role="ArgName">ApplicableFilters</String>
+      <StringNTuple Role="ArgValue" StringValues="" />
+      <String Role="ArgName">IncludeChildren</String>
+      <Int Role="ArgValue">1</Int>
+      <String Role="ArgName">ExpansionState</String>
+      <ExpansionState Role="ArgValue" />
+    </ControlBar>
+    <ControlBar Guid="6d8cbd28-3d62-4e88-8366-22b0685b2712" />
+    <ControlBar Guid="b434bd3d-7ed4-4f88-a70c-367296600013" />
+    <ControlBar Guid="170283c0-867b-47a8-b076-d279594e4cfe">
+      <CreateWindow CreatorName="ColumnSchematicModelCommunicationView">
+        <String Role="ArgName">OpenMode</String>
+        <StringNTuple Role="ArgValue" StringValues="Browser" />
+        <String Role="ArgName">ViewElement</String>
+        <WorkingView Role="ArgValue" Transactioned="True">
+          <StringNTuple Role="Hierarchy">
+            <String Role="String"><![CDATA[Global]]></String>
+          </StringNTuple>
+        </WorkingView>
+        <String Role="ArgName">ErrorStatus</String>
+        <StringNTuple Role="ArgValue" StringValues="ErrorStatus,GeneralConfiguration" />
+        <String Role="ArgName">ApplicableFilters</String>
+        <StringNTuple Role="ArgValue" StringValues="MappablePortsFilter" />
+        <String Role="ArgName">FitToWidthMode</String>
+        <Int Role="ArgValue">1</Int>
+        <String Role="ArgName">ExpansionStatus</String>
+        <ExpansionStatus Role="ArgValue" />
+        <String Role="ArgName">TotalWidthPercent</String>
+        <String Role="ArgValue">1</String>
+        <String Role="ArgName">ColumnVisibleStatus</String>
+        <ColumnVisibleStatus Role="ArgValue">
+          <Item Role="Column" ColumnNr="0" Visible="True" WidthPercent="0.5" />
+          <Item Role="Column" ColumnNr="1" Visible="True" WidthPercent="0.5" />
+        </ColumnVisibleStatus>
+        <String Role="ArgName">History</String>
+        <History Role="ArgValue" />
+      </CreateWindow>
+      <ControlBar Guid="e0cb7b8e-c525-4770-803b-877d92d1e6c2">
+        <CreateWindow CreatorName="ColumnSchematicView">
+          <String Role="ArgName">OpenMode</String>
+          <StringNTuple Role="ArgValue" StringValues="Browser" />
+          <String Role="ArgName">ViewElement</String>
+          <WorkingView Role="ArgValue" Transactioned="True">
+            <StringNTuple Role="Hierarchy">
+              <String Role="String"><![CDATA[Global]]></String>
+            </StringNTuple>
+          </WorkingView>
+          <String Role="ArgName">ErrorStatus</String>
+          <StringNTuple Role="ArgValue" StringValues="ErrorStatus,GeneralConfiguration" />
+          <String Role="ArgName">ApplicableFilters</String>
+          <StringNTuple Role="ArgValue" StringValues="MappablePortsFilter" />
+          <String Role="ArgName">FitToWidthMode</String>
+          <Int Role="ArgValue">1</Int>
+          <String Role="ArgName">ExpansionStatus</String>
+          <ExpansionStatus Role="ArgValue" />
+          <String Role="ArgName">TotalWidthPercent</String>
+          <String Role="ArgValue">1</String>
+          <String Role="ArgName">ColumnVisibleStatus</String>
+          <ColumnVisibleStatus Role="ArgValue">
+            <Item Role="Column" ColumnNr="0" Visible="True" WidthPercent="0.3339207" />
+            <Item Role="Column" ColumnNr="1" Visible="True" WidthPercent="0.3339207" />
+            <Item Role="Column" ColumnNr="2" Visible="True" WidthPercent="0.3321586" />
+          </ColumnVisibleStatus>
+          <String Role="ArgName">History</String>
+          <History Role="ArgValue" />
+        </CreateWindow>
+      </ControlBar>
+    </ControlBar>
+  </ControlBars>
+</Sequence>
