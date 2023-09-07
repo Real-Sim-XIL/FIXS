@@ -669,21 +669,6 @@ User_Calc (double dt)
     // ===========================================================================
 #endif
 
-    //if (SimCore.State != SCState_Simulate) {
-    //    return 0;
-    //}
-
-    //int curMod = (int)(floor((SimCore.Time - 20) / 20) + 1) % 3;
-    //if (curMod == 0) {
-    //    TrfLight.Objs[0].State = State_Green;
-    //}
-    //else if (curMod == 1) {
-    //    TrfLight.Objs[0].State = State_Yellow;
-    //}
-    //else if (curMod == 2) {
-    //    TrfLight.Objs[0].State = State_Red;
-    //}
-
     return 0;
 }
 

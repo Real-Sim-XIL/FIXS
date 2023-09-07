@@ -11,5 +11,5 @@ Vehicle.VIL = 1
 Vehicle.VIL.Info = VIL addon
 Vehicle.VIL.Tags =
 HydBrakeSystem.HydESP = 3
-HydBrakeSystem.HydESP.Info =
+HydBrakeSystem.HydESP.Info = HydESP
 HydBrakeSystem.HydESP.Tags =
