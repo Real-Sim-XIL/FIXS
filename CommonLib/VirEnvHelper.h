@@ -132,13 +132,13 @@
 
         int readSignalTable(const char* signalTablePathInput);
 
-        typedef struct SignalTable_t {
+        typedef struct  {
             std::string signalControllerName;
             int signalGroupId;
             int signalHeadId;
             int cmTrafficLightIndex;
             std::string cmControllerId;
-        };
+        } SignalTable_t;
 
     };
 

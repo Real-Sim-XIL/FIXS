@@ -199,15 +199,15 @@ int VirEnvHelper::readSignalTable(const char* signalTablePathInput) {
 
 		//'signalGroupId' : int,
 		getline(lineString, element, ',');
-		Sig.signalGroupId = stoi(element);
+		Sig.signalGroupId = atoi(element.c_str());
 
 		//'signalHeadId' : int,
 		getline(lineString, element, ',');
-		Sig.signalHeadId = stoi(element);
+		Sig.signalHeadId = atoi(element.c_str());
 
 		//'CmTrafficLightIndex' : int,
 		getline(lineString, element, ',');
-		Sig.cmTrafficLightIndex = stoi(element);
+		Sig.cmTrafficLightIndex = atoi(element.c_str());
 
 		//'CmControllerId' : string,
 		getline(lineString, element, ',');
@@ -258,7 +258,7 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 	 // run real sim step every 0.1 seconds and not do this step at simTime=0
 	int simStateRecv = 0;
 	float simTimeRecv = 0;
-	int iS = 0;
+	unsigned int iS = 0;
 
 	// ===========================================================================
 	// 			initialize available CM id queue and move traffic objects far away

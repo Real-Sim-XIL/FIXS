@@ -73,6 +73,8 @@
 
 struct VirEnvHelper* VirEnv_c;
 
+char RS_configFile[] = "/CM_Projects/RealSimCm11Prj/src_cm4sl/RealSimCarMakerConfig.txt";
+char RS_signalTable[] = "/CM_Projects/RealSimCm11Prj/Data/Road/RS_ShallowfordRd_sumo_signal_RSsignalTable.csv";																		 
 // ===========================================================================
 // ===========================================================================
 
@@ -439,7 +441,7 @@ User_TestRun_Start_atEnd (void)
     // 			 RealSim 
     // ===========================================================================	   
     if (VirEnv_isVeryFirstStep && SimCore.State >= SCState_StartWait) {
-		VirEnv_initialization(VirEnv_c, "/CM_Projects/RealSimCm11Prj/src_cm4sl/RealSimCarMakerConfig.txt");
+		VirEnv_initialization(VirEnv_c, RS_configFile, RS_signalTable);
     }
     // ===========================================================================
     // ===========================================================================
