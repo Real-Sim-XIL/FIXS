@@ -131,6 +131,12 @@ int VirEnvHelper::initialization(const char** errorMsg, const char* signalTableP
 #else
 		serverAddr[0] = Config_s.TrafficLayerIP;
 		serverPort[0] = Config_s.CarMakerPort;
+
+		// if signal data, then use a separate port
+		if (SYNCHRONIZE_TRAFFIC_SIGNAL) {
+			serverAddr.push_back(Config_s.TrafficLayerIP);
+			serverPort.push_back(2444);
+		}
 #endif
 
 		Sock_c.socketSetup(serverAddr, serverPort); // connect to server Traffic Layer
