@@ -22,6 +22,8 @@ Table of Contents
 =======================
 * [Preface](#preface)
 * [Build](#build)
+   * [Prerequisite](#prerequisite)
+   * [Dispatch a Release](#dispatch-a-release)
 * [General Setups](#general-setups)
 * [Compatibility to Previous Versions](#compatibility-to-previous-versions)
     * [RealSimDepack Output](#realsimdepack-output)
@@ -37,29 +39,6 @@ Before testing the Real-Sim interface, please
 - check annotations in the Simulink template which specifies how to properly use each block
 - RealSimPack.m and RealSimDepack.m files are currently open-source. check the comments before modifying.  
 
-## Build
-The source need to be built for several libraries
-
-Build libevent 
-https://github.com/libevent/libevent/blob/master/Documentation/Building.md#building-on-windows
-
-```
-cd .\CommonLib\libevent
-md build && cd build
-cmake -G "Visual Studio 16 2019" -DEVENT__DISABLE_MBEDTLS=ON ..   # Or use any generator you want to use. Run cmake --help for a list
-cmake --build . --config Release # Or "start libevent.sln" and build with menu in Visual Studio.
-```
-
-Note: build in Release version if also compiling Release version of TrafficLayer.exe, CoordMerge.exe, etc. build in Debug if compiling Debug version of TrafficLayer.exe, CoordMerge.exe, etc.
-
-Build yaml-cpp
-https://github.com/jbeder/yaml-cpp
-```
-cd .\CommonLib\yaml-cpp
-md build && cd build
-cmake -G "Visual Studio 16 2019" ..   # Or use any generator you want to use. Run cmake --help for a list
-cmake --build . --config Release # Or "start libevent.sln" and build with menu in Visual Studio.
-```
 ## General Setups
 The interface runs the connections to different software, simulators by itself to provide plug-in-and-play experience for the users. A config.yaml file is critical to setup the interface parameters and configure different scenarios. 
 
@@ -85,6 +64,40 @@ There are different mode of synchronization and opeartion of the Real-Sim interf
 -->
 
 SimulationModeParamter is a double variable that currently only used for mode binary 100, integer 4 and binary 101, integer 5
+
+## Build
+This section is about how to build the source code, and then how to dispatch a released executable version.
+
+### Prerequisite
+Several libraries need to be compiled first. You can use the ```compileExternalLibraries.bat``` to do the following steps automatically or manually execute the following steps.
+
+Build libevent 
+https://github.com/libevent/libevent/blob/master/Documentation/Building.md#building-on-windows
+
+```
+cd .\CommonLib\libevent
+md build && cd build
+cmake -G "Visual Studio 16 2019" -DEVENT__DISABLE_MBEDTLS=ON ..   # Or use any generator you want to use. Run cmake --help for a list
+cmake --build . --config Release # Or "start libevent.sln" and build with menu in Visual Studio.
+```
+
+Note: build in Release version if also compiling Release version of TrafficLayer.exe, CoordMerge.exe, etc. build in Debug if compiling Debug version of TrafficLayer.exe, CoordMerge.exe, etc.
+
+Build yaml-cpp
+https://github.com/jbeder/yaml-cpp
+```
+cd .\CommonLib\yaml-cpp
+md build && cd build
+cmake -G "Visual Studio 16 2019" ..   # Or use any generator you want to use. Run cmake --help for a list
+cmake --build . --config Release # Or "start libevent.sln" and build with menu in Visual Studio.
+```
+
+### Dispatch a release
+The source code uses ```msbuild``` as the default compiler, command ```msbuild``` must be known in the environmental variable before dispatching. The path to be added is ```%ProgramFiles(x86)%\Microsoft Visual Studio\2019\<YOUR_VS_EDITION>\MSBuild\Current\Bin```.
+
+Additionally, python >= 3.8 is required. It is recommended to create a dedicated conda environment and name it as ```realsimdev```.
+
+With the above, run ```dispatch.bat``` will dispatch released executables inside a ```build``` folder.
 
 ## Compatibility to Previous Versions
 Here are potential compatibility issues with different versions
