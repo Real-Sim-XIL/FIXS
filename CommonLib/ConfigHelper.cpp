@@ -351,9 +351,25 @@ int ConfigHelper::getConfig(string configName) {
 	}
 	SubscriptionSignalList.subAllSignalFlag = CarMakerSetup.SynchronizeTrafficSignal;
 
+	if (node["TrafficSignalPort"]) {
+		CarMakerSetup.TrafficSignalPort = parserInteger(node, "TrafficSignalPort");
+	}
+	else {
+		CarMakerSetup.TrafficSignalPort = 2444;
+		if (!ApplicationSetup.EnableApplicationLayer && XilSetup.EnableXil) {
+			if (XilSetup.SignalSubscription.size() == 1) {
+				CarMakerSetup.TrafficSignalPort = get<3>(XilSetup.SignalSubscription[0])[0];
+			}
+		}
+		else {
+			if (ApplicationSetup.SignalSubscription.size() == 1) {
+				CarMakerSetup.TrafficSignalPort = get<3>(ApplicationSetup.SignalSubscription[0])[0];
+			}
+		}
+	}
 	if (CarMakerSetup.SynchronizeTrafficSignal) {
 		//SocketPort2SubscriptionList_um[CarMakerSetup.CarMakerPort].SignalList.subAllSignalFlag = true;
-		CarMakerSetup.TrafficSignalPort = 2444;
+
 		SocketPort2SubscriptionList_um[CarMakerSetup.TrafficSignalPort].SignalList.subAllSignalFlag = true;
 	}
 

@@ -12,6 +12,7 @@ def setCarMakerConfig(args):
     TrafficLayerIP = ''
     TrafficLayerPort = ''
     CarMakerPort = ''
+    TrafficSignalPort = ''
      
     # sanity check to make sure field XilSetup and ApplicationSetup exist
     if 'XilSetup' not in Config.keys():
@@ -60,12 +61,22 @@ def setCarMakerConfig(args):
             else:
                 print('\nERROR! must specify CarMaker IP and Port when 2 vehicle subscriptions are defined!\n')
                 return -1
-            
-            
         else:
             print('\nERROR! currently only support at one vehicle subscription for Simulink, and at most two for CarMaker Simulink!\n')
             return -1
         
+        # handle signal subscription
+        if len(Config['XilSetup']['SignalSubscription']) == 1:
+            TrafficSignalPort = Config['XilSetup']['SignalSubscription'][0]['port'][0]
+        elif 'CarMakerIP' in Config['CarMakerSetup'].keys() and 'TrafficSignalPort' in Config['CarMakerSetup'].keys():
+                for i in range(0, len(Config['XilSetup']['SignalSubscription'])):
+                    if ((Config['XilSetup']['SignalSubscription'][i]['ip'][0] == Config['CarMakerSetup']['CarMakerIP']) and \
+                            Config['XilSetup']['SignalSubscription'][i]['port'][0] == Config['CarMakerSetup']['TrafficSignalPort']):
+                        TrafficSignalPort = Config['XilSetup']['SignalSubscription'][i]['port'][0]
+        else:
+            print('\nERROR! must specify TrafficSignalPort when multiple signal subscriptions are defined!\n')
+            return -1
+    
     elif Config['ApplicationSetup']['EnableApplicationLayer'] and not Config['XilSetup']['EnableXil']:
         if len(Config['ApplicationSetup']['VehicleSubscription']) <= 0:
             print('\nERROR! must specify one vehicle subscription for ApplicationSetup!\n')
@@ -101,7 +112,9 @@ def setCarMakerConfig(args):
             Config['CarMakerSetup']['CarMakerPort'] = CarMakerPort 
         if 'TrafficRefreshRate' not in Config['CarMakerSetup'].keys():
             Config['CarMakerSetup']['TrafficRefreshRate'] = 0.001 
-        
+        if 'TrafficSignalPort' not in Config['CarMakerSetup'].keys():
+            Config['CarMakerSetup']['TrafficSignalPort'] = TrafficSignalPort
+
         # save to text file
         with open(RealSimCarMakerConfigName, 'w') as file:
             VehMsgStrTmp = Config['SimulationSetup']['VehicleMessageField'][0]
@@ -116,7 +129,7 @@ def setCarMakerConfig(args):
             file.write('TrafficLayerIP={}\n'.format(Config['CarMakerSetup']['TrafficLayerIP']))
             file.write('CarMakerPort={}\n'.format(Config['CarMakerSetup']['CarMakerPort']))
             file.write('TrafficRefreshRate={}\n'.format(Config['CarMakerSetup']['TrafficRefreshRate']))
-         
+            file.write('TrafficSignalPort={}\n'.format(Config['CarMakerSetup']['TrafficSignalPort']))
     
     return 0
 

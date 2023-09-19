@@ -135,7 +135,7 @@ int VirEnvHelper::initialization(const char** errorMsg, const char* signalTableP
 		// if signal data, then use a separate port
 		if (SYNCHRONIZE_TRAFFIC_SIGNAL) {
 			serverAddr.push_back(Config_s.TrafficLayerIP);
-			serverPort.push_back(2444);
+			serverPort.push_back(Config_s.TrafficSignalPort);
 		}
 #endif
 

@@ -100,5 +100,8 @@ CarMakerSetup:
     
     # transmit real-time traffic signal light information 
     SynchronizeTrafficSignal: true
+    # define traffic signal port
+    # if not defined, then will automatically use the port defined in SignalSubscription
+    TrafficSignalPort: 2444
     
     
