@@ -65,6 +65,9 @@ def ReleaseRealSim(args):
     shutil.copy(os.path.join(SourcePath, r'CM9_proj\src\CarMaker.win64.exe'), os.path.join(ReleasePath, 'CarMaker', 'CM9', 'CarMaker.win64.exe'))
     shutil.copy(os.path.join(SourcePath, r'CM9_proj\src_cm4sl\libcarmaker4sl.mexw64'), os.path.join(ReleasePath, 'CarMaker', 'CM9', 'libcarmaker4sl.mexw64'))
 
+    # copy CarMaker utility files
+    shutil.copytree(os.path.join(SourcePath, r'CarMaker'), os.path.join(ReleasePath, r'CarMaker'), dirs_exist_ok=True)
+
     # release Vissim files
     shutil.copy(os.path.join(SourcePath, r'VISSIMserver\x64\Release\DriverModel_RealSim.dll'), os.path.join(ReleasePath, 'DriverModel_RealSim.dll'))
     shutil.copy(os.path.join(SourcePath, r'VISSIMserver\x64\Release\DriverModel_RealSim_v2021.dll'), os.path.join(ReleasePath, 'DriverModel_RealSim_v2021.dll'))
