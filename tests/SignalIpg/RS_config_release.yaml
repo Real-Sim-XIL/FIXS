@@ -53,29 +53,28 @@ XilSetup:
     # radius 0 means only the ego vehicle is sent to Xil
     #--------------------------------------------------
     # for sumo-ipg, essentially give any name you want to name the ego, and the interface will create the vehicle in sumo at start of the simulation
-    # VehicleSubscription: 
-    # -   type: ego
-        # attribute: {id: ['egoCm'], radius: [100]} 
-        # ip: ["127.0.0.1"]
-        # port: [7331]
+    VehicleSubscription: 
+    -   type: ego
+        attribute: {id: ['egoCm'], radius: [100]} 
+        ip: ["160.91.113.184"]
+        port: [7331]
     # -   type: ego
         # attribute: {id: ['egoCm'], radius: [0]} 
         # ip: ["127.0.0.1"]
         # port: [2333]
-    DetectorSubscription:
-    -   type: detector
-        attribute: {pattern: ['SB75_SB']}
-        ip: ['127.0.0.1']
-        port: [2444]
     SignalSubscription:
+    # -   type: intersection
+        # attribute: {name: ['2117']}
+        # ip: ['127.0.0.1']
+        # port: [7331]
     -   type: intersection
         attribute: {name: ['2881']}
-        ip: ['127.0.0.1']
-        port: [2444]
-        
+        ip: ['160.91.113.184']
+        port: [2444]    
+
 CarMakerSetup:
     # whether or not enable CarMaker (default: false)
-    EnableCosimulation: false
+    EnableCosimulation: true
     
     # if true, ego state is sent from Simulink.
     # if false, ego state is sent from User.cpp 
@@ -84,7 +83,7 @@ CarMakerSetup:
     # # Ip and Port settings 
     # # if no setting, need to make sure have one and only one vehicle id subscription, which will be used as ip and port
     # # if set, will use whatever set here instead of what is defined in subscription
-    CarMakerIP: 127.0.0.1
+    CarMakerIP: 160.91.113.184
     
     CarMakerPort: 7331
     
@@ -98,5 +97,8 @@ CarMakerSetup:
     # EgoId: egoCm
     
     # EgoType: DEFAULT_PEDTYPE
+    
+    # transmit real-time traffic signal light information 
+    SynchronizeTrafficSignal: true
     
     
