@@ -66,8 +66,8 @@
 
 
 
-        std::vector <std::string> serverAddr = { "127.0.0.1" };
-        std::vector <int> serverPort = { 7331 };
+        std::vector <std::string> serverAddr = {};
+        std::vector <int> serverPort = {};
 
 #ifndef RS_DSPACE
         ConfigHelper Config_c;

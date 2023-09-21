@@ -20,7 +20,20 @@ void VirEnvHelper::shutdown() {
 	Log("RealSim shutdown \n");
 
 #ifdef DSRTLX
-	//Sock_c.socketShutdown();
+	try {
+		Sock_c.socketShutdown();
+		Sock_c.socketReset();
+		//Log("RealSim shutdown socket size %d\n", Sock_c.serverSock.size());
+		serverAddr.clear();
+		serverPort.clear();
+	}
+	catch (const std::exception& e) {
+		std::cout << e.what();
+		Log("Warning: RealSim shutdown failed\n");
+	}
+	catch (...) {
+		Log("Warning: RealSim shutdown failed\n");
+	}
 #endif
 	veryFirstStep = 1;
 
@@ -30,6 +43,12 @@ void VirEnvHelper::shutdown() {
 	CmAvailableBusId_queue = queue<int>();
 	TrafficSimulatorId2Remove.clear();
 }
+
+
+//===================================================
+//
+//
+//===================================================
 
 #ifndef RS_DSPACE
 int VirEnvHelper::initialization(const char** errorMsg, const char* configPathInput, const char* signalTablePathInput) {
@@ -119,68 +138,70 @@ readSignalTable(signalTablePathInput);
 
 //Log("RealSim init socket size %d\n", Sock_c.serverSock.size());
 
-	// try to start RealSim socket connection
-	try {
+// try to start RealSim socket connection
+try {
 #ifndef RS_DSPACE
-		// vehicle data port
-		serverAddr[0] = Config_c.SimulationSetup.TrafficLayerIP;
-		serverPort[0] = Config_c.CarMakerSetup.CarMakerPort;
+	// vehicle data port
+	serverAddr.push_back(Config_c.SimulationSetup.TrafficLayerIP);
+	serverPort.push_back(Config_c.CarMakerSetup.CarMakerPort);
 
-		// if signal data, then use a separate port
-		if (SYNCHRONIZE_TRAFFIC_SIGNAL) {
-			serverAddr.push_back(Config_c.SimulationSetup.TrafficLayerIP);
-			serverPort.push_back(Config_c.CarMakerSetup.TrafficSignalPort);
-		}
+	// if signal data, then use a separate port
+	if (SYNCHRONIZE_TRAFFIC_SIGNAL) {
+		serverAddr.push_back(Config_c.SimulationSetup.TrafficLayerIP);
+		serverPort.push_back(Config_c.CarMakerSetup.TrafficSignalPort);
+	}
 #else
-		serverAddr[0] = Config_s.TrafficLayerIP;
-		serverPort[0] = Config_s.CarMakerPort;
+	serverAddr.push_back(Config_s.TrafficLayerIP);
+	serverPort.push_back(Config_s.CarMakerPort);
 
-		// if signal data, then use a separate port
-		if (SYNCHRONIZE_TRAFFIC_SIGNAL) {
-			serverAddr.push_back(Config_s.TrafficLayerIP);
-			serverPort.push_back(Config_s.TrafficSignalPort);
-		}
+	// if signal data, then use a separate port
+	if (SYNCHRONIZE_TRAFFIC_SIGNAL) {
+		serverAddr.push_back(Config_s.TrafficLayerIP);
+		serverPort.push_back(Config_s.TrafficSignalPort);
+	}
 #endif
 
-		Sock_c.socketSetup(serverAddr, serverPort); // connect to server Traffic Layer
-		Sock_c.disableServerTrigger();
-		Sock_c.disableWaitClientTrigger();
+	Sock_c.socketSetup(serverAddr, serverPort); // connect to server Traffic Layer
+	Sock_c.disableServerTrigger();
+	Sock_c.disableWaitClientTrigger();
 #ifdef RS_DEBUG
-		Log("RealSim serverAddr[0] %s\n", serverAddr[0].c_str());
-		Log("RealSim serverPort[0] %d\n", serverPort[0]);
+	Log("RealSim serverAddr[0] %s\n", serverAddr[0].c_str());
+	Log("RealSim serverPort[0] %d\n", serverPort[0]);
 #endif
-		if (ENABLE_REALSIM) {
+	//Log("RealSim init socket size exit %d\n", Sock_c.serverSock.size());
+
+	if (ENABLE_REALSIM) {
 #ifdef RS_DEBUG
-			Log("RealSim socket initConnection\n");
+		Log("RealSim socket initConnection\n");
 #endif
 		if (Sock_c.initConnection(CmErrorFile) > 0) {
-				printf("Connect to RealSim failed! Make sure start TrafficLayer first\n");
-				*errorMsg = "RealSim: Initialize Socket Failed";
+			printf("Connect to RealSim failed! Make sure start TrafficLayer first\n");
+			*errorMsg = "RealSim: Initialize Socket Failed";
 #ifdef RS_DEBUG
-				Log("RealSim socket initConnection failed");
+			Log("RealSim socket initConnection failed");
 #endif
-				return ERROR_INIT_SOCKET;
-			}
+			return ERROR_INIT_SOCKET;
 		}
+	}
 #ifdef RS_DEBUG
-		Log("RealSim socket initConnection succeed\n");
+	Log("RealSim socket initConnection succeed\n");
 #endif
-	}
-	catch (const std::exception& e) {
-		Sock_c.socketShutdown();
-		std::cout << e.what();
-		printf("ERROR: initialize RealSim socket failed!\n");
-		*errorMsg = "RealSim: Initialize Socket Failed";
-		return ERROR_INIT_SOCKET;
-	}
-	catch (...) {
-		Sock_c.socketShutdown();
-		printf("UNKNOWN ERROR: initialize RealSim socket failed!\n");
-		*errorMsg = "RealSim: Initialize Socket Failed";
-		return ERROR_INIT_SOCKET;
-	}
+}
+catch (const std::exception& e) {
+	Sock_c.socketShutdown();
+	std::cout << e.what();
+	printf("ERROR: initialize RealSim socket failed!\n");
+	*errorMsg = "RealSim: Initialize Socket Failed";
+	return ERROR_INIT_SOCKET;
+}
+catch (...) {
+	Sock_c.socketShutdown();
+	printf("UNKNOWN ERROR: initialize RealSim socket failed!\n");
+	*errorMsg = "RealSim: Initialize Socket Failed";
+	return ERROR_INIT_SOCKET;
+}
 
-	return 0;
+return 0;
 }
 
 int VirEnvHelper::readSignalTable(const char* signalTablePathInput) {
@@ -334,6 +355,7 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 
 			if (ENABLE_REALSIM && simTime) {
 				//Log("RealSim start receive data t=%f\n",simTime);
+				//Log("RealSim serverSock size %d\n", Sock_c.serverSock.size());
 				for (iS = 0; iS < Sock_c.serverSock.size(); iS++) {
 					if (Sock_c.recvData(Sock_c.serverSock[iS], &simStateRecv, &simTimeRecv, Msg_c) < 0) {
 						*errorMsg = "RealSim: Receive from traffic simulator failed";
