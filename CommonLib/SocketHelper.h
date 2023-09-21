@@ -107,8 +107,8 @@ public:
 // below should be converted to private in the future
 //private:
 
-	int NSERVER = 1;
-	int NCLIENT = 1;
+	int NSERVER = 0;
+	int NCLIENT = 0;
 
 	int N_ACT_CLIENT = 0; // actual clients exculde VISSIM
 
