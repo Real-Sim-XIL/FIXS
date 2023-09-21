@@ -81,6 +81,9 @@
             std::string TrafficLayerIP;
             int CarMakerPort;
             double TrafficRefreshRate;
+            int TrafficSignalPort;
+            bool SynchronizeTrafficSignal;
+            std::string SignalTableFilename;
         }Config_t;
 
         Config_t Config_s;

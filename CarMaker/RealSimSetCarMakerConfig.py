@@ -1,13 +1,18 @@
 import yaml
 import argparse
 import os
+import shutil
 
 def setCarMakerConfig(args):
     
     with open(args.configFile, 'r') as file:
         Config = yaml.safe_load(file)
 
-    RealSimCarMakerConfigName = os.path.join(args.cm_project_path, 'RealSimCarMakerConfig.txt')
+    RS_tmp_folder = 'RS_tmp'
+    RealSimTmpPath = os.path.join(args.cm_project_path, RS_tmp_folder)
+    os.makedirs(RealSimTmpPath, exist_ok=True)
+    SignalTableFile = os.path.join(args.signal_table_path)
+    RealSimCarMakerConfigName = os.path.join(RealSimTmpPath, 'RealSimCarMakerConfig.txt')
 
     TrafficLayerIP = ''
     TrafficLayerPort = ''
@@ -114,6 +119,12 @@ def setCarMakerConfig(args):
             Config['CarMakerSetup']['TrafficRefreshRate'] = 0.001 
         if 'TrafficSignalPort' not in Config['CarMakerSetup'].keys():
             Config['CarMakerSetup']['TrafficSignalPort'] = TrafficSignalPort
+        if 'SynchronizeTrafficSignal' not in Config['CarMakerSetup'].keys(): 
+            Config['CarMakerSetup']['SynchronizeTrafficSignal'] = False 
+
+        # create full path to SignalTable file on the dSPACE RT-Linux OS path
+        tmp = os.path.abspath(args.cm_project_path).split('\\')
+        SignalTablePathDS = os.path.join('/', tmp[-2],tmp[-1],RS_tmp_folder, SignalTableFile.split('\\')[-1]).replace('\\', '/')
 
         # save to text file
         with open(RealSimCarMakerConfigName, 'w') as file:
@@ -129,8 +140,13 @@ def setCarMakerConfig(args):
             file.write('TrafficLayerIP={}\n'.format(Config['CarMakerSetup']['TrafficLayerIP']))
             file.write('CarMakerPort={}\n'.format(Config['CarMakerSetup']['CarMakerPort']))
             file.write('TrafficRefreshRate={}\n'.format(Config['CarMakerSetup']['TrafficRefreshRate']))
+            file.write('SynchronizeTrafficSignal={}\n'.format(Config['CarMakerSetup']['SynchronizeTrafficSignal']))
             file.write('TrafficSignalPort={}\n'.format(Config['CarMakerSetup']['TrafficSignalPort']))
-    
+            file.write('SignalTableFilename={}\n'.format(SignalTablePathDS))
+
+        shutil.copy(SignalTableFile, os.path.join(RealSimTmpPath, SignalTableFile.split('\\')[-1]))
+
+
     return 0
 
 if __name__ == '__main__':
@@ -144,6 +160,11 @@ if __name__ == '__main__':
                         type=str, 
                         default='./',
                         help='CM project path')
+    argparser.add_argument('--signal-table-path', 
+                        metavar = 'PATH', 
+                        type=str, 
+                        default='./',
+                        help='CM+SUMO signal table path')
     arguments = argparser.parse_args()
 
     setCarMakerConfig(arguments)

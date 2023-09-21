@@ -86,35 +86,38 @@ int VirEnvHelper::initialization(const char** errorMsg, const char* signalTableP
 
 	ENABLE_REALSIM = Config_c.CarMakerSetup.EnableCosimulation;
 	ENABLE_SEPARATE_EGO_TRAFFIC = Config_c.CarMakerSetup.EnableEgoSimulink;
+SYNCHRONIZE_TRAFFIC_SIGNAL = Config_c.CarMakerSetup.SynchronizeTrafficSignal;
 #else
-	Log("RealSim read config\n");
+Log("RealSim read config\n");
 
-	// reparser to common variables as the non dSPACE version
-	ENABLE_REALSIM = Config_s.EnableCosimulation;
-	ENABLE_SEPARATE_EGO_TRAFFIC = Config_s.EnableEgoSimulink;
-	
-	Msg_c.VehicleMessageField_v = Config_s.VehicleMessageField_v;
+// reparser to common variables as the non dSPACE version
+ENABLE_REALSIM = Config_s.EnableCosimulation;
+ENABLE_SEPARATE_EGO_TRAFFIC = Config_s.EnableEgoSimulink;
+SYNCHRONIZE_TRAFFIC_SIGNAL = Config_s.SynchronizeTrafficSignal;
 
-	Log("RealSim message field: ");
-	for (unsigned int i = 0; i < Msg_c.VehicleMessageField_v.size(); i++) {
-		Msg_c.VehicleMessageField_set.insert(Msg_c.VehicleMessageField_v[i]);
-		Log("%s, ", Msg_c.VehicleMessageField_v[i].c_str());
-	}
-	Log("\n");
+Msg_c.VehicleMessageField_v = Config_s.VehicleMessageField_v;
+
+Log("RealSim message field: ");
+for (unsigned int i = 0; i < Msg_c.VehicleMessageField_v.size(); i++) {
+	Msg_c.VehicleMessageField_set.insert(Msg_c.VehicleMessageField_v[i]);
+	Log("%s, ", Msg_c.VehicleMessageField_v[i].c_str());
+}
+Log("\n");
 
 #endif
 
-	// check if vehicle class is defined
-	if (Msg_c.VehicleMessageField_set.find("vehicleClass") == Msg_c.VehicleMessageField_set.end() || Msg_c.VehicleMessageField_set.find("heading") == Msg_c.VehicleMessageField_set.end() || Msg_c.VehicleMessageField_set.find("grade") == Msg_c.VehicleMessageField_set.end()) {
-		*errorMsg = "RealSim: Must subscribe: id, speed, vehicleClass, heading, grade, speedDesired/accelerationDesired";
-		//*errorMsg = const_cast<char*>(errorMsgStr.c_str());
-		return ERROR_INIT_MSG_FIELD;
-	}
+// check if vehicle class is defined
+if (Msg_c.VehicleMessageField_set.find("vehicleClass") == Msg_c.VehicleMessageField_set.end() || Msg_c.VehicleMessageField_set.find("heading") == Msg_c.VehicleMessageField_set.end() || Msg_c.VehicleMessageField_set.find("grade") == Msg_c.VehicleMessageField_set.end()) {
+	*errorMsg = "RealSim: Must subscribe: id, speed, vehicleClass, heading, grade, speedDesired/accelerationDesired";
+	//*errorMsg = const_cast<char*>(errorMsgStr.c_str());
+	return ERROR_INIT_MSG_FIELD;
+}
 
 
-	// read signal table
-	readSignalTable(signalTablePathInput);
+// read signal table
+readSignalTable(signalTablePathInput);
 
+//Log("RealSim init socket size %d\n", Sock_c.serverSock.size());
 
 	// try to start RealSim socket connection
 	try {
@@ -183,7 +186,16 @@ int VirEnvHelper::initialization(const char** errorMsg, const char* signalTableP
 int VirEnvHelper::readSignalTable(const char* signalTablePathInput) {
 
 	// Open an existing file
-	ifstream SignalTableFile(signalTablePathInput);
+	string signalTablePathInput_str = signalTablePathInput;
+	if ( signalTablePathInput_str.substr(signalTablePathInput_str.size() - 4).compare(".csv" ) == 0 ){
+
+	}
+	else {
+		signalTablePathInput_str.append(".csv");
+	}
+	Log("SignalTable name %s\n", signalTablePathInput_str.c_str());
+
+	ifstream SignalTableFile(signalTablePathInput_str);
 
 	if (!SignalTableFile) {
 		return -1;

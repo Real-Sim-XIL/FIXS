@@ -29,7 +29,7 @@ extern "C" {
 
 
 			const char* errorMsg;
-			if (VirEnv_c->initialization(&errorMsg, signalTablePath) < 0) {
+			if (VirEnv_c->initialization(&errorMsg, VirEnv_c->Config_s.SignalTableFilename.c_str()) < 0) {
 				VirEnv_c->CM_LogErrF(errorMsg);
 				VirEnv_c->CM_Log("RealSim error initialization \n");
 			}
@@ -114,7 +114,20 @@ extern "C" {
 		if (strcmp(name, "TrafficRefreshRate") == 0) {
 			VirEnv_c->Config_s.TrafficRefreshRate = atof(valChar);
 		}
-	
+		if (strcmp(name, "TrafficSignalPort") == 0) {
+			VirEnv_c->Config_s.TrafficSignalPort = atoi(valChar);
+		}
+		if (strcmp(name, "SynchronizeTrafficSignal") == 0) {
+			if (strcmp(valChar, "True") == 0) {
+				VirEnv_c->Config_s.SynchronizeTrafficSignal = 1;
+			}
+			else {
+				VirEnv_c->Config_s.SynchronizeTrafficSignal = 0;
+			}
+		}
+		if (strcmp(name, "SignalTableFilename") == 0) {
+			VirEnv_c->Config_s.SignalTableFilename = valChar;
+		}
 		return 0;
 	}
 #endif
