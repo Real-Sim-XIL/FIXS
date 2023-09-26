@@ -293,6 +293,11 @@ void TrafficHelper::getConfig() {
 			ENABLE_SIG_SUB = false;
 		}
 	}
+
+	//if (Config_c->CarMakerSetup.EnableCosimulation && Config_c->CarMakerSetup.SynchronizeTrafficSignal) {
+	//	ENABLE_SIG_SUB = true;
+	//}
+
 	if (Config_c->SimulationSetup.EnableExternalDynamics) {
 		ENABLE_EXT_DYN = true;
 	}
@@ -1164,6 +1169,53 @@ int TrafficHelper::recvFromSUMO(double* simTime, MsgHelper& Msg_c) {
 	}
 
 	if (ENABLE_SIG_SUB) {
+		if (!SignalSubscriptionFlags.idHasSubscribed) {
+			//===================================================
+			// Retreive DETECTOR configuration for the scenario BEFORE simulation starts
+			//===================================================
+			vector <string> sigAllId_v = TrafficLight::getIDList();
+
+			// obtain detector ids of the selected intersection and subscribe to results
+
+			vector <int> sigSubscribeList = { libsumo::TL_RED_YELLOW_GREEN_STATE };
+
+			if (!Config_c->SubscriptionSignalList.subAllSignalFlag) {
+				for (auto it : Config_c->SubscriptionSignalList.signalId_v) {
+					TrafficLight::subscribe(it.c_str(), sigSubscribeList, 0, tSimuEnd);
+				}
+			}
+			else {
+				for (auto it : sigAllId_v) {
+					TrafficLight::subscribe(it.c_str(), sigSubscribeList, 0, tSimuEnd);
+				}
+			}
+
+			SignalSubscriptionFlags.idHasSubscribed = true;
+
+		}
+
+		// if already subscribed, then get signal data out
+		libsumo::SubscriptionResults SigSubscribeRaw;
+		SigSubscribeRaw = TrafficLight::getAllSubscriptionResults();
+
+		vector <TrafficLightData_t> tempSigData_v;
+
+		std::shared_ptr<libsumo::TraCIString> tempStringPtr;
+
+		int idx = 0;
+		for (auto& it : SigSubscribeRaw) {
+			TrafficLightData_t curSig;
+
+			curSig.id = idx++;
+			curSig.name = it.first;
+			tempStringPtr = static_pointer_cast<libsumo::TraCIString> (it.second[libsumo::TL_RED_YELLOW_GREEN_STATE]);
+			curSig.state = tempStringPtr->value;
+
+			Msg_c.TlsDataRecv_um[curSig.name] = curSig;
+
+		}
+
+
 
 	}
 
