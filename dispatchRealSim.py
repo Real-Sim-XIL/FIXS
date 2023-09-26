@@ -85,7 +85,7 @@ def ReleaseRealSim(args):
     # shutil.copytree(os.path.join(RealSimSourcePath, r'CommonLib\yaml-cpp\build\Release'), os.path.join(curPath, r'CommonLib\yaml-cpp\build\Release'), dirs_exist_ok=True)
 
     # release CM-dSPACE library
-    shutil.copy(os.path.join(SourcePath, r'CommonLib\libRealSimDsLib_2021b.a'), os.path.join(ReleasePath, r'CommonLib\libRealSimDsLib_2021b.a'))
+    shutil.copy(os.path.join(SourcePath, r'CommonLib\libRealSimDsLib_2021b.a'), os.path.join(ReleasePath, r'CarMaker\libRealSimDsLib_2021b.a'))
 
     # common virtual environment files
     shutil.copy(os.path.join(SourcePath, r'CommonLib\VirEnvHelper.cpp'), os.path.join(ReleasePath, r'CommonLib\VirEnvHelper.cpp'))
