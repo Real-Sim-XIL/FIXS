@@ -31,7 +31,11 @@
 
         int veryFirstStep = 1;
 
+        // if this flag is true, then ego send to simulink, traffic send to this c code
         bool ENABLE_SEPARATE_EGO_TRAFFIC = false;
+
+        bool SYNCHRONIZE_TRAFFIC_SIGNAL = true;
+
 
         // map vehicle id from traffic simulator to carmaker
         std::unordered_map <std::string, int> TrafficSimulatorId2CarMakerId;
@@ -62,9 +66,8 @@
 
 
 
-
-        std::vector <std::string> serverAddr = { "127.0.0.1" };
-        std::vector <int> serverPort = { 7331 };
+        std::vector <std::string> serverAddr = {};
+        std::vector <int> serverPort = {};
 
 #ifndef RS_DSPACE
         ConfigHelper Config_c;
@@ -78,6 +81,9 @@
             std::string TrafficLayerIP;
             int CarMakerPort;
             double TrafficRefreshRate;
+            int TrafficSignalPort;
+            bool SynchronizeTrafficSignal;
+            std::string SignalTableFilename;
         }Config_t;
 
         Config_t Config_s;
@@ -90,11 +96,11 @@
 		//
         void shutdown();
 
-#ifndef RS_DSPACE
-        int initialization(const char** errorMsgChar, const char* configPathInput);
-#else
-        int initialization(const char** errorMsgChar);
-#endif
+//#ifndef RS_DSPACE
+        int initialization(const char** errorMsgChar, const char* configPathInput, const char* signalTablePathInput);
+//#else
+//        int initialization(const char** errorMsgChar, const char* signalTablePathInput);
+//#endif
 
         int runStep(double simTime, const char** errorMsgChar);
 		//
@@ -115,11 +121,27 @@
             ERROR_STEP_REMOVE_ID = -3,
             ERROR_STEP_UPDATE_STATE = -4,
             ERROR_STEP_SEND_EGO = -5,
-            ERROR_STEP_REFRESH_TRAFFIC = -6
+            ERROR_STEP_REFRESH_TRAFFIC = -6,
+            ERROR_STEP_SYNC_TRAFFIC_SIGNAL = -7
 
         };
 
     private:
+        // signal controller map
+        // sumo controller id -> head id, trflight index
+        std::unordered_map <std::string, std::vector <std::pair<int, int>> > SignalController2HeadIdTrfLightIndex;
+
+        tTLState tlsChar2CmState(char charState);
+
+        int readSignalTable(const char* signalTablePathInput);
+
+        typedef struct  {
+            std::string signalControllerName;
+            int signalGroupId;
+            int signalHeadId;
+            int cmTrafficLightIndex;
+            std::string cmControllerId;
+        } SignalTable_t;
 
     };
 

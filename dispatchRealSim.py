@@ -29,6 +29,13 @@ def ReleaseRealSim(args):
         print("==============================")
         exit()
 
+    # compile RS dSPACE IPG library
+    os.chdir(os.path.join(SourcePath, r'CommonLib'))
+    import subprocess
+    #status=os.system('buildRS_2021b.bat')
+    p = subprocess.run(['buildRS_2021b.bat'], capture_output=True)
+    os.chdir(curPath)
+
     # release executable
     shutil.copy(os.path.join(SourcePath, r'TrafficLayer\x64\Release\TrafficLayer.exe'), os.path.join(ReleasePath, 'TrafficLayer.exe'))
     shutil.copy(os.path.join(SourcePath, r'ControlLayer\x64\Release\CoordMerge.exe'), os.path.join(ReleasePath, 'CoordMerge.exe'))
@@ -77,12 +84,14 @@ def ReleaseRealSim(args):
     # shutil.copytree(os.path.join(RealSimSourcePath, r'CommonLib\yaml-cpp\include'), os.path.join(curPath, r'CommonLib\yaml-cpp\include'), dirs_exist_ok=True)
     # shutil.copytree(os.path.join(RealSimSourcePath, r'CommonLib\yaml-cpp\build\Release'), os.path.join(curPath, r'CommonLib\yaml-cpp\build\Release'), dirs_exist_ok=True)
 
+    # release CM-dSPACE library
+    shutil.copy(os.path.join(SourcePath, r'CommonLib\libRealSimDsLib_2021b.a'), os.path.join(ReleasePath, r'CommonLib\libRealSimDsLib_2021b.a'))
+
     # common virtual environment files
     shutil.copy(os.path.join(SourcePath, r'CommonLib\VirEnvHelper.cpp'), os.path.join(ReleasePath, r'CommonLib\VirEnvHelper.cpp'))
     shutil.copy(os.path.join(SourcePath, r'CommonLib\VirEnvHelper.h'), os.path.join(ReleasePath, r'CommonLib\VirEnvHelper.h'))
     shutil.copy(os.path.join(SourcePath, r'CommonLib\VirEnv_Wrapper.cpp'), os.path.join(ReleasePath, r'CommonLib\VirEnv_Wrapper.cpp'))
     shutil.copy(os.path.join(SourcePath, r'CommonLib\VirEnv_Wrapper.h'), os.path.join(ReleasePath, r'CommonLib\VirEnv_Wrapper.h'))
-
 
     print("==============================")
     print('RealSim: finished release')
@@ -95,7 +104,7 @@ if __name__ == '__main__':
     argparser.add_argument('--realsim-path', '-p', 
                         metavar = 'PATH', 
                         type=str, 
-                        default=os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), r'..\..\RealSimInterface')),
+                        default=os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), r'.\\')),
                         help='RealSim source code path')
     arguments = argparser.parse_args()
 

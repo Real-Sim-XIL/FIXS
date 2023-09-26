@@ -251,6 +251,15 @@ int ConfigHelper::getConfig(string configName) {
 		getDetSubscriptionList(ApplicationSetup.DetectorSubscription);
 	}
 
+	// figure out TrafficLayer IP
+	if (XilSetup.EnableXil) {
+		SimulationSetup.TrafficLayerIP = get<2>(XilSetup.VehicleSubscription[0])[0];
+		SimulationSetup.TrafficLayerPort = get<3>(XilSetup.VehicleSubscription[0])[0];
+	}
+	else {
+		SimulationSetup.TrafficLayerIP = get<2>(ApplicationSetup.VehicleSubscription[0])[0];
+		SimulationSetup.TrafficLayerPort = get<3>(ApplicationSetup.VehicleSubscription[0])[0];
+	}
 
 
 	// ===========================================================================
@@ -342,9 +351,26 @@ int ConfigHelper::getConfig(string configName) {
 	}
 	SubscriptionSignalList.subAllSignalFlag = CarMakerSetup.SynchronizeTrafficSignal;
 
+	if (node["TrafficSignalPort"]) {
+		CarMakerSetup.TrafficSignalPort = parserInteger(node, "TrafficSignalPort");
+	}
+	else {
+		CarMakerSetup.TrafficSignalPort = 2444;
+		if (!ApplicationSetup.EnableApplicationLayer && XilSetup.EnableXil) {
+			if (XilSetup.SignalSubscription.size() == 1) {
+				CarMakerSetup.TrafficSignalPort = get<3>(XilSetup.SignalSubscription[0])[0];
+			}
+		}
+		else {
+			if (ApplicationSetup.SignalSubscription.size() == 1) {
+				CarMakerSetup.TrafficSignalPort = get<3>(ApplicationSetup.SignalSubscription[0])[0];
+			}
+		}
+	}
 	if (CarMakerSetup.SynchronizeTrafficSignal) {
 		//SocketPort2SubscriptionList_um[CarMakerSetup.CarMakerPort].SignalList.subAllSignalFlag = true;
-		SocketPort2SubscriptionList_um[2444].SignalList.subAllSignalFlag = true;
+
+		SocketPort2SubscriptionList_um[CarMakerSetup.TrafficSignalPort].SignalList.subAllSignalFlag = true;
 	}
 
 	// ===========================================================================

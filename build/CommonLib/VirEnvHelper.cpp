@@ -20,7 +20,20 @@ void VirEnvHelper::shutdown() {
 	Log("RealSim shutdown \n");
 
 #ifdef DSRTLX
-	//Sock_c.socketShutdown();
+	try {
+		Sock_c.socketShutdown();
+		Sock_c.socketReset();
+		//Log("RealSim shutdown socket size %d\n", Sock_c.serverSock.size());
+		serverAddr.clear();
+		serverPort.clear();
+	}
+	catch (const std::exception& e) {
+		std::cout << e.what();
+		Log("Warning: RealSim shutdown failed\n");
+	}
+	catch (...) {
+		Log("Warning: RealSim shutdown failed\n");
+	}
 #endif
 	veryFirstStep = 1;
 
@@ -31,11 +44,17 @@ void VirEnvHelper::shutdown() {
 	TrafficSimulatorId2Remove.clear();
 }
 
-#ifndef RS_DSPACE
-int VirEnvHelper::initialization(const char** errorMsg, const char* configPathInput) {
-#else
-int VirEnvHelper::initialization(const char** errorMsg) {
-#endif
+
+//===================================================
+//
+//
+//===================================================
+
+//#ifndef RS_DSPACE
+int VirEnvHelper::initialization(const char** errorMsg, const char* configPathInput, const char* signalTablePathInput) {
+//#else
+//int VirEnvHelper::initialization(const char** errorMsg, const char* signalTablePathInput) {
+//#endif
 	//TCHAR NPath[MAX_PATH];
 	//GetCurrentDirectory(MAX_PATH, NPath);
 
@@ -74,8 +93,8 @@ int VirEnvHelper::initialization(const char** errorMsg) {
 	f << "RealSim CarMaker Starts at  " << str << endl;
 	f.close();
 
-#ifndef RS_DSPACE
 	configPath = configPathInput;
+#ifndef RS_DSPACE
 	if (Config_c.getConfig(configPath) < 0) {
 		errorMsgStr = "RealSim: Read Configuration Yaml File Failed";
 		*errorMsg = errorMsgStr.c_str();
@@ -86,13 +105,16 @@ int VirEnvHelper::initialization(const char** errorMsg) {
 
 	ENABLE_REALSIM = Config_c.CarMakerSetup.EnableCosimulation;
 	ENABLE_SEPARATE_EGO_TRAFFIC = Config_c.CarMakerSetup.EnableEgoSimulink;
+	SYNCHRONIZE_TRAFFIC_SIGNAL = Config_c.CarMakerSetup.SynchronizeTrafficSignal;
 #else
+
 	Log("RealSim read config\n");
 
 	// reparser to common variables as the non dSPACE version
 	ENABLE_REALSIM = Config_s.EnableCosimulation;
 	ENABLE_SEPARATE_EGO_TRAFFIC = Config_s.EnableEgoSimulink;
-	
+	SYNCHRONIZE_TRAFFIC_SIGNAL = Config_s.SynchronizeTrafficSignal;
+
 	Msg_c.VehicleMessageField_v = Config_s.VehicleMessageField_v;
 
 	Log("RealSim message field: ");
@@ -104,65 +126,153 @@ int VirEnvHelper::initialization(const char** errorMsg) {
 
 #endif
 
-	// check if vehicle class is defined
-	if (Msg_c.VehicleMessageField_set.find("vehicleClass") == Msg_c.VehicleMessageField_set.end() || Msg_c.VehicleMessageField_set.find("heading") == Msg_c.VehicleMessageField_set.end() || Msg_c.VehicleMessageField_set.find("grade") == Msg_c.VehicleMessageField_set.end()) {
-		*errorMsg = "RealSim: Must subscribe: id, speed, vehicleClass, heading, grade, speedDesired/accelerationDesired";
-		//*errorMsg = const_cast<char*>(errorMsgStr.c_str());
-		return ERROR_INIT_MSG_FIELD;
-	}
+// check if vehicle class is defined
+if (Msg_c.VehicleMessageField_set.find("vehicleClass") == Msg_c.VehicleMessageField_set.end() || Msg_c.VehicleMessageField_set.find("heading") == Msg_c.VehicleMessageField_set.end() || Msg_c.VehicleMessageField_set.find("grade") == Msg_c.VehicleMessageField_set.end()) {
+	*errorMsg = "RealSim: Must subscribe: id, speed, vehicleClass, heading, grade, speedDesired/accelerationDesired";
+	//*errorMsg = const_cast<char*>(errorMsgStr.c_str());
+	return ERROR_INIT_MSG_FIELD;
+}
 
+if (SYNCHRONIZE_TRAFFIC_SIGNAL) {
+	// 
+	string pattern = "RS_tmp";
+	string rsTmpPath = configPath.substr(0, configPath.find(pattern));
+	string siganlTableFullPath = rsTmpPath + "RS_tmp/" + signalTablePathInput;
 
-	try {
+	Log("RS signal path %s\n", siganlTableFullPath.c_str());
+	// read signal table
+	readSignalTable(siganlTableFullPath.c_str());
+}
+
+//Log("RealSim init socket size %d\n", Sock_c.serverSock.size());
+
+// try to start RealSim socket connection
+try {
 #ifndef RS_DSPACE
-		serverAddr[0] = Config_c.CarMakerSetup.CarMakerIP;
-		serverPort[0] = Config_c.CarMakerSetup.CarMakerPort;
+	// vehicle data port
+	serverAddr.push_back(Config_c.SimulationSetup.TrafficLayerIP);
+	serverPort.push_back(Config_c.CarMakerSetup.CarMakerPort);
+
+	// if signal data, then use a separate port
+	if (SYNCHRONIZE_TRAFFIC_SIGNAL) {
+		serverAddr.push_back(Config_c.SimulationSetup.TrafficLayerIP);
+		serverPort.push_back(Config_c.CarMakerSetup.TrafficSignalPort);
+	}
 #else
-		serverAddr[0] = Config_s.TrafficLayerIP;
-		serverPort[0] = Config_s.CarMakerPort;
+	serverAddr.push_back(Config_s.TrafficLayerIP);
+	serverPort.push_back(Config_s.CarMakerPort);
+
+	// if signal data, then use a separate port
+	if (SYNCHRONIZE_TRAFFIC_SIGNAL) {
+		serverAddr.push_back(Config_s.TrafficLayerIP);
+		serverPort.push_back(Config_s.TrafficSignalPort);
+	}
 #endif
 
-		Sock_c.socketSetup(serverAddr, serverPort); // connect to server Traffic Layer
-		Sock_c.disableServerTrigger();
-		Sock_c.disableWaitClientTrigger();
+	Sock_c.socketSetup(serverAddr, serverPort); // connect to server Traffic Layer
+	Sock_c.disableServerTrigger();
+	Sock_c.disableWaitClientTrigger();
 #ifdef RS_DEBUG
-		Log("RealSim serverAddr[0] %s\n", serverAddr[0].c_str());
-		Log("RealSim serverPort[0] %d\n", serverPort[0]);
+	Log("RealSim serverAddr[0] %s\n", serverAddr[0].c_str());
+	Log("RealSim serverPort[0] %d\n", serverPort[0]);
 #endif
-		if (ENABLE_REALSIM) {
+	//Log("RealSim init socket size exit %d\n", Sock_c.serverSock.size());
+
+	if (ENABLE_REALSIM) {
 #ifdef RS_DEBUG
-			Log("RealSim socket initConnection\n");
+		Log("RealSim socket initConnection\n");
 #endif
 		if (Sock_c.initConnection(CmErrorFile) > 0) {
-				printf("Connect to RealSim failed! Make sure start TrafficLayer first\n");
-				*errorMsg = "RealSim: Initialize Socket Failed";
+			printf("Connect to RealSim failed! Make sure start TrafficLayer first\n");
+			*errorMsg = "RealSim: Initialize Socket Failed";
 #ifdef RS_DEBUG
-				Log("RealSim socket initConnection failed");
+			Log("RealSim socket initConnection failed");
 #endif
-				return ERROR_INIT_SOCKET;
+			return ERROR_INIT_SOCKET;
+		}
+	}
+#ifdef RS_DEBUG
+	Log("RealSim socket initConnection succeed\n");
+#endif
+}
+catch (const std::exception& e) {
+	Sock_c.socketShutdown();
+	std::cout << e.what();
+	printf("ERROR: initialize RealSim socket failed!\n");
+	*errorMsg = "RealSim: Initialize Socket Failed";
+	return ERROR_INIT_SOCKET;
+}
+catch (...) {
+	Sock_c.socketShutdown();
+	printf("UNKNOWN ERROR: initialize RealSim socket failed!\n");
+	*errorMsg = "RealSim: Initialize Socket Failed";
+	return ERROR_INIT_SOCKET;
+}
+
+return 0;
+}
+
+int VirEnvHelper::readSignalTable(const char* signalTablePathInput) {
+
+	// Open an existing file
+	string signalTablePathInput_str = signalTablePathInput;
+	if ( signalTablePathInput_str.substr(signalTablePathInput_str.size() - 4).compare(".csv" ) == 0 ){
+
+	}
+	else {
+		signalTablePathInput_str.append(".csv");
+	}
+	Log("SignalTable name %s\n", signalTablePathInput_str.c_str());
+
+	ifstream SignalTableFile(signalTablePathInput_str);
+
+	if (!SignalTableFile) {
+		return -1;
+	}
+
+	string curLine;
+	getline(SignalTableFile, curLine); // ignore the first line
+	while (getline(SignalTableFile, curLine)) {
+
+		istringstream lineString(curLine);
+
+		string element;
+
+		SignalTable_t Sig;
+
+		// 'signalControllerName' : string
+		getline(lineString, element, ',');
+		Sig.signalControllerName = (element);
+
+		//'signalGroupId' : int,
+		getline(lineString, element, ',');
+		Sig.signalGroupId = atoi(element.c_str());
+
+		//'signalHeadId' : int,
+		getline(lineString, element, ',');
+		Sig.signalHeadId = atoi(element.c_str());
+
+		//'CmTrafficLightIndex' : int,
+		getline(lineString, element, ',');
+		Sig.cmTrafficLightIndex = atoi(element.c_str());
+
+		//'CmControllerId' : string,
+		getline(lineString, element, ',');
+		Sig.cmControllerId = (element);
+
+		// if has CM traffic light
+		if (Sig.cmTrafficLightIndex > -1) {
+			if (SignalController2HeadIdTrfLightIndex.find(Sig.signalControllerName) != SignalController2HeadIdTrfLightIndex.end()) {
+				SignalController2HeadIdTrfLightIndex[Sig.signalControllerName].push_back(make_pair(Sig.signalHeadId, Sig.cmTrafficLightIndex));
+			}
+			else {
+				SignalController2HeadIdTrfLightIndex[Sig.signalControllerName] = { make_pair(Sig.signalHeadId, Sig.cmTrafficLightIndex) };
 			}
 		}
-#ifdef RS_DEBUG
-		Log("RealSim socket initConnection succeed\n");
-#endif
-	}
-	catch (const std::exception& e) {
-		Sock_c.socketShutdown();
-		std::cout << e.what();
-		printf("ERROR: initialize RealSim socket failed!\n");
-		*errorMsg = "RealSim: Initialize Socket Failed";
-		return ERROR_INIT_SOCKET;
-	}
-	catch (...) {
-		Sock_c.socketShutdown();
-		printf("UNKNOWN ERROR: initialize RealSim socket failed!\n");
-		*errorMsg = "RealSim: Initialize Socket Failed";
-		return ERROR_INIT_SOCKET;
 	}
 
 	return 0;
 }
-
-
 
 int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 	//FOR veh in RealSimReceived
@@ -191,14 +301,15 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 
 	string errorMsgStr;
 
-	// ===========================================================================
-	// 			receiving and handling
-	// ===========================================================================
+
 	 // run real sim step every 0.1 seconds and not do this step at simTime=0
 	int simStateRecv = 0;
 	float simTimeRecv = 0;
-	int iS = 0;
+	unsigned int iS = 0;
 
+	// ===========================================================================
+	// 			initialize available CM id queue and move traffic objects far away
+	// ===========================================================================
 	if (simTime < 0.05){
 		try {
 			for (int iObj = 0; iObj < Traffic.nObjs; iObj++) {
@@ -243,18 +354,24 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 	}
 
 	if (simTime > 1e-5 && abs((simTime) * 10 - ceil((simTime) * 10 - 0.5)) < 1e-5) {
-
+		// ===========================================================================
+		// 			receive from RealSim
+		// ===========================================================================
 		try {
 
 			Msg_c.clearRecvStorage();
 
 			if (ENABLE_REALSIM && simTime) {
 				//Log("RealSim start receive data t=%f\n",simTime);
-				if (Sock_c.recvData(Sock_c.serverSock[iS], &simStateRecv, &simTimeRecv, Msg_c) < 0) {
-					*errorMsg = "RealSim: Receive from traffic simulator failed";
-					return ERROR_STEP_RECV_REALSIM;
-				}else {
-					//Log("RealSim received data t=%f\n",simTime);
+				//Log("RealSim serverSock size %d\n", Sock_c.serverSock.size());
+				for (iS = 0; iS < Sock_c.serverSock.size(); iS++) {
+					if (Sock_c.recvData(Sock_c.serverSock[iS], &simStateRecv, &simTimeRecv, Msg_c) < 0) {
+						*errorMsg = "RealSim: Receive from traffic simulator failed";
+						return ERROR_STEP_RECV_REALSIM;
+					}
+					else {
+						//Log("RealSim received data t=%f\n",simTime);
+					}
 				}
 			}
 		}
@@ -270,7 +387,9 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 			return ERROR_STEP_RECV_REALSIM;
 		}
 
-
+		// ===========================================================================
+		// 			map received car Id to Cm id
+		// ===========================================================================
 		try {
 			// for each received vehicle, map to cm id if needed
 			for (auto it : Msg_c.VehDataRecv_um) {
@@ -333,7 +452,9 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 			return ERROR_STEP_MAP_ID;
 		}
 
-
+		// ===========================================================================
+		// 			clean up vehicles that already gone
+		// ===========================================================================
 		try {
 			// remove those ids that not exists since last time step
 			for (string idTs : TrafficSimulatorId2Remove) {
@@ -375,7 +496,9 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 			return ERROR_STEP_REMOVE_ID;
 		}
 
-
+		// ===========================================================================
+		// 			move traffic position
+		// ===========================================================================
 		try {
 			// update state
 			TrafficSimulatorId2Remove.clear();
@@ -445,6 +568,40 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 
 	}
 
+
+	// ===========================================================================
+	// 			sync traffic signal light
+	// ===========================================================================
+	if (SYNCHRONIZE_TRAFFIC_SIGNAL) {
+		try {
+			// loop over each signal light
+			for (auto it : Msg_c.TlsDataRecv_um) {
+				string tlsId = it.second.name;
+				string tlsState = it.second.state;
+
+				// if can find the tlsId, then synchronize it
+				if (SignalController2HeadIdTrfLightIndex.find(tlsId) != SignalController2HeadIdTrfLightIndex.end()) {
+					// the unordered_map contains a list of head id and TrfLight index pair, so loop over each to synchronize
+					for (auto it : SignalController2HeadIdTrfLightIndex[tlsId]) {
+						TrfLight.Objs[get<1>(it)].State = tlsChar2CmState(tlsState.at(get<0>(it)));
+					}
+				}
+
+			}
+		}
+		catch (const std::exception& e) {
+			std::cout << e.what();
+			errorMsgStr = "RealSim: Sync traffic signal light failed";
+			*errorMsg = errorMsgStr.c_str();
+			return ERROR_STEP_SYNC_TRAFFIC_SIGNAL;
+		}
+		catch (...) {
+			errorMsgStr = "RealSim: Sync traffic signal light failed";
+			*errorMsg = errorMsgStr.c_str();
+			return ERROR_STEP_SYNC_TRAFFIC_SIGNAL;
+		}
+	}
+
 	// ===========================================================================
 	// 			sending out
 	// ===========================================================================
@@ -483,39 +640,43 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 				 VehDataSend.accelerationDesired = (float)0;
 			 }
 
-			if (ENABLE_REALSIM) {
-				 uint8_t simStateSend = simStateRecv;
+			 if (ENABLE_REALSIM) {
 
-				 int iByte = 0;
+				 for (iS = 0; iS < Sock_c.serverSock.size(); iS++) {
 
-				 char sendServerBuffer[8096];
-				 // !! WE don't know the message size yet, pack a dummy header
-				Msg_c.packHeader(simStateSend, simTimeRecv, MSG_HEADER_SIZE, sendServerBuffer, &iByte);
-				Sock_c.sendServerByte[iS] = { MSG_HEADER_SIZE };
+					 uint8_t simStateSend = simStateRecv;
 
-				// only pack ego information if one connection to RealSim
-				// if two connections, still send ego at beginning to add this ego car in SUMO/VISSIM
-				if (!ENABLE_SEPARATE_EGO_TRAFFIC || simTime < 1e-5) {
-					Msg_c.packVehData(VehDataSend, sendServerBuffer, &Sock_c.sendServerByte[iS]);
-				}
+					 int iByte = 0;
 
-				// repack the header with the correct size
-				iByte = 0;
-				Msg_c.packHeader(simStateSend, simTimeRecv, Sock_c.sendServerByte[iS], sendServerBuffer, &iByte);
+					 char sendServerBuffer[8096];
+					 // !! WE don't know the message size yet, pack a dummy header
+					 Msg_c.packHeader(simStateSend, simTimeRecv, MSG_HEADER_SIZE, sendServerBuffer, &iByte);
+					 Sock_c.sendServerByte[iS] = { MSG_HEADER_SIZE };
 
-				if (send(Sock_c.serverSock[iS], sendServerBuffer, Sock_c.sendServerByte[iS], 0) != Sock_c.sendServerByte[iS]) {
-					char buff[1000];
+					 // only pack ego information if one connection to RealSim
+					 // if two connections, still send ego at beginning to add this ego car in SUMO/VISSIM
+					 if ((!ENABLE_SEPARATE_EGO_TRAFFIC || simTime < 1e-5) && iS == 0) {
+						 Msg_c.packVehData(VehDataSend, sendServerBuffer, &Sock_c.sendServerByte[iS]);
+					 }
+
+					 // repack the header with the correct size
+					 iByte = 0;
+					 Msg_c.packHeader(simStateSend, simTimeRecv, Sock_c.sendServerByte[iS], sendServerBuffer, &iByte);
+
+					 if (send(Sock_c.serverSock[iS], sendServerBuffer, Sock_c.sendServerByte[iS], 0) != Sock_c.sendServerByte[iS]) {
+						 char buff[1000];
 #ifdef WIN32
-					snprintf(buff, sizeof(buff), "RealSim: Send ego states failed, %d", WSAGetLastError());
-					fprintf(stderr, "%s: %d\n", "send() failed", WSAGetLastError());
+						 snprintf(buff, sizeof(buff), "RealSim: Send failed, %d", WSAGetLastError());
+						 fprintf(stderr, "%s: %d\n", "send() failed", WSAGetLastError());
 #else
-					snprintf(buff, sizeof(buff), "RealSim: Send ego states failed, %d, %s", errno, strerror(errno));
-					fprintf(stderr, "%s: \n", "send() failed");
+						 snprintf(buff, sizeof(buff), "RealSim: Send failed, %d, %s", errno, strerror(errno));
+						 fprintf(stderr, "%s: \n", "send() failed");
 #endif
-					*errorMsg = buff;
-					return ERROR_STEP_SEND_EGO;
-				}
-			}
+						 * errorMsg = buff;
+						 return ERROR_STEP_SEND_EGO;
+					 }
+				 }
+			 }
 		}
 		catch (const std::exception& e) {
 			std::cout << e.what();
@@ -585,4 +746,43 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 	}
 
 	return 0;
+}
+
+
+
+tTLState VirEnvHelper::tlsChar2CmState(char charState) {
+	//0: All lights off
+	//1 : Green light on
+	//2 : Yellow light on
+	//3 : Red light on
+	//4 : Red - Yellow light on
+
+	//r	FOO	'red light' for a signal - vehicles must stop
+	//y	FOO	'amber (yellow) light' for a signal - vehicles will start to decelerate if far away from the junction, otherwise they pass
+	//g	FOO	'green light' for a signal, no priority - vehicles may pass the junction if no vehicle uses a higher priorised foe stream, otherwise they decelerate for letting it pass.They always decelerate on approach until they are within the configured visibility distance
+	//G	FOO	'green light' for a signal, priority - vehicles may pass the junction
+	//s	FOO	'green right-turn arrow' requires stopping - vehicles may pass the junction if no vehicle uses a higher priorised foe stream.They always stop before passing.This is only generated for junction type traffic_light_right_on_red.
+	//u	FOO	'red+yellow light' for a signal, may be used to indicate upcoming green phase but vehicles may not drive yet(shown as orange in the gui)
+	//o	FOO	'off - blinking' signal is switched off, blinking light indicates vehicles have to yield
+	//O	FOO	'off - no signal' signal is switched off, vehicles have the right of way
+
+	tTLState CmState = State_Off;
+	// r->3, y->2, g/G->1, u->4, O->0
+	if (charState == 'r') {
+		CmState = State_Red;
+	}
+	else if (charState == 'y') {
+		CmState = State_Yellow;
+	}
+	else if (charState == 'g' || charState == 'G') {
+		CmState = State_Green;
+	}
+	else if (charState == 'u') {
+		CmState = State_RedYellow;
+	}
+	else if (charState == 'O') {
+		CmState = State_Off;
+	}
+
+	return CmState;
 }
