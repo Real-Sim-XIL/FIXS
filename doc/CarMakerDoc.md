@@ -16,8 +16,10 @@ Table of Contents
     * [Setup CM dSPACE](#setup-cm-dspace)
         * [Obtain dSPACE library](#obtain-dspace-library)
         * [Compile dSPACE library](#compile-dspace-library)
-        * [Prepare for dSPACE build (configuration desk)](#prepare-for-dspace-build-configuration-desk)
         * [Prepare User.c](#prepare-userc)
+	* [Prepare for dSPACE build (configuration desk)](#prepare-for-dspace-build-configuration-desk)
+ 		* [Additional instructions for RS Simulink libraries](#additional-instructions-for-rs-simulink-libraries) 
+
 * [Setup Application](#setup-application)
     * [SUMO](#sumo)
 * [Run Simulations](#run-simulations)
@@ -172,6 +174,40 @@ The ```DsBuildLibrary.mk``` file is under ```%DSPAE_ROOT%\SCALEXIO\``` Refer to 
 
 The \CommonLib folder contains two .bat file for compiling with dSPACE 2019b, 2021b and CM11. Please refer to those files and modify your own .bat file.
 
+### Prepare User.c
+For dSPACE application, we always need to modify the source code of User.c as the ConfigurationDesk will compile from Source Code for dSPACE to execute. There are few places that User.c needs to be modified:
+
+- at beginning of the code to include libraries 
+```cpp
+#include "VirEnv_Wrapper.h"
+
+struct VirEnvHelper* VirEnv_c;
+```
+- at User_Init:
+```cpp
+VirEnv_c = newVirEnvHelper();
+```
+- at User_TestRun_Start_atEnd:
+**Make sure change the path to the correct project path and folder where all the Simulink model holds**
+```cpp
+    if (VirEnv_isVeryFirstStep && SimCore.State >= SCState_StartWait) {
+		VirEnv_initialization(VirEnv_c, "/CM_Projects/RealSimCm11Prj/src_cm4sl/RealSimCarMakerConfig.txt");
+    }
+```
+- at User_TestRun_End:
+```cpp
+	VirEnv_shutdown(VirEnv_c);
+```
+- at User_Calc:
+```cpp
+    if (SimCore.State != SCState_Simulate) {
+        return 0;
+    }
+	
+    VirEnv_runStep(VirEnv_c, SimCore.Time);
+	
+```
+
 ### Prepare for dSPACE build (configuration desk)
 
 Note: currently, it is only for SCALEXIO and configuration desk dSPACE implementation. 
@@ -179,28 +215,6 @@ Note: currently, it is only for SCALEXIO and configuration desk dSPACE implement
 1\. Copy the following files under the ##YOUR CM Project##\src_cm4sl folder or elsewhere you have your Simulink model and User.c code: 
 - libRealSimDsLib.a that you obtained from previous setups. 
 - VirEnv_Wrapper.h that from \CommonLib folder
-
-2\. Next, create a simulink initialization file similar to the ```runSumoIpg``` example:
-```matlab
-%% define constants
-curFilePath = fileparts(mfilename('fullpath'));
-RealSimAppPath = fullfile(curFilePath,'..\RealSimApps\SumoIpg');
-RealSimPath = fullfile(curFilePath,'..\RealSimRelease');
-configFilename = fullfile(RealSimAppPath,'config_SUMO.yaml');
-
-%% add path of RealSim tools
-addpath(genpath(RealSimPath))
-
-%% initialize RealSim for Simulink, read yaml file
-[VehicleMessageFieldDefInputVec, VehDataBus, TrafficLayerIP, TrafficLayerPort] = RealSimInitSimulink(configFilename);
-RealSimPara = struct;
-RealSimPara.speedInit = 13.5; % initial speed of the ego vehicle when entering SUMO network
-RealSimPara.tLookahead = 0.1; % use 0.1 for external control, recommend to use tLookahead >= 0.2 for SUMO driver
-RealSimPara.smoothWindow = 1; % number of moving average data point, 1 essentially mean no moving average
-```
-
-Best practice is to call this function as ```InitFcn``` in your Simulink model 
-![](img/SimulinkInitFcn.png)
 
 3\. The dSPACE build process will be similar to typical CM dSPACE build, which will involve a CM_BuildConifg.py. This script needs to be updated for RealSim implementation. You can use the one inside \CarMaker folder. If want to modify your own:
 - define these macros
@@ -235,6 +249,29 @@ You could also add these manually in the ConfigurationDesk
 - set number of accepted overruns to be -1 in ConfigurationDesk:
 ![](img/DS_SCLX_NO_OVERRUN.png)
 
+#### Additional instructions for RS Simulink libraries
+Need a simulink initialization file similar to below:
+```matlab
+%% define constants
+curFilePath = fileparts(mfilename('fullpath'));
+RealSimAppPath = fullfile(curFilePath,'..\RealSimApps\SumoIpg');
+RealSimPath = fullfile(curFilePath,'..\RealSimRelease');
+configFilename = fullfile(RealSimAppPath,'config_SUMO.yaml');
+
+%% add path of RealSim tools
+addpath(genpath(RealSimPath))
+
+%% initialize RealSim for Simulink, read yaml file
+[VehicleMessageFieldDefInputVec, VehDataBus, TrafficLayerIP, TrafficLayerPort] = RealSimInitSimulink(configFilename);
+RealSimPara = struct;
+RealSimPara.speedInit = 13.5; % initial speed of the ego vehicle when entering SUMO network
+RealSimPara.tLookahead = 0.1; % use 0.1 for external control, recommend to use tLookahead >= 0.2 for SUMO driver
+RealSimPara.smoothWindow = 1; % number of moving average data point, 1 essentially mean no moving average
+```
+
+Best practice is to call this function as ```InitFcn``` in your Simulink model 
+![](img/SimulinkInitFcn.png)
+
 - if use RealSim Simulink blocks in the simulink, need to setup dSPACE TCP connetions as the following screenshots. Please refer to the dSPACE ConfigurationDesk project RS_DS_CM11_SimulinkRS and Simulink model RS_DS_CM11_SimulinkRS.slx to see how the dSPACE and RealSim are set up. 
 ![](img/DS_SCLX_Eth_1.png)
 ![](img/DS_SCLX_Eth_2.png)
@@ -242,39 +279,6 @@ You could also add these manually in the ConfigurationDesk
 ![](img/DS_SCLX_Eth_4.png)
 ![](img/DS_SCLX_Eth_5.png)
 
-### Prepare User.c
-For dSPACE application, we always need to modify the source code of User.c as the ConfigurationDesk will compile from Source Code for dSPACE to execute. There are few places that User.c needs to be modified:
-
-- at beginning of the code to include libraries 
-```cpp
-#include "VirEnv_Wrapper.h"
-
-struct VirEnvHelper* VirEnv_c;
-```
-- at User_Init:
-```cpp
-VirEnv_c = newVirEnvHelper();
-```
-- at User_TestRun_Start_atEnd:
-**Make sure change the path to the correct project path and folder where all the Simulink model holds**
-```cpp
-    if (VirEnv_isVeryFirstStep && SimCore.State >= SCState_StartWait) {
-		VirEnv_initialization(VirEnv_c, "/CM_Projects/RealSimCm11Prj/src_cm4sl/RealSimCarMakerConfig.txt");
-    }
-```
-- at User_TestRun_End:
-```cpp
-	VirEnv_shutdown(VirEnv_c);
-```
-- at User_Calc:
-```cpp
-    if (SimCore.State != SCState_Simulate) {
-        return 0;
-    }
-	
-    VirEnv_runStep(VirEnv_c, SimCore.Time);
-	
-```
 # Setup Application
 
 ## SUMO
