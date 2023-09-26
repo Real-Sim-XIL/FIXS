@@ -132,9 +132,10 @@ if (Msg_c.VehicleMessageField_set.find("vehicleClass") == Msg_c.VehicleMessageFi
 	return ERROR_INIT_MSG_FIELD;
 }
 
-
-// read signal table
-readSignalTable(signalTablePathInput);
+if (SYNCHRONIZE_TRAFFIC_SIGNAL) {
+	// read signal table
+	readSignalTable(signalTablePathInput);
+}
 
 //Log("RealSim init socket size %d\n", Sock_c.serverSock.size());
 
@@ -564,32 +565,34 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 	// ===========================================================================
 	// 			sync traffic signal light
 	// ===========================================================================
-	try {
-		// loop over each signal light
-		for (auto it : Msg_c.TlsDataRecv_um) {
-			string tlsId = it.second.name;
-			string tlsState = it.second.state;
+	if (SYNCHRONIZE_TRAFFIC_SIGNAL) {
+		try {
+			// loop over each signal light
+			for (auto it : Msg_c.TlsDataRecv_um) {
+				string tlsId = it.second.name;
+				string tlsState = it.second.state;
 
-			// if can find the tlsId, then synchronize it
-			if (SignalController2HeadIdTrfLightIndex.find(tlsId) != SignalController2HeadIdTrfLightIndex.end()) {
-				// the unordered_map contains a list of head id and TrfLight index pair, so loop over each to synchronize
-				for (auto it : SignalController2HeadIdTrfLightIndex[tlsId]) {
-					TrfLight.Objs[get<1>(it)].State = tlsChar2CmState(tlsState.at(get<0>(it)));
+				// if can find the tlsId, then synchronize it
+				if (SignalController2HeadIdTrfLightIndex.find(tlsId) != SignalController2HeadIdTrfLightIndex.end()) {
+					// the unordered_map contains a list of head id and TrfLight index pair, so loop over each to synchronize
+					for (auto it : SignalController2HeadIdTrfLightIndex[tlsId]) {
+						TrfLight.Objs[get<1>(it)].State = tlsChar2CmState(tlsState.at(get<0>(it)));
+					}
 				}
-			}
 
+			}
 		}
-	}
-	catch (const std::exception& e) {
-		std::cout << e.what();
-		errorMsgStr = "RealSim: Sync traffic signal light failed";
-		*errorMsg = errorMsgStr.c_str();
-		return ERROR_STEP_SYNC_TRAFFIC_SIGNAL;
-	}
-	catch (...) {
-		errorMsgStr = "RealSim: Sync traffic signal light failed";
-		*errorMsg = errorMsgStr.c_str();
-		return ERROR_STEP_SYNC_TRAFFIC_SIGNAL;
+		catch (const std::exception& e) {
+			std::cout << e.what();
+			errorMsgStr = "RealSim: Sync traffic signal light failed";
+			*errorMsg = errorMsgStr.c_str();
+			return ERROR_STEP_SYNC_TRAFFIC_SIGNAL;
+		}
+		catch (...) {
+			errorMsgStr = "RealSim: Sync traffic signal light failed";
+			*errorMsg = errorMsgStr.c_str();
+			return ERROR_STEP_SYNC_TRAFFIC_SIGNAL;
+		}
 	}
 
 	// ===========================================================================
