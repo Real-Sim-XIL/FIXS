@@ -36,10 +36,6 @@
 							<Name type="key">RS_DS_CM11_noSimulinkRS.sdf</Name>
 							<ViewFlags type="key">1</ViewFlags>
 							<item>
-								<Name type="key">RS_DS_CM11_noSimulinkRS.vdp</Name>
-								<ViewFlags type="key">1</ViewFlags>
-							</item>
-							<item>
 								<Name type="key">.metadata</Name>
 								<ViewFlags type="key">1</ViewFlags>
 							</item>
@@ -156,7 +152,4 @@
 			</Layout1>
 		</Layouts>
 	</Instrumentation>
-	<XILAPIEESPort>
-		<ErrorConfigurationDocuments Version="1"/>
-	</XILAPIEESPort>
 </Root>

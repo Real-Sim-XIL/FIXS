@@ -73,8 +73,9 @@
 
 struct VirEnvHelper* VirEnv_c;
 
-char RS_configFile[] = "/CM_Projects/RealSimCm11Prj/src_cm4sl/RealSimCarMakerConfig.txt";
-char RS_signalTable[] = "/CM_Projects/RealSimCm11Prj/Data/Road/RS_ShallowfordRd_sumo_signal_RSsignalTable.csv";																		 
+char* RS_configFile = "/CM_Projects/RS_FIXS_Ford/CM11_proj/RS_tmp/RealSimCarMakerConfig.txt";
+char* RS_signalTable;
+
 // ===========================================================================
 // ===========================================================================
 

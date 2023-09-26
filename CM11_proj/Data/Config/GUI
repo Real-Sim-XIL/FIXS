@@ -10,14 +10,18 @@ DSRT.System =
 DSRT.System.History:
 GPUParameters.FName =
 CM.Exe = src/CarMaker.win64.exe
-CM.Args =
+CM.Args = -f ../tests/SignalIpg/RS_config.yaml -s ./Data/Road/RS_ShallowfordRd_sumo_signal_RSsignalTable
 CM.Exe.History:
 	src/CarMaker.win64.exe
 	CarMaker.win64.exe
 	src_lib_c/CarMaker.win64.exe
 	src_lib/CarMaker.win64.exe
 CM.Args.History:
-	""
-	-f ../tests/SumoIpg/config_SUMO.yaml
-	-f ../tests/SumoIpg\\config_SUMO.yaml
-	-f ..\\tests\\SumoIpg\\config_SUMO.yaml
+	-f ../tests/SignalIpg/RS_config.yaml -s ./Data/Road/RS_ShallowfordRd_sumo_signal_RSsignalTable
+	-f ../tests/SignalIpg/RS_config.yaml -s ./Data/Road/RS_ShallowfordRd_sumo_signal_RSsignalTable.rsst
+	-f ../tests/SignalIpg/RS_config.yaml -s ./Data/Road/RS_ShallowfordRd_sumo_signal_RSsignalTable.csv
+	-f ./Data/Road/RS_ShallowfordRd_sumo_signal_RSsignalTable.csv
+	-f ./Data/Road/RS_ShallowfordRd_sumo_signal_RSsignalTable
+	-f ../tests/SignalIpg/RS_config.yaml ./Data/Road/RS_ShallowfordRd_sumo_signal_RSsignalTable
+	-f ../tests/SignalIpg/RS_config.yaml -ff ./Data/Road/RS_ShallowfordRd_sumo_signal_RSsignalTable
+	-f ../tests/SignalIpg/RS_config.yaml -ff ./Data/Road/RS_ShallowfordRd_sumo_signal_RSsignalTable.csv

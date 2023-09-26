@@ -139,7 +139,11 @@
 						<ItemInfoPath type="key">$FPATH$</ItemInfoPath>
 						<ItemInfoDescr type="key"/>
 						<ItemInfoLog type="key">
-Variable description added on 19.05.2023 14:56:07 (C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS\Build Results\RS_DS_CM11_noSimulinkRS.sdf)</ItemInfoLog>
+Variable description added on 19.05.2023 14:56:07 (C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS\Build Results\RS_DS_CM11_noSimulinkRS.sdf)
+Variable description reloaded on 08.09.2023 19:44:53 (C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS\Build Results\RS_DS_CM11_noSimulinkRS.sdf)
+Variable description reloaded on 19.09.2023 14:32:39 (C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS\Build Results\RS_DS_CM11_noSimulinkRS.sdf)
+Variable description reloaded on 21.09.2023 13:03:49 (C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS\Build Results\RS_DS_CM11_noSimulinkRS.sdf)
+Variable description reloaded on 21.09.2023 13:40:23 (C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS\Build Results\RS_DS_CM11_noSimulinkRS.sdf)</ItemInfoLog>
 						<ItemInfoAddInfoDb type="key"/>
 						<ItemInfoAuthor type="key">y0n</ItemInfoAuthor>
 						<item>
@@ -149,13 +153,13 @@ Variable description added on 19.05.2023 14:56:07 (C:\CM_Projects\RealSimCm11Prj
 							<Path type="key">.\Variable Descriptions\RS_DS_CM11_noSimulinkRS.sdf</Path>
 							<Flags type="key">18692</Flags>
 							<Type type="key">4</Type>
-							<UniqueID type="key">488119899</UniqueID>
-							<EntityID type="key">{ACCA3A7A-5E57-41C1-8266-A508E827327C}</EntityID>
-							<ItemInfoDate type="key">5/19/2023 2:56:09 PM</ItemInfoDate>
+							<UniqueID type="key">200851297</UniqueID>
+							<EntityID type="key">{97761E8E-57BF-4EE8-86C5-964A02D0D62D}</EntityID>
+							<ItemInfoDate type="key">9/21/2023 1:40:23 PM</ItemInfoDate>
 							<ItemInfoPath type="key">$FPATH$</ItemInfoPath>
 							<ItemInfoDescr type="key"/>
 							<ItemInfoAddInfoDb type="key"/>
-							<ItemInfoAuthor type="key">y0n</ItemInfoAuthor>
+							<ItemInfoAuthor type="key">myc</ItemInfoAuthor>
 						</item>
 						<item>
 							<Component type="key">VariablesManagement</Component>
@@ -164,13 +168,13 @@ Variable description added on 19.05.2023 14:56:07 (C:\CM_Projects\RealSimCm11Prj
 							<Path type="key">.\Variable Descriptions\RS_DS_CM11_noSimulinkRS.sdf</Path>
 							<Flags type="key">18692</Flags>
 							<Type type="key">4</Type>
-							<UniqueID type="key">561439818</UniqueID>
-							<EntityID type="key">{940BE441-5AE9-41EC-9E8C-BEFB15C1CEBC}</EntityID>
-							<ItemInfoDate type="key">5/19/2023 2:56:07 PM</ItemInfoDate>
+							<UniqueID type="key">893068854</UniqueID>
+							<EntityID type="key">{9B7BF725-D6AE-46EC-9CCF-56E0EF6C6DF7}</EntityID>
+							<ItemInfoDate type="key">9/21/2023 1:40:23 PM</ItemInfoDate>
 							<ItemInfoPath type="key">$FPATH$</ItemInfoPath>
 							<ItemInfoDescr type="key"/>
 							<ItemInfoAddInfoDb type="key"/>
-							<ItemInfoAuthor type="key">y0n</ItemInfoAuthor>
+							<ItemInfoAuthor type="key">myc</ItemInfoAuthor>
 						</item>
 						<item>
 							<Component type="key">VariablesManagement</Component>
@@ -179,13 +183,13 @@ Variable description added on 19.05.2023 14:56:07 (C:\CM_Projects\RealSimCm11Prj
 							<Path type="key">.\Variable Descriptions\RS_DS_CM11_noSimulinkRS.sdf</Path>
 							<Flags type="key">18692</Flags>
 							<Type type="key">4</Type>
-							<UniqueID type="key">1015478096</UniqueID>
-							<EntityID type="key">{0E5EFBBF-0929-47BA-80B3-25B9DE92772D}</EntityID>
-							<ItemInfoDate type="key">5/19/2023 2:56:07 PM</ItemInfoDate>
+							<UniqueID type="key">167065256</UniqueID>
+							<EntityID type="key">{A61E3014-EA1C-4FC9-B790-3FEC8C7FFF92}</EntityID>
+							<ItemInfoDate type="key">9/21/2023 1:40:23 PM</ItemInfoDate>
 							<ItemInfoPath type="key">$FPATH$</ItemInfoPath>
 							<ItemInfoDescr type="key"/>
 							<ItemInfoAddInfoDb type="key"/>
-							<ItemInfoAuthor type="key">y0n</ItemInfoAuthor>
+							<ItemInfoAuthor type="key">myc</ItemInfoAuthor>
 						</item>
 						<item>
 							<Component type="key">VariablesManagement</Component>
@@ -194,13 +198,13 @@ Variable description added on 19.05.2023 14:56:07 (C:\CM_Projects\RealSimCm11Prj
 							<Path type="key">.\Variable Descriptions\RS_DS_CM11_noSimulinkRS.sdf</Path>
 							<Flags type="key">18692</Flags>
 							<Type type="key">4</Type>
-							<UniqueID type="key">320102171</UniqueID>
-							<EntityID type="key">{67159155-706C-407C-8BCB-0A60D703AD74}</EntityID>
-							<ItemInfoDate type="key">5/19/2023 2:56:07 PM</ItemInfoDate>
+							<UniqueID type="key">749714668</UniqueID>
+							<EntityID type="key">{296CE0E0-F190-4959-B142-91DCD2B1FFDD}</EntityID>
+							<ItemInfoDate type="key">9/21/2023 1:40:23 PM</ItemInfoDate>
 							<ItemInfoPath type="key">$FPATH$</ItemInfoPath>
 							<ItemInfoDescr type="key"/>
 							<ItemInfoAddInfoDb type="key"/>
-							<ItemInfoAuthor type="key">y0n</ItemInfoAuthor>
+							<ItemInfoAuthor type="key">myc</ItemInfoAuthor>
 						</item>
 						<item>
 							<Component type="key">VariablesManagement</Component>
@@ -209,13 +213,13 @@ Variable description added on 19.05.2023 14:56:07 (C:\CM_Projects\RealSimCm11Prj
 							<Path type="key">.\Variable Descriptions\RS_DS_CM11_noSimulinkRS.sdf</Path>
 							<Flags type="key">18692</Flags>
 							<Type type="key">4</Type>
-							<UniqueID type="key">563880761</UniqueID>
-							<EntityID type="key">{30134568-DA51-4C59-85A3-C591BE2AADE1}</EntityID>
-							<ItemInfoDate type="key">5/19/2023 2:56:07 PM</ItemInfoDate>
+							<UniqueID type="key">590114040</UniqueID>
+							<EntityID type="key">{C95C5113-A968-4362-8FF8-B40683F906C6}</EntityID>
+							<ItemInfoDate type="key">9/21/2023 1:40:23 PM</ItemInfoDate>
 							<ItemInfoPath type="key">$FPATH$</ItemInfoPath>
 							<ItemInfoDescr type="key"/>
 							<ItemInfoAddInfoDb type="key"/>
-							<ItemInfoAuthor type="key">y0n</ItemInfoAuthor>
+							<ItemInfoAuthor type="key">myc</ItemInfoAuthor>
 						</item>
 						<item>
 							<Component type="key">VariablesManagement</Component>
@@ -224,13 +228,13 @@ Variable description added on 19.05.2023 14:56:07 (C:\CM_Projects\RealSimCm11Prj
 							<Path type="key">.\Variable Descriptions\RS_DS_CM11_noSimulinkRS.sdf</Path>
 							<Flags type="key">18692</Flags>
 							<Type type="key">4</Type>
-							<UniqueID type="key">683049630</UniqueID>
-							<EntityID type="key">{98412474-7349-4D7D-8999-94EEFBC79758}</EntityID>
-							<ItemInfoDate type="key">5/19/2023 2:56:07 PM</ItemInfoDate>
+							<UniqueID type="key">559330758</UniqueID>
+							<EntityID type="key">{704B3F74-D681-40B5-B991-A09CEA81A9B5}</EntityID>
+							<ItemInfoDate type="key">9/21/2023 1:40:23 PM</ItemInfoDate>
 							<ItemInfoPath type="key">$FPATH$</ItemInfoPath>
 							<ItemInfoDescr type="key"/>
 							<ItemInfoAddInfoDb type="key"/>
-							<ItemInfoAuthor type="key">y0n</ItemInfoAuthor>
+							<ItemInfoAuthor type="key">myc</ItemInfoAuthor>
 						</item>
 						<item>
 							<Component type="key">VariablesManagement</Component>
@@ -239,13 +243,13 @@ Variable description added on 19.05.2023 14:56:07 (C:\CM_Projects\RealSimCm11Prj
 							<Path type="key">.\Variable Descriptions\RS_DS_CM11_noSimulinkRS.sdf</Path>
 							<Flags type="key">18692</Flags>
 							<Type type="key">4</Type>
-							<UniqueID type="key">558227956</UniqueID>
-							<EntityID type="key">{068A43EC-C084-458C-9982-2B84AA834041}</EntityID>
-							<ItemInfoDate type="key">5/19/2023 2:56:07 PM</ItemInfoDate>
+							<UniqueID type="key">479636140</UniqueID>
+							<EntityID type="key">{A7C9E6F9-BC68-48E8-8F66-DBE680D2F5E9}</EntityID>
+							<ItemInfoDate type="key">9/21/2023 1:40:23 PM</ItemInfoDate>
 							<ItemInfoPath type="key">$FPATH$</ItemInfoPath>
 							<ItemInfoDescr type="key"/>
 							<ItemInfoAddInfoDb type="key"/>
-							<ItemInfoAuthor type="key">y0n</ItemInfoAuthor>
+							<ItemInfoAuthor type="key">myc</ItemInfoAuthor>
 						</item>
 						<item>
 							<Component type="key">DataSetManager</Component>

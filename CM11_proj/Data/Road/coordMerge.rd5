@@ -1,6 +1,6 @@
 #INFOFILE1.1 - Do not remove this line!
 FileIdent = IPGRoad 11.0
-FileCreator = CarMaker 11.0.1
+FileCreator = CarMaker/HIL 11.0.1
 Description:
 	Converted OpenDRIVE File (Revision 1.4)
 	Original File: Data/Road/coordMerge.xodr
@@ -363,7 +363,7 @@ Link.1.ElevationProfile:
 	120 -1 0 1 0 0 0
 Link.2.ID = 126
 Link.2.Node0 = -0.19919626 803.38383471 0 90.597324727881
-Link.2.Node1 = -1.74824038607223 951.96377974501 0 90.597324727881
+Link.2.Node1 = -1.7482403860721 951.96377974501 0 90.597324727881
 Link.2.RST = Urban
 Link.2.Tag = odrRoadId:82
 Link.2.RL.ID = 127
@@ -393,7 +393,7 @@ Link.2.ElevationProfile:
 	157 -1 0 1 0 0 0
 Link.3.ID = 164
 Link.3.Node0 = -1.60146499 959.98458406 0 90.0752306880552
-Link.3.Node1 = -1.74980145769841 1072.95774544537 0 90.0752306880552
+Link.3.Node1 = -1.74980145769846 1072.95774544537 0 90.0752306880552
 Link.3.RST = Urban
 Link.3.Tag = odrRoadId:83
 Link.3.RL.ID = 165
@@ -468,7 +468,7 @@ Link.5.ElevationProfile:
 	239 -1 0 1 0 0 0
 Link.6.ID = 245
 Link.6.Node0 = 907.34553375 370.24000957 0 180.198162815746
-Link.6.Node1 = 605.194794252883 369.19498879242 0 180.198162815746
+Link.6.Node1 = 605.194794252883 369.194988792421 0 180.198162815746
 Link.6.RST = Urban
 Link.6.Tag = odrRoadId:86
 Link.6.RL.ID = 246
@@ -520,7 +520,7 @@ Link.7.ElevationProfile:
 	293 -1 0 1 0 0 0
 Link.8.ID = 299
 Link.8.Node0 = -0.17 799.5 0 90.0000001836389
-Link.8.Node1 = -0.199196272448093 803.383834709906 0 90.5973247278811
+Link.8.Node1 = -0.199196272448092 803.383834709906 0 90.597324727881
 Link.8.RST = Urban
 Link.8.Tag = odrRoadId:88
 Link.8.RL.ID = 300

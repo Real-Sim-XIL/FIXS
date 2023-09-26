@@ -76,8 +76,8 @@
 
 struct VirEnvHelper* VirEnv_c;
 
-char RS_configFile[] = "../tests/SignalIpg/RS_config.yaml";
-char RS_signalTable[] = "./Data/Road/RS_ShallowfordRd_sumo_signal_RSsignalTable.csv";
+char* RS_configFile;
+char* RS_signalTable;
 
 // ===========================================================================
 // ===========================================================================
@@ -195,13 +195,21 @@ User_ScanCmdLine (int argc, char **argv)
 	    User_PrintUsage(Pgm);
 	    SimCore_PrintUsage(Pgm); /* Possible exit(), depending on CM-platform! */
 	    return  NULL;
-	} else if ((*argv)[0] == '-') {
-	    LogErrF(EC_General, "Unknown option '%s'", *argv);
-	    return NULL;
-	} else {
-	    break;
+	} 
+	else if (strcmp(*argv, "-f") == 0) {
+		RS_configFile = *++argv;
 	}
+	else if (strcmp(*argv, "-s") == 0) {
+		RS_signalTable = *++argv;
+	}
+    else if ((*argv)[0] == '-') {
+        LogErrF(EC_General, "Unknown option '%s'", *argv);
+        return NULL;
     }
+	else {
+		break;
+	}
+	}
 
     return argv;
 }
