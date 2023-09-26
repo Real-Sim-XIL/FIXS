@@ -55,7 +55,7 @@ XilSetup:
     # for sumo-ipg, essentially give any name you want to name the ego, and the interface will create the vehicle in sumo at start of the simulation
     VehicleSubscription: 
     -   type: ego
-        attribute: {id: ['egoCm'], radius: [100]} 
+        attribute: {id: ['egoCm'], radius: [0]} 
         ip: ["127.0.0.1"]
         port: [7331]
     # -   type: ego
@@ -102,6 +102,6 @@ CarMakerSetup:
     SynchronizeTrafficSignal: true
     # define traffic signal port
     # if not defined, then will automatically use the port defined in SignalSubscription
-    TrafficSignalPort: 2444
+    #TrafficSignalPort: 2444
     
     
