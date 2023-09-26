@@ -71,16 +71,17 @@ def setCarMakerConfig(args):
             return -1
         
         # handle signal subscription
-        if len(Config['XilSetup']['SignalSubscription']) == 1:
-            TrafficSignalPort = Config['XilSetup']['SignalSubscription'][0]['port'][0]
-        elif 'CarMakerIP' in Config['CarMakerSetup'].keys() and 'TrafficSignalPort' in Config['CarMakerSetup'].keys():
-                for i in range(0, len(Config['XilSetup']['SignalSubscription'])):
-                    if ((Config['XilSetup']['SignalSubscription'][i]['ip'][0] == Config['CarMakerSetup']['CarMakerIP']) and \
-                            Config['XilSetup']['SignalSubscription'][i]['port'][0] == Config['CarMakerSetup']['TrafficSignalPort']):
-                        TrafficSignalPort = Config['XilSetup']['SignalSubscription'][i]['port'][0]
-        else:
-            print('\nERROR! must specify TrafficSignalPort when multiple signal subscriptions are defined!\n')
-            return -1
+        if 'SignalSubscription' in Config['XilSetup'].keys():
+            if len(Config['XilSetup']['SignalSubscription']) == 1:
+                TrafficSignalPort = Config['XilSetup']['SignalSubscription'][0]['port'][0]
+            elif 'CarMakerIP' in Config['CarMakerSetup'].keys() and 'TrafficSignalPort' in Config['CarMakerSetup'].keys():
+                    for i in range(0, len(Config['XilSetup']['SignalSubscription'])):
+                        if ((Config['XilSetup']['SignalSubscription'][i]['ip'][0] == Config['CarMakerSetup']['CarMakerIP']) and \
+                                Config['XilSetup']['SignalSubscription'][i]['port'][0] == Config['CarMakerSetup']['TrafficSignalPort']):
+                            TrafficSignalPort = Config['XilSetup']['SignalSubscription'][i]['port'][0]
+            else:
+                print('\nERROR! must specify TrafficSignalPort when multiple signal subscriptions are defined!\n')
+                return -1
     
     elif Config['ApplicationSetup']['EnableApplicationLayer'] and not Config['XilSetup']['EnableXil']:
         if len(Config['ApplicationSetup']['VehicleSubscription']) <= 0:
@@ -124,7 +125,8 @@ def setCarMakerConfig(args):
 
         # create full path to SignalTable file on the dSPACE RT-Linux OS path
         tmp = os.path.abspath(args.cm_project_path).split('\\')
-        SignalTablePathDS = os.path.join('/', tmp[-2],tmp[-1],RS_tmp_folder, SignalTableFile.split('\\')[-1]).replace('\\', '/')
+        #SignalTablePathDS = os.path.join('/', tmp[-2],tmp[-1],RS_tmp_folder, SignalTableFile.split('\\')[-1]).replace('\\', '/')
+        SignalTablePathDS = SignalTableFile.split('\\')[-1]
 
         # save to text file
         with open(RealSimCarMakerConfigName, 'w') as file:
@@ -144,7 +146,8 @@ def setCarMakerConfig(args):
             file.write('TrafficSignalPort={}\n'.format(Config['CarMakerSetup']['TrafficSignalPort']))
             file.write('SignalTableFilename={}\n'.format(SignalTablePathDS))
 
-        shutil.copy(SignalTableFile, os.path.join(RealSimTmpPath, SignalTableFile.split('\\')[-1]))
+        if os.path.exists(SignalTableFile):
+            shutil.copy(SignalTableFile, os.path.join(RealSimTmpPath, SignalTableFile.split('\\')[-1]))
 
 
     return 0
@@ -163,7 +166,7 @@ if __name__ == '__main__':
     argparser.add_argument('--signal-table-path', 
                         metavar = 'PATH', 
                         type=str, 
-                        default='./',
+                        default='',
                         help='CM+SUMO signal table path')
     arguments = argparser.parse_args()
 

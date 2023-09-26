@@ -29,7 +29,7 @@ extern "C" {
 
 
 			const char* errorMsg;
-			if (VirEnv_c->initialization(&errorMsg, VirEnv_c->Config_s.SignalTableFilename.c_str()) < 0) {
+			if (VirEnv_c->initialization(&errorMsg, configPath, VirEnv_c->Config_s.SignalTableFilename.c_str()) < 0) {
 				VirEnv_c->CM_LogErrF(errorMsg);
 				VirEnv_c->CM_Log("RealSim error initialization \n");
 			}

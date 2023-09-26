@@ -50,11 +50,11 @@ void VirEnvHelper::shutdown() {
 //
 //===================================================
 
-#ifndef RS_DSPACE
+//#ifndef RS_DSPACE
 int VirEnvHelper::initialization(const char** errorMsg, const char* configPathInput, const char* signalTablePathInput) {
-#else
-int VirEnvHelper::initialization(const char** errorMsg, const char* signalTablePathInput) {
-#endif
+//#else
+//int VirEnvHelper::initialization(const char** errorMsg, const char* signalTablePathInput) {
+//#endif
 	//TCHAR NPath[MAX_PATH];
 	//GetCurrentDirectory(MAX_PATH, NPath);
 
@@ -93,8 +93,8 @@ int VirEnvHelper::initialization(const char** errorMsg, const char* signalTableP
 	f << "RealSim CarMaker Starts at  " << str << endl;
 	f.close();
 
-#ifndef RS_DSPACE
 	configPath = configPathInput;
+#ifndef RS_DSPACE
 	if (Config_c.getConfig(configPath) < 0) {
 		errorMsgStr = "RealSim: Read Configuration Yaml File Failed";
 		*errorMsg = errorMsgStr.c_str();
@@ -105,23 +105,24 @@ int VirEnvHelper::initialization(const char** errorMsg, const char* signalTableP
 
 	ENABLE_REALSIM = Config_c.CarMakerSetup.EnableCosimulation;
 	ENABLE_SEPARATE_EGO_TRAFFIC = Config_c.CarMakerSetup.EnableEgoSimulink;
-SYNCHRONIZE_TRAFFIC_SIGNAL = Config_c.CarMakerSetup.SynchronizeTrafficSignal;
+	SYNCHRONIZE_TRAFFIC_SIGNAL = Config_c.CarMakerSetup.SynchronizeTrafficSignal;
 #else
-Log("RealSim read config\n");
 
-// reparser to common variables as the non dSPACE version
-ENABLE_REALSIM = Config_s.EnableCosimulation;
-ENABLE_SEPARATE_EGO_TRAFFIC = Config_s.EnableEgoSimulink;
-SYNCHRONIZE_TRAFFIC_SIGNAL = Config_s.SynchronizeTrafficSignal;
+	Log("RealSim read config\n");
 
-Msg_c.VehicleMessageField_v = Config_s.VehicleMessageField_v;
+	// reparser to common variables as the non dSPACE version
+	ENABLE_REALSIM = Config_s.EnableCosimulation;
+	ENABLE_SEPARATE_EGO_TRAFFIC = Config_s.EnableEgoSimulink;
+	SYNCHRONIZE_TRAFFIC_SIGNAL = Config_s.SynchronizeTrafficSignal;
 
-Log("RealSim message field: ");
-for (unsigned int i = 0; i < Msg_c.VehicleMessageField_v.size(); i++) {
-	Msg_c.VehicleMessageField_set.insert(Msg_c.VehicleMessageField_v[i]);
-	Log("%s, ", Msg_c.VehicleMessageField_v[i].c_str());
-}
-Log("\n");
+	Msg_c.VehicleMessageField_v = Config_s.VehicleMessageField_v;
+
+	Log("RealSim message field: ");
+	for (unsigned int i = 0; i < Msg_c.VehicleMessageField_v.size(); i++) {
+		Msg_c.VehicleMessageField_set.insert(Msg_c.VehicleMessageField_v[i]);
+		Log("%s, ", Msg_c.VehicleMessageField_v[i].c_str());
+	}
+	Log("\n");
 
 #endif
 
@@ -133,8 +134,14 @@ if (Msg_c.VehicleMessageField_set.find("vehicleClass") == Msg_c.VehicleMessageFi
 }
 
 if (SYNCHRONIZE_TRAFFIC_SIGNAL) {
+	// 
+	string pattern = "RS_tmp";
+	string rsTmpPath = configPath.substr(0, configPath.find(pattern));
+	string siganlTableFullPath = rsTmpPath + "RS_tmp/" + signalTablePathInput;
+
+	Log("RS signal path %s\n", siganlTableFullPath.c_str());
 	// read signal table
-	readSignalTable(signalTablePathInput);
+	readSignalTable(siganlTableFullPath.c_str());
 }
 
 //Log("RealSim init socket size %d\n", Sock_c.serverSock.size());

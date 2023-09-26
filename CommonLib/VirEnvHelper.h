@@ -96,11 +96,11 @@
 		//
         void shutdown();
 
-#ifndef RS_DSPACE
+//#ifndef RS_DSPACE
         int initialization(const char** errorMsgChar, const char* configPathInput, const char* signalTablePathInput);
-#else
-        int initialization(const char** errorMsgChar, const char* signalTablePathInput);
-#endif
+//#else
+//        int initialization(const char** errorMsgChar, const char* signalTablePathInput);
+//#endif
 
         int runStep(double simTime, const char** errorMsgChar);
 		//
