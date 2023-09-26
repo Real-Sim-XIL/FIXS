@@ -4,5 +4,5 @@ EnableEgoSimulink=0
 EgoId=egoCm
 EgoType=
 TrafficLayerIP=160.91.113.184
-CarMakerPort=7890
+CarMakerPort=7895
 TrafficRefreshRate=0.001000

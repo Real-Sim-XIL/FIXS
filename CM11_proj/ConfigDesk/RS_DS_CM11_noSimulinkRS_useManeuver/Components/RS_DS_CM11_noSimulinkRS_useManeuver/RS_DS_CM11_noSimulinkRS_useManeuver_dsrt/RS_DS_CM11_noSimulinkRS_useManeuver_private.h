@@ -3,9 +3,9 @@
  *
  * Code generation for model "RS_DS_CM11_noSimulinkRS_useManeuver".
  *
- * Model version              : 5.2
+ * Model version              : 5.3
  * Simulink Coder version : 9.6 (R2021b) 14-May-2021
- * C source code generated on : Fri May 19 16:10:59 2023
+ * C source code generated on : Tue Sep 26 10:58:04 2023
  *
  * Target selection: dsrt.tlc
  * Note: GRT includes extra infrastructure and instrumentation for prototyping

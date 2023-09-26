@@ -15,12 +15,12 @@ TMP_INTERFACE_LIB_RS_DS_CM11_noSimulinkRS_CC_SRC_DIRPATHS    =  \
  ".\..\..\..\..\Components\RS_DS_CM11_noSimulinkRS\RS_DS_CM11_noSimulinkRS_dsrt" \
  ".\..\..\..\..\..\..\..\..\Program Files\MATLAB\R2021b\rtw\c\src" \
  ".\..\..\..\..\..\..\..\..\Program Files\MATLAB\R2021b\simulink\src" \
- ".\..\..\..\..\..\..\src_cm4sl"
+ ".\..\..\..\..\..\..\src_cm4sl_ds"
 
 TMP_INTERFACE_LIB_RS_DS_CM11_noSimulinkRS_CC_HDR_DIRPATHS    =  \
  ".\..\..\..\..\Components\RS_DS_CM11_noSimulinkRS" \
  ".\..\..\..\..\Components\RS_DS_CM11_noSimulinkRS\RS_DS_CM11_noSimulinkRS_dsrt" \
- ".\..\..\..\..\..\..\src_cm4sl" \
+ ".\..\..\..\..\..\..\src_cm4sl_ds" \
  ".\..\..\..\..\..\..\..\..\Program Files\MATLAB\R2021b\extern\include" \
  ".\..\..\..\..\..\..\..\..\Program Files\MATLAB\R2021b\simulink\include" \
  ".\..\..\..\..\..\..\..\..\Program Files\MATLAB\R2021b\rtw\c\src" \

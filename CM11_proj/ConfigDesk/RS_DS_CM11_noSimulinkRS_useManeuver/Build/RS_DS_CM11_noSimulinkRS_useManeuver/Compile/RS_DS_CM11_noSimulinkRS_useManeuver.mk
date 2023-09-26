@@ -8,15 +8,15 @@ OBJS= mdladapter_mdlfunctions.o86 mdlCode_ap.o86 data_in_ap.o86 data_out_ap.o86 
 		  dssimengine_accesspoint.o86 dssimengine_api.o86 dssimengine_main.o86 rtosal_task.o86 rtosal_taskap.o86 \
 		  rtosal_simengineap.o86 IOCode_Data.o86
 CC_SRC_DIRPATHS = \
- C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\SysIntCode \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\SysIntCode \
  "C:\Program Files\dSPACE RCPHIL 2021-B\ConfigurationDesk\Implementation\EmbeddedSW\Src" 
  
 CC_HDR_DIRPATHS = \
- C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\SysIntCode \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\SysIntCode \
  "C:\Program Files\dSPACE RCPHIL 2021-B\ConfigurationDesk\Implementation\EmbeddedSW\Src" 
  
 LIB_DIRPATHS                =    
-CUSTOM_DIRPATHS             =  C:\IPG\carmaker\win64-11.0.1\include C:\CM_Projects\RealSimCm11Prj\src_cm4sl C:\CM_Projects\RealSimCm11Prj\include 
+CUSTOM_DIRPATHS             =  C:\IPG\carmaker\win64-11.0.1\include C:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds C:\CM_Projects\RS_FIXS_Ford\CM11_proj\include 
 CC_ADD_OPTS                 =   -include ipgrt.h 
 CPP_ADD_OPTS                =   -include ipgrt.h 
 CC_ADD_DEFINES              = RS_CAVE RS_DEBUG RS_DSPACE DSPACE DSRTLX _DSRTLX CM_HIL CM_NUMVER=110001 CM4SLDS DATA_PORT_ACCESS_POINT_API_VERSION=2 
@@ -77,9 +77,9 @@ CC_ALL_OPTS = \
  -include \
  ipgrt.h \
  -IC:\IPG\carmaker\win64-11.0.1\include \
- -IC:\CM_Projects\RealSimCm11Prj\src_cm4sl \
- -IC:\CM_Projects\RealSimCm11Prj\include \
- -IC:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\SysIntCode \
+ -IC:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds \
+ -IC:\CM_Projects\RS_FIXS_Ford\CM11_proj\include \
+ -IC:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\SysIntCode \
  -I"C:\Program Files\dSPACE RCPHIL 2021-B\ConfigurationDesk\Implementation\EmbeddedSW\Src" \
  -I"C:\Program Files\dSPACE RCPHIL 2021-B\SCALEXIO\Include" \
  -DRS_CAVE \
@@ -140,9 +140,9 @@ CPP_ALL_OPTS = \
  -include \
  ipgrt.h \
  -IC:\IPG\carmaker\win64-11.0.1\include \
- -IC:\CM_Projects\RealSimCm11Prj\src_cm4sl \
- -IC:\CM_Projects\RealSimCm11Prj\include \
- -IC:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\SysIntCode \
+ -IC:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds \
+ -IC:\CM_Projects\RS_FIXS_Ford\CM11_proj\include \
+ -IC:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\SysIntCode \
  -I"C:\Program Files\dSPACE RCPHIL 2021-B\ConfigurationDesk\Implementation\EmbeddedSW\Src" \
  -I"C:\Program Files\dSPACE RCPHIL 2021-B\SCALEXIO\Include" \
  -DRS_CAVE \
@@ -168,52 +168,52 @@ CPP_ALL_OPTS = \
 .TYPE.OBJ = .o86 .o86 
 
 .PATH.c = \
- C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\SysIntCode; \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\SysIntCode; \
  "C:\Program Files\dSPACE RCPHIL 2021-B\ConfigurationDesk\Implementation\EmbeddedSW\Src"; \
  C:\IPG\carmaker\win64-11.0.1\include; \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl; \
- C:\CM_Projects\RealSimCm11Prj\include; 
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds; \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\include; 
  
 .PATH.cpp = \
- C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\SysIntCode; \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\SysIntCode; \
  "C:\Program Files\dSPACE RCPHIL 2021-B\ConfigurationDesk\Implementation\EmbeddedSW\Src"; \
  C:\IPG\carmaker\win64-11.0.1\include; \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl; \
- C:\CM_Projects\RealSimCm11Prj\include; 
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds; \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\include; 
  
 .PATH.h = \
- C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\SysIntCode; \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\SysIntCode; \
  "C:\Program Files\dSPACE RCPHIL 2021-B\ConfigurationDesk\Implementation\EmbeddedSW\Src"; \
  C:\IPG\carmaker\win64-11.0.1\include; \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl; \
- C:\CM_Projects\RealSimCm11Prj\include; 
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds; \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\include; 
  
 
 .HDRPATH.c = \
- C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\SysIntCode \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\SysIntCode \
  "C:\Program Files\dSPACE RCPHIL 2021-B\ConfigurationDesk\Implementation\EmbeddedSW\Src" \
  C:\IPG\carmaker\win64-11.0.1\include \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl \
- C:\CM_Projects\RealSimCm11Prj\include \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\include \
  | \
- C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\SysIntCode \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\SysIntCode \
  "C:\Program Files\dSPACE RCPHIL 2021-B\ConfigurationDesk\Implementation\EmbeddedSW\Src" \
  C:\IPG\carmaker\win64-11.0.1\include \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl \
- C:\CM_Projects\RealSimCm11Prj\include 
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\include 
  
 .HDRPATH.cpp = \
- C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\SysIntCode \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\SysIntCode \
  "C:\Program Files\dSPACE RCPHIL 2021-B\ConfigurationDesk\Implementation\EmbeddedSW\Src" \
  C:\IPG\carmaker\win64-11.0.1\include \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl \
- C:\CM_Projects\RealSimCm11Prj\include \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\include \
  | \
- C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\SysIntCode \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\SysIntCode \
  "C:\Program Files\dSPACE RCPHIL 2021-B\ConfigurationDesk\Implementation\EmbeddedSW\Src" \
  C:\IPG\carmaker\win64-11.0.1\include \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl \
- C:\CM_Projects\RealSimCm11Prj\include 
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\include 
  
 
 .CDEFINES.c  = -D_DSx86_32 -D_DS2510 -DDS_PLATFORM_X86 -DDS_PLATFORM_LE -DDS_PLATFORM_POSIX -DDS_PLATFORM_LINUX -DDS_PLATFORM_DSRTLINUX -DDS_PLATFORM_CN -DDS_PLATFORM_HCN -DDS_PLATFORM_SMART -DDS_PLATFORM_SMARTHIL -DDS_PLATFORM_SMP -D__HOSTNAME__=\DESK0120048\ -D__INTEGRATION__=\5.2.1\ -DDS_RTLIB_VERSION_MAR=5 -DDS_RTLIB_VERSION_MIR=2 -DDS_QNX_VERSION=650 -DQNX_VERSION=6.5.0 -D_FILE_OFFSET_BITS=64 -D_INLINE  

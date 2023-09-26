@@ -22,7 +22,7 @@ APPL_VARS                          =
 APPL_VARS                         += DEFAULT
 APPL_VAR_NAME_DEFAULT              = RS_DS_CM11_noSimulinkRS_useManeuver_DEFAULT
 APPL_VAR_OPT_Linkage_DEFAULT       = DEFAULT
-APPL_VAR_RESULT_DIRPATH_DEFAULT    = "C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\Results.tmp"
+APPL_VAR_RESULT_DIRPATH_DEFAULT    = "C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\Results.tmp"
 
 
 
@@ -47,17 +47,17 @@ INTERFACE_CC_SRC_FILES        += \
 
 INTERFACE_CC_SRC_DIRPATHS     += \
  ".\..\SysIntCode" \
- ".\..\..\..\..\..\..\..\Program Files\dSPACE RCPHIL 2021-B\ConfigurationDesk\Implementation\EmbeddedSW\Src"
+ ".\..\..\..\..\..\..\..\..\Program Files\dSPACE RCPHIL 2021-B\ConfigurationDesk\Implementation\EmbeddedSW\Src"
 
 INTERFACE_CC_HDR_DIRPATHS     += \
  ".\..\SysIntCode" \
- ".\..\..\..\..\..\..\..\Program Files\dSPACE RCPHIL 2021-B\ConfigurationDesk\Implementation\EmbeddedSW\Src"
+ ".\..\..\..\..\..\..\..\..\Program Files\dSPACE RCPHIL 2021-B\ConfigurationDesk\Implementation\EmbeddedSW\Src"
 
 INTERFACE_LIB_DIRPATHS        +=
 
 INTERFACE_CUSTOM_DIRPATHS     += \
- ".\..\..\..\..\..\..\..\IPG\carmaker\win64-11.0.1\include" \
- ".\..\..\..\..\..\src_cm4sl" \
+ ".\..\..\..\..\..\..\..\..\IPG\carmaker\win64-11.0.1\include" \
+ ".\..\..\..\..\..\src_cm4sl_ds" \
  ".\..\..\..\..\..\include"
 
 INTERFACE_OBJ_FILEPATHS       +=

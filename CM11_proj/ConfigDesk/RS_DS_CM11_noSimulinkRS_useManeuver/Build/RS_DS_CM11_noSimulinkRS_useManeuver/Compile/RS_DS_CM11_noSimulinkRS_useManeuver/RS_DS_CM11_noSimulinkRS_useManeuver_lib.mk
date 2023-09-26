@@ -13,21 +13,21 @@ MAKEFILE_DIR = "$(INTERFACE_IN_INCLUDE_FILEPATH,D,"=)"
 TMP_INTERFACE_LIB_RS_DS_CM11_noSimulinkRS_useManeuver_CC_SRC_DIRPATHS    =  \
  ".\..\..\..\..\Components\RS_DS_CM11_noSimulinkRS_useManeuver" \
  ".\..\..\..\..\Components\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver_dsrt" \
- ".\..\..\..\..\..\..\..\..\Program Files\MATLAB\R2021b\rtw\c\src" \
- ".\..\..\..\..\..\..\..\..\Program Files\MATLAB\R2021b\simulink\src" \
- ".\..\..\..\..\..\..\src_cm4sl"
+ ".\..\..\..\..\..\..\..\..\..\Program Files\MATLAB\R2021b\rtw\c\src" \
+ ".\..\..\..\..\..\..\..\..\..\Program Files\MATLAB\R2021b\simulink\src" \
+ ".\..\..\..\..\..\..\src_cm4sl_ds"
 
 TMP_INTERFACE_LIB_RS_DS_CM11_noSimulinkRS_useManeuver_CC_HDR_DIRPATHS    =  \
  ".\..\..\..\..\Components\RS_DS_CM11_noSimulinkRS_useManeuver" \
  ".\..\..\..\..\Components\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver_dsrt" \
- ".\..\..\..\..\..\..\src_cm4sl" \
- ".\..\..\..\..\..\..\..\..\Program Files\MATLAB\R2021b\extern\include" \
- ".\..\..\..\..\..\..\..\..\Program Files\MATLAB\R2021b\simulink\include" \
- ".\..\..\..\..\..\..\..\..\Program Files\MATLAB\R2021b\rtw\c\src" \
- ".\..\..\..\..\..\..\..\..\Program Files\MATLAB\R2021b\rtw\c\src\ext_mode\common" \
+ ".\..\..\..\..\..\..\src_cm4sl_ds" \
+ ".\..\..\..\..\..\..\..\..\..\Program Files\MATLAB\R2021b\extern\include" \
+ ".\..\..\..\..\..\..\..\..\..\Program Files\MATLAB\R2021b\simulink\include" \
+ ".\..\..\..\..\..\..\..\..\..\Program Files\MATLAB\R2021b\rtw\c\src" \
+ ".\..\..\..\..\..\..\..\..\..\Program Files\MATLAB\R2021b\rtw\c\src\ext_mode\common" \
  ".\..\..\..\..\..\..\include" \
- ".\..\..\..\..\..\..\..\..\IPG\carmaker\win64-11.0.1\include" \
- ".\..\..\..\..\..\..\..\..\IPG\carmaker\win64-11.0.1\Matlab\R2021b"
+ ".\..\..\..\..\..\..\..\..\..\IPG\carmaker\win64-11.0.1\include" \
+ ".\..\..\..\..\..\..\..\..\..\IPG\carmaker\win64-11.0.1\Matlab\R2021b"
 
 #-------------------------------------------------------------------------------
 # Interface Settings

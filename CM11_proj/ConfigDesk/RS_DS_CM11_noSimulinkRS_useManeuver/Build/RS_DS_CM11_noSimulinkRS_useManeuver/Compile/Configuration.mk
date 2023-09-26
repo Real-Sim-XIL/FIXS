@@ -71,7 +71,7 @@ TMK_CFG_HIDE_GLOBAL_SYMBOLS     = 0
 CFG_IN_BOARD_ARCHITECTURE       = 32
 
 # Kept global symbols lists
-TMK_CFG_RS_DS_CM11_noSimulinkRS_useManeuver_KEPT_GLOBAL_SYMBOLS_FILEPATH = C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\Compile\RS_DS_CM11_noSimulinkRS_useManeuver_gs.txt
+TMK_CFG_RS_DS_CM11_noSimulinkRS_useManeuver_KEPT_GLOBAL_SYMBOLS_FILEPATH = C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\Compile\RS_DS_CM11_noSimulinkRS_useManeuver_gs.txt
 
 
 # Main targets
@@ -80,9 +80,9 @@ TMK_CFG_RS_DS_CM11_noSimulinkRS_useManeuver_MAIN_TARGETS = RS_DS_CM11_noSimulink
 
 # Included makefiles
 TMK_CFG_RS_DS_CM11_noSimulinkRS_useManeuver_MAKE_INCLUDE_FILEPATHS =  \
- "C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\Compile\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver_lib.mk"
+ "C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\Compile\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver_lib.mk"
 TMK_CFG_Main_MAKE_INCLUDE_FILEPATHS =  \
- "C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\Compile\RS_DS_CM11_noSimulinkRS_useManeuver_ext.mk"
+ "C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\Compile\RS_DS_CM11_noSimulinkRS_useManeuver_ext.mk"
 
 
 TMK_CFG_ABORT_MUTEX_NAME        = CfgDeskAbortMutex

@@ -16,7 +16,7 @@
          },
          {
             "Key": "DefaultApplication",
-            "Value": "RS_DS_CM11_SimulinkRS"
+            "Value": "RS_DS_CM11_noSimulinkRS_useManeuver"
          }
       ]
    }

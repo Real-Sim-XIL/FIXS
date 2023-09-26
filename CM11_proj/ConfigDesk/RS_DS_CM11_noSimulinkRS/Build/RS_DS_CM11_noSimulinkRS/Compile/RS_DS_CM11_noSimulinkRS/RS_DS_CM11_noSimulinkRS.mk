@@ -13,12 +13,12 @@ CC_SRC_DIRPATHS = \
  C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS\Components\RS_DS_CM11_noSimulinkRS\RS_DS_CM11_noSimulinkRS_dsrt \
  "C:\Program Files\MATLAB\R2021b\rtw\c\src" \
  "C:\Program Files\MATLAB\R2021b\simulink\src" \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl 
+ C:\CM_Projects\RealSimCm11Prj\src_cm4sl_ds 
  
 CC_HDR_DIRPATHS = \
  C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS\Components\RS_DS_CM11_noSimulinkRS \
  C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS\Components\RS_DS_CM11_noSimulinkRS\RS_DS_CM11_noSimulinkRS_dsrt \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl \
+ C:\CM_Projects\RealSimCm11Prj\src_cm4sl_ds \
  "C:\Program Files\MATLAB\R2021b\extern\include" \
  "C:\Program Files\MATLAB\R2021b\simulink\include" \
  "C:\Program Files\MATLAB\R2021b\rtw\c\src" \
@@ -96,7 +96,7 @@ CC_ALL_OPTS = \
  -IC:\CM_Projects\RealSimCm11Prj\include \
  -IC:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS\Components\RS_DS_CM11_noSimulinkRS \
  -IC:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS\Components\RS_DS_CM11_noSimulinkRS\RS_DS_CM11_noSimulinkRS_dsrt \
- -IC:\CM_Projects\RealSimCm11Prj\src_cm4sl \
+ -IC:\CM_Projects\RealSimCm11Prj\src_cm4sl_ds \
  -I"C:\Program Files\MATLAB\R2021b\extern\include" \
  -I"C:\Program Files\MATLAB\R2021b\simulink\include" \
  -I"C:\Program Files\MATLAB\R2021b\rtw\c\src" \
@@ -175,7 +175,7 @@ CPP_ALL_OPTS = \
  -IC:\CM_Projects\RealSimCm11Prj\include \
  -IC:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS\Components\RS_DS_CM11_noSimulinkRS \
  -IC:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS\Components\RS_DS_CM11_noSimulinkRS\RS_DS_CM11_noSimulinkRS_dsrt \
- -IC:\CM_Projects\RealSimCm11Prj\src_cm4sl \
+ -IC:\CM_Projects\RealSimCm11Prj\src_cm4sl_ds \
  -I"C:\Program Files\MATLAB\R2021b\extern\include" \
  -I"C:\Program Files\MATLAB\R2021b\simulink\include" \
  -I"C:\Program Files\MATLAB\R2021b\rtw\c\src" \
@@ -222,7 +222,7 @@ CPP_ALL_OPTS = \
  C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS\Components\RS_DS_CM11_noSimulinkRS\RS_DS_CM11_noSimulinkRS_dsrt; \
  "C:\Program Files\MATLAB\R2021b\rtw\c\src"; \
  "C:\Program Files\MATLAB\R2021b\simulink\src"; \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl; 
+ C:\CM_Projects\RealSimCm11Prj\src_cm4sl_ds; 
  
 .PATH.cpp = \
  C:\IPG\carmaker\win64-11.0.1\include; \
@@ -232,7 +232,7 @@ CPP_ALL_OPTS = \
  C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS\Components\RS_DS_CM11_noSimulinkRS\RS_DS_CM11_noSimulinkRS_dsrt; \
  "C:\Program Files\MATLAB\R2021b\rtw\c\src"; \
  "C:\Program Files\MATLAB\R2021b\simulink\src"; \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl; 
+ C:\CM_Projects\RealSimCm11Prj\src_cm4sl_ds; 
  
 .PATH.h = \
  C:\IPG\carmaker\win64-11.0.1\include; \
@@ -240,7 +240,7 @@ CPP_ALL_OPTS = \
  C:\CM_Projects\RealSimCm11Prj\include; \
  C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS\Components\RS_DS_CM11_noSimulinkRS; \
  C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS\Components\RS_DS_CM11_noSimulinkRS\RS_DS_CM11_noSimulinkRS_dsrt; \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl; \
+ C:\CM_Projects\RealSimCm11Prj\src_cm4sl_ds; \
  "C:\Program Files\MATLAB\R2021b\extern\include"; \
  "C:\Program Files\MATLAB\R2021b\simulink\include"; \
  "C:\Program Files\MATLAB\R2021b\rtw\c\src"; \
@@ -253,7 +253,7 @@ CPP_ALL_OPTS = \
 .HDRPATH.c = \
  C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS\Components\RS_DS_CM11_noSimulinkRS \
  C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS\Components\RS_DS_CM11_noSimulinkRS\RS_DS_CM11_noSimulinkRS_dsrt \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl \
+ C:\CM_Projects\RealSimCm11Prj\src_cm4sl_ds \
  "C:\Program Files\MATLAB\R2021b\extern\include" \
  "C:\Program Files\MATLAB\R2021b\simulink\include" \
  "C:\Program Files\MATLAB\R2021b\rtw\c\src" \
@@ -267,7 +267,7 @@ CPP_ALL_OPTS = \
  | \
  C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS\Components\RS_DS_CM11_noSimulinkRS \
  C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS\Components\RS_DS_CM11_noSimulinkRS\RS_DS_CM11_noSimulinkRS_dsrt \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl \
+ C:\CM_Projects\RealSimCm11Prj\src_cm4sl_ds \
  "C:\Program Files\MATLAB\R2021b\extern\include" \
  "C:\Program Files\MATLAB\R2021b\simulink\include" \
  "C:\Program Files\MATLAB\R2021b\rtw\c\src" \
@@ -282,7 +282,7 @@ CPP_ALL_OPTS = \
 .HDRPATH.cpp = \
  C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS\Components\RS_DS_CM11_noSimulinkRS \
  C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS\Components\RS_DS_CM11_noSimulinkRS\RS_DS_CM11_noSimulinkRS_dsrt \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl \
+ C:\CM_Projects\RealSimCm11Prj\src_cm4sl_ds \
  "C:\Program Files\MATLAB\R2021b\extern\include" \
  "C:\Program Files\MATLAB\R2021b\simulink\include" \
  "C:\Program Files\MATLAB\R2021b\rtw\c\src" \
@@ -296,7 +296,7 @@ CPP_ALL_OPTS = \
  | \
  C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS\Components\RS_DS_CM11_noSimulinkRS \
  C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS\Components\RS_DS_CM11_noSimulinkRS\RS_DS_CM11_noSimulinkRS_dsrt \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl \
+ C:\CM_Projects\RealSimCm11Prj\src_cm4sl_ds \
  "C:\Program Files\MATLAB\R2021b\extern\include" \
  "C:\Program Files\MATLAB\R2021b\simulink\include" \
  "C:\Program Files\MATLAB\R2021b\rtw\c\src" \

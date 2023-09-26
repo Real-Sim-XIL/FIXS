@@ -122,7 +122,7 @@ else:
     DEFINES = ("RS_CAVE", "RS_DEBUG", "RS_DSPACE", "DSPACE", "DSRT", "_DSRT", "USE_IPGRT_FUNCS", "CM_HIL",
             "CM_NUMVER=%d" %(CARMAKER_NUMVER), "CM4SLDS")
 
-SRC_DIRS  = ("src_cm4sl", "include")
+SRC_DIRS  = ("src_cm4sl_ds", "include")
 SRC_FILES = ("CM_Main.c", "CM_Vehicle.c", "User.c", "IO.c", "app_tmp.c")
 
 PROJECT_DIR = ""

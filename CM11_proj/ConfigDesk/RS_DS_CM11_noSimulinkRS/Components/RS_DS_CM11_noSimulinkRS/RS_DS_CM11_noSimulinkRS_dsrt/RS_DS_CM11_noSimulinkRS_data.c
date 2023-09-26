@@ -3,9 +3,9 @@
  *
  * Code generation for model "RS_DS_CM11_noSimulinkRS".
  *
- * Model version              : 5.1
+ * Model version              : 5.2
  * Simulink Coder version : 9.6 (R2021b) 14-May-2021
- * C source code generated on : Fri May 19 12:30:37 2023
+ * C source code generated on : Tue Sep 19 14:33:07 2023
  *
  * Target selection: dsrt.tlc
  * Note: GRT includes extra infrastructure and instrumentation for prototyping
@@ -265,10 +265,10 @@ P_RS_DS_CM11_noSimulinkRS_T RS_DS_CM11_noSimulinkRS_P = {
    */
   0.5,
 
-  /* Expression: 20
+  /* Expression: 200
    * Referenced by: '<S1>/initialWaitTime'
    */
-  20.0,
+  200.0,
 
   /* Expression: 2000
    * Referenced by: '<S1>/totalDistance (m)'

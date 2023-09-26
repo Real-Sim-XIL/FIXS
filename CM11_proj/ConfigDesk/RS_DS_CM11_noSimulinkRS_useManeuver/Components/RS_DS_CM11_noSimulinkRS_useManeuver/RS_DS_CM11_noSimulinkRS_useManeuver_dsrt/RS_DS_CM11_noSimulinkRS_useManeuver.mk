@@ -81,7 +81,7 @@ MW_NCSTATES                       = 0
 MW_MULTITASKING                   = 0
 # Support for parallel computing
 MASTER_ANCHOR_DIR                 = 
-START_DIR                         = C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver
+START_DIR                         = C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver
 MW_TARGET_LANG_EXT                = c
 # MW_TGT_FCN_LIB                  = None
 # MW_EXTMODE_STATIC_ALLOC         = 0
@@ -188,12 +188,12 @@ WS_WILD = .=\.
 %set DSRT_COMMON_HDR_DIRPATHS += \
     "$(START_DIR)" \
     "$(START_DIR)\RS_DS_CM11_noSimulinkRS_useManeuver_dsrt" \
-    "C:\CM_Projects\RealSimCm11Prj\src_cm4sl" \
+    "C:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds" \
     "$(MATLAB_ROOT)\extern\include" \
     "$(MATLAB_ROOT)\simulink\include" \
     "$(MATLAB_ROOT)\rtw\c\src" \
     "$(MATLAB_ROOT)\rtw\c\src\ext_mode\common" \
-    "C:\CM_Projects\RealSimCm11Prj\include" \
+    "C:\CM_Projects\RS_FIXS_Ford\CM11_proj\include" \
     "C:\IPG\carmaker\win64-11.0.1\include" \
     "C:\IPG\carmaker\win64-11.0.1\Matlab\R2021b"
 
@@ -217,7 +217,7 @@ WS_WILD = .=\.
 %set DSRT_COMMON_SRC_DIRPATHS += \
     "$(MATLAB_ROOT)\rtw\c\src" \
     "$(MATLAB_ROOT)\simulink\src" \
-    "C:\CM_Projects\RealSimCm11Prj\src_cm4sl"
+    "C:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds"
 
 %if '$(USE_LOCAL_SOURCES)' == 'yes'
 %  set DSRT_COMMON_HDR_DIRPATHS += "$(START_DIR)\otherFiles"

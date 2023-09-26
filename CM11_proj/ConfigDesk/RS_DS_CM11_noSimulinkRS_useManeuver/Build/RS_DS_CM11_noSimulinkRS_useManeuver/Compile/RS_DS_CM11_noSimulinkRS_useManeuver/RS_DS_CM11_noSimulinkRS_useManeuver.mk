@@ -11,28 +11,28 @@ OBJS= RS_DS_CM11_noSimulinkRS_useManeuver.o86 RS_DS_CM11_noSimulinkRS_useManeuve
 		  RS_DS_CM11_noSimulinkRS_useManeuver_dsrttf.o86 RS_DS_CM11_noSimulinkRS_useManeuver_dsrtvdf.o86 CM_Main.o86 \
 		  CM_Vehicle.o86 User.o86 IO.o86 app_tmp.o86
 CC_SRC_DIRPATHS = \
- C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver \
- C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver_dsrt \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver_dsrt \
  "C:\Program Files\MATLAB\R2021b\rtw\c\src" \
  "C:\Program Files\MATLAB\R2021b\simulink\src" \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl 
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds 
  
 CC_HDR_DIRPATHS = \
- C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver \
- C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver_dsrt \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver_dsrt \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds \
  "C:\Program Files\MATLAB\R2021b\extern\include" \
  "C:\Program Files\MATLAB\R2021b\simulink\include" \
  "C:\Program Files\MATLAB\R2021b\rtw\c\src" \
  "C:\Program Files\MATLAB\R2021b\rtw\c\src\ext_mode\common" \
- C:\CM_Projects\RealSimCm11Prj\include \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\include \
  C:\IPG\carmaker\win64-11.0.1\include \
  C:\IPG\carmaker\win64-11.0.1\Matlab\R2021b 
  
-CC_LIB_FILE                 = C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\Compile\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver.a 
+CC_LIB_FILE                 = C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\RS_DS_CM11_noSimulinkRS_useManeuver\Compile\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver.a 
 OBJ_FILEPATHS               =  
 LIB_DIRPATHS                =    
-CUSTOM_DIRPATHS             =  C:\IPG\carmaker\win64-11.0.1\include C:\CM_Projects\RealSimCm11Prj\src_cm4sl C:\CM_Projects\RealSimCm11Prj\include 
+CUSTOM_DIRPATHS             =  C:\IPG\carmaker\win64-11.0.1\include C:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds C:\CM_Projects\RS_FIXS_Ford\CM11_proj\include 
 CC_ADD_OPTS                 =   -include ipgrt.h 
 CPP_ADD_OPTS                =   -include ipgrt.h 
 CC_ADD_DEFINES              = RS_CAVE RS_DEBUG RS_DSPACE DSPACE DSRTLX _DSRTLX CM_HIL CM_NUMVER=110001 CM4SLDS DATA_PORT_ACCESS_POINT_API_VERSION=2 Model=RS_DS_CM11_noSimulinkRS_useManeuver MT=0 NUMST=1 NCSTATES=0 TID01EQ=0 USE_RTMODEL RT NO_PRINTF 
@@ -94,16 +94,16 @@ CC_ALL_OPTS = \
  -include \
  ipgrt.h \
  -IC:\IPG\carmaker\win64-11.0.1\include \
- -IC:\CM_Projects\RealSimCm11Prj\src_cm4sl \
- -IC:\CM_Projects\RealSimCm11Prj\include \
- -IC:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver \
- -IC:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver_dsrt \
- -IC:\CM_Projects\RealSimCm11Prj\src_cm4sl \
+ -IC:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds \
+ -IC:\CM_Projects\RS_FIXS_Ford\CM11_proj\include \
+ -IC:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver \
+ -IC:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver_dsrt \
+ -IC:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds \
  -I"C:\Program Files\MATLAB\R2021b\extern\include" \
  -I"C:\Program Files\MATLAB\R2021b\simulink\include" \
  -I"C:\Program Files\MATLAB\R2021b\rtw\c\src" \
  -I"C:\Program Files\MATLAB\R2021b\rtw\c\src\ext_mode\common" \
- -IC:\CM_Projects\RealSimCm11Prj\include \
+ -IC:\CM_Projects\RS_FIXS_Ford\CM11_proj\include \
  -IC:\IPG\carmaker\win64-11.0.1\include \
  -IC:\IPG\carmaker\win64-11.0.1\Matlab\R2021b \
  -I"C:\Program Files\dSPACE RCPHIL 2021-B\SCALEXIO\Include" \
@@ -173,16 +173,16 @@ CPP_ALL_OPTS = \
  -include \
  ipgrt.h \
  -IC:\IPG\carmaker\win64-11.0.1\include \
- -IC:\CM_Projects\RealSimCm11Prj\src_cm4sl \
- -IC:\CM_Projects\RealSimCm11Prj\include \
- -IC:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver \
- -IC:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver_dsrt \
- -IC:\CM_Projects\RealSimCm11Prj\src_cm4sl \
+ -IC:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds \
+ -IC:\CM_Projects\RS_FIXS_Ford\CM11_proj\include \
+ -IC:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver \
+ -IC:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver_dsrt \
+ -IC:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds \
  -I"C:\Program Files\MATLAB\R2021b\extern\include" \
  -I"C:\Program Files\MATLAB\R2021b\simulink\include" \
  -I"C:\Program Files\MATLAB\R2021b\rtw\c\src" \
  -I"C:\Program Files\MATLAB\R2021b\rtw\c\src\ext_mode\common" \
- -IC:\CM_Projects\RealSimCm11Prj\include \
+ -IC:\CM_Projects\RS_FIXS_Ford\CM11_proj\include \
  -IC:\IPG\carmaker\win64-11.0.1\include \
  -IC:\IPG\carmaker\win64-11.0.1\Matlab\R2021b \
  -I"C:\Program Files\dSPACE RCPHIL 2021-B\SCALEXIO\Include" \
@@ -218,97 +218,97 @@ CPP_ALL_OPTS = \
 
 .PATH.c = \
  C:\IPG\carmaker\win64-11.0.1\include; \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl; \
- C:\CM_Projects\RealSimCm11Prj\include; \
- C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver; \
- C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver_dsrt; \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds; \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\include; \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver; \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver_dsrt; \
  "C:\Program Files\MATLAB\R2021b\rtw\c\src"; \
  "C:\Program Files\MATLAB\R2021b\simulink\src"; \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl; 
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds; 
  
 .PATH.cpp = \
  C:\IPG\carmaker\win64-11.0.1\include; \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl; \
- C:\CM_Projects\RealSimCm11Prj\include; \
- C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver; \
- C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver_dsrt; \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds; \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\include; \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver; \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver_dsrt; \
  "C:\Program Files\MATLAB\R2021b\rtw\c\src"; \
  "C:\Program Files\MATLAB\R2021b\simulink\src"; \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl; 
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds; 
  
 .PATH.h = \
  C:\IPG\carmaker\win64-11.0.1\include; \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl; \
- C:\CM_Projects\RealSimCm11Prj\include; \
- C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver; \
- C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver_dsrt; \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl; \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds; \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\include; \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver; \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver_dsrt; \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds; \
  "C:\Program Files\MATLAB\R2021b\extern\include"; \
  "C:\Program Files\MATLAB\R2021b\simulink\include"; \
  "C:\Program Files\MATLAB\R2021b\rtw\c\src"; \
  "C:\Program Files\MATLAB\R2021b\rtw\c\src\ext_mode\common"; \
- C:\CM_Projects\RealSimCm11Prj\include; \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\include; \
  C:\IPG\carmaker\win64-11.0.1\include; \
  C:\IPG\carmaker\win64-11.0.1\Matlab\R2021b; 
  
 
 .HDRPATH.c = \
- C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver \
- C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver_dsrt \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver_dsrt \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds \
  "C:\Program Files\MATLAB\R2021b\extern\include" \
  "C:\Program Files\MATLAB\R2021b\simulink\include" \
  "C:\Program Files\MATLAB\R2021b\rtw\c\src" \
  "C:\Program Files\MATLAB\R2021b\rtw\c\src\ext_mode\common" \
- C:\CM_Projects\RealSimCm11Prj\include \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\include \
  C:\IPG\carmaker\win64-11.0.1\include \
  C:\IPG\carmaker\win64-11.0.1\Matlab\R2021b \
  C:\IPG\carmaker\win64-11.0.1\include \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl \
- C:\CM_Projects\RealSimCm11Prj\include \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\include \
  | \
- C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver \
- C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver_dsrt \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver_dsrt \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds \
  "C:\Program Files\MATLAB\R2021b\extern\include" \
  "C:\Program Files\MATLAB\R2021b\simulink\include" \
  "C:\Program Files\MATLAB\R2021b\rtw\c\src" \
  "C:\Program Files\MATLAB\R2021b\rtw\c\src\ext_mode\common" \
- C:\CM_Projects\RealSimCm11Prj\include \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\include \
  C:\IPG\carmaker\win64-11.0.1\include \
  C:\IPG\carmaker\win64-11.0.1\Matlab\R2021b \
  C:\IPG\carmaker\win64-11.0.1\include \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl \
- C:\CM_Projects\RealSimCm11Prj\include 
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\include 
  
 .HDRPATH.cpp = \
- C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver \
- C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver_dsrt \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver_dsrt \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds \
  "C:\Program Files\MATLAB\R2021b\extern\include" \
  "C:\Program Files\MATLAB\R2021b\simulink\include" \
  "C:\Program Files\MATLAB\R2021b\rtw\c\src" \
  "C:\Program Files\MATLAB\R2021b\rtw\c\src\ext_mode\common" \
- C:\CM_Projects\RealSimCm11Prj\include \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\include \
  C:\IPG\carmaker\win64-11.0.1\include \
  C:\IPG\carmaker\win64-11.0.1\Matlab\R2021b \
  C:\IPG\carmaker\win64-11.0.1\include \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl \
- C:\CM_Projects\RealSimCm11Prj\include \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\include \
  | \
- C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver \
- C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver_dsrt \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Components\RS_DS_CM11_noSimulinkRS_useManeuver\RS_DS_CM11_noSimulinkRS_useManeuver_dsrt \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds \
  "C:\Program Files\MATLAB\R2021b\extern\include" \
  "C:\Program Files\MATLAB\R2021b\simulink\include" \
  "C:\Program Files\MATLAB\R2021b\rtw\c\src" \
  "C:\Program Files\MATLAB\R2021b\rtw\c\src\ext_mode\common" \
- C:\CM_Projects\RealSimCm11Prj\include \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\include \
  C:\IPG\carmaker\win64-11.0.1\include \
  C:\IPG\carmaker\win64-11.0.1\Matlab\R2021b \
  C:\IPG\carmaker\win64-11.0.1\include \
- C:\CM_Projects\RealSimCm11Prj\src_cm4sl \
- C:\CM_Projects\RealSimCm11Prj\include 
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\src_cm4sl_ds \
+ C:\CM_Projects\RS_FIXS_Ford\CM11_proj\include 
  
 
 .CDEFINES.c  = -D_DSx86_32 -D_DS2510 -DDS_PLATFORM_X86 -DDS_PLATFORM_LE -DDS_PLATFORM_POSIX -DDS_PLATFORM_LINUX -DDS_PLATFORM_DSRTLINUX -DDS_PLATFORM_CN -DDS_PLATFORM_HCN -DDS_PLATFORM_SMART -DDS_PLATFORM_SMARTHIL -DDS_PLATFORM_SMP -D__HOSTNAME__=\DESK0120048\ -D__INTEGRATION__=\5.2.1\ -DDS_RTLIB_VERSION_MAR=5 -DDS_RTLIB_VERSION_MIR=2 -DDS_QNX_VERSION=650 -DQNX_VERSION=6.5.0 -D_FILE_OFFSET_BITS=64 -D_INLINE  

@@ -188,7 +188,7 @@ WS_WILD = .=\.
 %set DSRT_COMMON_HDR_DIRPATHS += \
     "$(START_DIR)" \
     "$(START_DIR)\RS_DS_CM11_noSimulinkRS_dsrt" \
-    "C:\CM_Projects\RealSimCm11Prj\src_cm4sl" \
+    "C:\CM_Projects\RealSimCm11Prj\src_cm4sl_ds" \
     "$(MATLAB_ROOT)\extern\include" \
     "$(MATLAB_ROOT)\simulink\include" \
     "$(MATLAB_ROOT)\rtw\c\src" \
@@ -217,7 +217,7 @@ WS_WILD = .=\.
 %set DSRT_COMMON_SRC_DIRPATHS += \
     "$(MATLAB_ROOT)\rtw\c\src" \
     "$(MATLAB_ROOT)\simulink\src" \
-    "C:\CM_Projects\RealSimCm11Prj\src_cm4sl"
+    "C:\CM_Projects\RealSimCm11Prj\src_cm4sl_ds"
 
 %if '$(USE_LOCAL_SOURCES)' == 'yes'
 %  set DSRT_COMMON_HDR_DIRPATHS += "$(START_DIR)\otherFiles"
