@@ -16,8 +16,10 @@ Table of Contents
     * [Setup CM dSPACE](#setup-cm-dspace)
         * [Obtain dSPACE library](#obtain-dspace-library)
         * [Compile dSPACE library](#compile-dspace-library)
-        * [Prepare for dSPACE build (configuration desk)](#prepare-for-dspace-build-configuration-desk)
         * [Prepare User.c](#prepare-userc)
+	* [Prepare for dSPACE build (configuration desk)](#prepare-for-dspace-build-configuration-desk)
+ 		* [Additional instructions for RS Simulink libraries](#additional-instructions-for-rs-simulink-libraries) 
+
 * [Setup Application](#setup-application)
     * [SUMO](#sumo)
 * [Run Simulations](#run-simulations)
@@ -26,9 +28,11 @@ Table of Contents
     * [Simulink](#simulink)
     * [dSPACE](#dspace)
 * [Examples](#examples)
-    * [Office Simulation](#office-simulation)
-    * [Simulink Simulation](#simulink-simulation)
     * [dSPACE Simulation](#dspace-simulation)
+
+<!--    * [Office Simulation](#office-simulation)
+    * [Simulink Simulation](#simulink-simulation)
+-->
 
 # Simulation Setups
 
@@ -172,15 +176,89 @@ The ```DsBuildLibrary.mk``` file is under ```%DSPAE_ROOT%\SCALEXIO\``` Refer to 
 
 The \CommonLib folder contains two .bat file for compiling with dSPACE 2019b, 2021b and CM11. Please refer to those files and modify your own .bat file.
 
+### Prepare User.c
+For dSPACE application, we need to modify the source code of User.c as the ConfigurationDesk will compile from Source Code for dSPACE to execute. There are few places that User.c needs to be modified:
+
+- at beginning of the code to include libraries
+**Make sure change the ```RS_configFile``` path to the correct project path. This is with respect to the dSPACE Linux file system, so root path is ```/```. You can use the ```msys``` tool that comes with CarMaker installation to telnet to the scalexio machine to double check the path. 
+```cpp
+#include "VirEnv_Wrapper.h"
+
+struct VirEnvHelper* VirEnv_c;
+
+char* RS_configFile = "/CM_Projects/RS_FIXS_Ford/CM11_proj/RS_tmp/RealSimCarMakerConfig.txt";
+char* RS_signalTable;
+```
+- at User_Init:
+```cpp
+VirEnv_c = newVirEnvHelper();
+```
+- at User_TestRun_Start_atEnd:
+```cpp
+    if (VirEnv_isVeryFirstStep && SimCore.State >= SCState_StartWait) {
+		VirEnv_initialization(VirEnv_c, RS_configFile, RS_signalTable);
+    }
+```
+- at User_TestRun_End:
+```cpp
+	VirEnv_shutdown(VirEnv_c);
+```
+- at User_Calc:
+```cpp
+    if (SimCore.State != SCState_Simulate) {
+        return 0;
+    }
+	
+    VirEnv_runStep(VirEnv_c, SimCore.Time);
+	
+```
+
 ### Prepare for dSPACE build (configuration desk)
 
 Note: currently, it is only for SCALEXIO and configuration desk dSPACE implementation. 
 
-1\. Copy the following files under the ##YOUR CM Project##\src_cm4sl folder or elsewhere you have your Simulink model and User.c code: 
-- libRealSimDsLib.a that you obtained from previous setups. 
-- VirEnv_Wrapper.h that from \CommonLib folder
+1\. Make sure both ```VirEnv_Wrapper.h``` and ```libRealSimDsLib2021b.a``` are under the ##YOUR CM Project##\include folder.
 
-2\. Next, create a simulink initialization file similar to the ```runSumoIpg``` example:
+3\. The dSPACE build process will be similar to typical CM dSPACE build, which will involve a CM_BuildConifg.py. This script needs to be updated for RealSim implementation. You can use the one inside \CarMaker folder. If want to modify your own:
+- define these macros
+```
+"RS_CAVE", "RS_DSPACE"
+```
+where the CM_BuildConifg.py has the followings:
+```python
+if ARCH == 'dsrtlx':
+    CFLAGS  = ("-include", "ipgrt.h")
+    DEFINES = ("RS_CAVE", "RS_DEBUG", "RS_DSPACE", "DSPACE", "DSRTLX", "_DSRTLX", "CM_HIL",
+            "CM_NUMVER=%d" %(CARMAKER_NUMVER), "CM4SLDS")
+else:
+    CFLAGS  = ("-include", "ipgrt.h")
+    DEFINES = ("RS_CAVE", "RS_DEBUG", "RS_DSPACE", "DSPACE", "DSRT", "_DSRT", "USE_IPGRT_FUNCS", "CM_HIL",
+            "CM_NUMVER=%d" %(CARMAKER_NUMVER), "CM4SLDS")
+```
+- include the customized RealSim library
+```
+"libRealSimDsLib_2021b.a"
+```
+inside the Initialize(self) function in the CM_BuildConifg.py where it has the following:
+```python
+            self.CM_SEARCH_PATHS = JoinPaths(srch, "; ")
+            libs = [ "libdscandrv.so", "libRealSimDsLib_2021b.a"  ]
+            self.CM_LIBRARIES = JoinPaths(libs, "; ")
+```
+- make sure the ```SRC_DIRS``` contains the folder where you put your simulink model and User.c
+```python
+SRC_DIRS = {"src_cm4sl_ds", "include"}
+```
+
+You could also add these manually in the ConfigurationDesk
+![](img/CM_DS_BuildConfig.png)
+
+- set number of accepted overruns to be -1 in ConfigurationDesk:
+![](img/DS_SCLX_NO_OVERRUN.png)
+
+#### Additional instructions for RS Simulink libraries
+**!!!The following steps are Optional and only needed if you are using RealSim Simulink blocks**
+Need a simulink initialization file similar to below:
 ```matlab
 %% define constants
 curFilePath = fileparts(mfilename('fullpath'));
@@ -202,39 +280,6 @@ RealSimPara.smoothWindow = 1; % number of moving average data point, 1 essential
 Best practice is to call this function as ```InitFcn``` in your Simulink model 
 ![](img/SimulinkInitFcn.png)
 
-3\. The dSPACE build process will be similar to typical CM dSPACE build, which will involve a CM_BuildConifg.py. This script needs to be updated for RealSim implementation. You can use the one inside \CarMaker folder. If want to modify your own:
-- define these macros
-```
-"RS_CAVE", "RS_DSPACE"
-```
-where the CM_BuildConifg.py has the followings:
-```python
-if ARCH == 'dsrtlx':
-    CFLAGS  = ("-include", "ipgrt.h")
-    DEFINES = ("RS_CAVE", "RS_DEBUG", "RS_DSPACE", "DSPACE", "DSRTLX", "_DSRTLX", "CM_HIL",
-            "CM_NUMVER=%d" %(CARMAKER_NUMVER), "CM4SLDS")
-else:
-    CFLAGS  = ("-include", "ipgrt.h")
-    DEFINES = ("RS_CAVE", "RS_DEBUG", "RS_DSPACE", "DSPACE", "DSRT", "_DSRT", "USE_IPGRT_FUNCS", "CM_HIL",
-            "CM_NUMVER=%d" %(CARMAKER_NUMVER), "CM4SLDS")
-```
-- include the customized RealSim library
-```
-"libRealSimDsLib_2019b.a"
-```
-inside the Initialize(self) function in the CM_BuildConifg.py where it has the following:
-```python
-            self.CM_SEARCH_PATHS = JoinPaths(srch, "; ")
-            libs = [ "libdscandrv.so", "libRealSimDsLib_2021b.a"  ]
-            self.CM_LIBRARIES = JoinPaths(libs, "; ")
-```
-
-You could also add these manually in the ConfigurationDesk
-![](img/CM_DS_BuildConfig.png)
-
-- set number of accepted overruns to be -1 in ConfigurationDesk:
-![](img/DS_SCLX_NO_OVERRUN.png)
-
 - if use RealSim Simulink blocks in the simulink, need to setup dSPACE TCP connetions as the following screenshots. Please refer to the dSPACE ConfigurationDesk project RS_DS_CM11_SimulinkRS and Simulink model RS_DS_CM11_SimulinkRS.slx to see how the dSPACE and RealSim are set up. 
 ![](img/DS_SCLX_Eth_1.png)
 ![](img/DS_SCLX_Eth_2.png)
@@ -242,57 +287,25 @@ You could also add these manually in the ConfigurationDesk
 ![](img/DS_SCLX_Eth_4.png)
 ![](img/DS_SCLX_Eth_5.png)
 
-### Prepare User.c
-For dSPACE application, we always need to modify the source code of User.c as the ConfigurationDesk will compile from Source Code for dSPACE to execute. There are few places that User.c needs to be modified:
-
-- at beginning of the code to include libraries 
-```cpp
-#include "VirEnv_Wrapper.h"
-
-struct VirEnvHelper* VirEnv_c;
-```
-- at User_Init:
-```cpp
-VirEnv_c = newVirEnvHelper();
-```
-- at User_TestRun_Start_atEnd:
-**Make sure change the path to the correct project path and folder where all the Simulink model holds**
-```cpp
-    if (VirEnv_isVeryFirstStep && SimCore.State >= SCState_StartWait) {
-		VirEnv_initialization(VirEnv_c, "/CM_Projects/RealSimCm11Prj/src_cm4sl/RealSimCarMakerConfig.txt");
-    }
-```
-- at User_TestRun_End:
-```cpp
-	VirEnv_shutdown(VirEnv_c);
-```
-- at User_Calc:
-```cpp
-    if (SimCore.State != SCState_Simulate) {
-        return 0;
-    }
-	
-    VirEnv_runStep(VirEnv_c, SimCore.Time);
-	
-```
 # Setup Application
 
 ## SUMO
-The SUMO network files can be put at a different location than the RealSim folder and CarMaker folder. It is recommended to create a batch file for each different simulation runs and setups. This batch file can be inside the ##YOUR CM Project##\src_cm4sl folder or inside your SUMO network file folder. The corresponding path to RealSim, SumoApp, and CmProj need to be change accordingly. Below is an example if the batch script is inside ##YOUR CM Project##\src_cm4sl folder:
+The SUMO network files can be put at a different location than the RealSim folder and CarMaker folder. It is recommended to create a batch file for each different simulation runs and setups. This batch file can be inside the ##YOUR CM Project##\src_cm4sl folder or inside your SUMO network file folder. The corresponding path to RealSim, SumoApp, and CmProj need to be change accordingly. Also, example below runs the python script in a conda environment, it is up to the user to setup a python environment properly. The only non-standard python library is ```pyyaml```. Below is an example:
 ```batch
-set RealSimPath=..\..\..\RealSimInterface\TrafficLayer\x64\Debug
-set RealSimAppPath=..\RealSimApps\SumoIpg
-set configFilename=config_SUMO.yaml
+set RealSimPath=..\..\
+set RealSimAppPath=.\sumoFiles
+set configFilename=RS_config_release.yaml
+set CmProjPath=..\..\CM11_proj
 
-start sumo-gui -c %RealSimAppPath%\coordMerge.sumocfg --remote-port 1337 --step-length 0.1 --start --netstate-dump coordMerge.xml --netstate-dump.precision 5 --num-clients 1
-start cmd /c %RealSimPath%\TrafficLayer.exe -f %RealSimAppPath%\%configFilename%
+start sumo-gui -c %RealSimAppPath%\ShallowfordRd_RL.sumocfg --remote-port 1337 --step-length 0.1 --start --begin 39600
 
-REM use a python conda environment
-REM you can directly can the default system python enviornment as well 
-REM requires pyyaml, argparse 
+start cmd /c %RealSimPath%\TrafficLayer.exe -f %configFilename%
+
 call conda activate realsimdev
-python RealSimSetCarMakerConfig.py --configFile %RealSimAppPath%\%configFilename%
+python %RealSimPath%\CarMaker\RealSimSetCarMakerConfig.py --cm-project-path %CmProjPath% --configFile %configFilename% --signal-table-path %CmProjPath%\Data\Road\RS_ShallowfordRd_sumo_signal_RSsignalTable.csv
 call conda deactivate
+
+pause
 ```
 
 # Run Simulations
@@ -306,6 +319,24 @@ RealSimCarMakerSetup.py --cm-project-path ../CM10_Proj --testrun coordMerge_sumo
 ```
 
 After traffic objects are generated, **do not** modify their "Name" otherwise Real-Sim may not work properly. But feel free to modify the "Movie geometry" to another vehicle .mobj file. If SUMO vehicle is of vehicle class: "car", "passenger", "private", it will be rendered as a car in CarMaker. If SUMO vehicle is of class "truck", it will be rendered as a truck in CarMaker. All other vehicle classes are not currently supported. 
+
+**Create lookup table to synchronize SUMO and IPG traffic signal lights**
+
+- Currently, traffic signal lights have to be manually created in CarMaker. Each signal light should be associated with a traffic light controller in the Scenario Editor. This traffic light controller has to be named with the following convention
+```
+<SUMO TLS id>_<SUMO signal index>
+```
+Also, all timing of the traffic light controller should be set to ```0```, and initial phase to be ```off```. An example is shown below
+![](img/CM_SUMO_SignalLight.png)
+![](img/CM_SUMO_SignalController.png)
+
+- Then, the same script above can take an additional argument to read a SUMO file and link the signal light between SUMO and IPG CarMaker:
+```
+RealSimCarMakerSetup.py --cm-project-path ../CM10_Proj --testrun coordMerge_sumo --cm-install-path C:\IPG --output-testrun coordMerge_sumo_rs_simulink --car 10 --truck 10 --sumo-file-path .\\tests\\SignalIpg\\sumoFiles\\ShallowfordRd_RL.net.xml
+
+```
+Then, a ```<SignalTable>.csv``` will be automatically created. By default, it will be in the ```CM11_proj\Data\Road``` folder. 
+
 
 **Setup config.yaml**
 
@@ -327,7 +358,7 @@ CarMakerSetup:
     # Ip and Port settings 
     # if no setting, need to make sure have one and only one vehicle id subscription, which will be used as ip and port
     # if set, will use whatever set here instead of what is defined in subscription
-    CarMakerIP: 127.0.0.1
+    CarMakerIP: 160.91.113.184
     
     CarMakerPort: 7331
     
@@ -341,7 +372,13 @@ CarMakerSetup:
     EgoId: egoCm
     
     EgoType: DEFAULT_VEHTYPE
+
+    # transmit real-time traffic signal light information 
+    SynchronizeTrafficSignal: true
+
+    TrafficSignalPort: 2444    
 ```
+Note, in dSPACE implementation, CarMakerIP should be the IP of the host PC. 
 
 ## Office
 Make sure select the compiled ```CarMaker.win64.exe``` and specify command line options to the desired config.yaml file 
@@ -362,23 +399,41 @@ Following the previous setup steps, dSPACE should already be ready to run.
 
 
 ## Examples
-The release comes with a CM11_proj folder with example files, and Visual Studio projects to compile executables. The SUMO files are inside ```CM11_proj\src_cm4sl```. The testruns can potentially be transferred to previous CarMaker versions by manually changing testrun heading to the desired version, for example, 
+The release comes with a CM11_proj folder and example SUMO applications, and Visual Studio projects to compile executables. The SUMO files are inside ```tests``` folder. The testruns can potentially be transferred to previous CarMaker versions by manually changing testrun heading to the desired version, for example, 
 ```FileIdent = CarMaker-TestRun 11``` ==> ```FileIdent = CarMaker-TestRun 9```
 
 
+<!---
 ## Office simulation
 run SUMO and Real-Sim with ```runCoordMergeSUMO.bat```, use CarMaker testrun ```coordMerge_rs```, make sure the GUI configuration is set properly, check [Office](#office)
 
 ## Simulink simulation
 run SUMO and Real-Sim with ```runCoordMergeSUMO_simulink.bat```, use CarMaker testrun ```coordMerge_rs_simulink```, use Simulink file ```CM11_proj\src_cm4sl\RealSimGeneric.mdl``` make sure the configuration is set properly, check [Simulink](#simulink).
+-->
 
-## dSPACE Simulation
-There are three ConfigurationDesk projects with three Simulink Models (src_cm4sl_ds).
+## dSPACE
+1. Make sure the path of the variable ```RS_configFile``` in ```User.c``` is correct for your environment
 
-- **RS_DS_CM11_noSimulinkRS** no RealSim Simulink blocks so both ego and background traffic are synchronized through User.c and the RealSim dSPACE library. The Simulink library contains a customized ramp up and ramp down module. The corresponding CarMaker testrun is ```merge_RS_noSimulinkRS```, the configuration file is ```config_RS_noSimulinkRS.yaml```
+2. Open the ConfigurationDesk project ```RS_DS_CM11_noSimulinkRS_useManeuver``` which is inside the ```CM11_proj/ConfigDesk``` folder. The simulink file is ```RS_DS_CM11_noSimulinkRS_useManeuver.slx``` under ```CM11_proj\src_cm4sl_ds```. Compile the ConfigurationDesk project. See more details in [this section](#setup-cm-dspace)
 
-- **RS_DS_CM11_noSimulinkRS_useManeuver** very similar with the example above, except that now the ramp up and ramp down are down within CarMaker through the Maneuvers. no RealSim Simulink blocks so both ego and background traffic are synchronized through User.c and the RealSim dSPACE library. 
-The corresponding CarMaker testrun is ```merge_RS_noSimulinkRS_useManeuver```, the configuration file is ```config_RS_noSimulinkRS.yaml```
+3. Start any of the SUMO applications that can be tested out of the box under ```tests``` folder.
+	- **SignalIpg** which will demonstrate how the signal light is synchronized between SUMO-IPG-dSPACE. Modify the ```runShallowfordRd_release.bat``` to the correct path of your environment and execute it. 
 
-- **RS_DS_CM11_SimulinkRS** RealSim Simulink blocks are implemented so there are two TCP/IP clients to the TrafficLayer.exe, the ego is synced within Simulink through dSPACE TCP blocks check [Prepare for dSPACE build (configuration desk)](#prepare-for-dspace-build-configuration-desk), the background traffic is synced through User.c and the RealSim dSPACE library. The corresponding CarMaker testrun is ```merge_RS_SimulinkRS```, the configuration file is ```config_RS_SimulinkRS.yaml```
+	- **SumoIpg** will demonstrate how to setup CarMaker maneuvers to ramp up and ramp down for HIL applications, modify the ```runSumoIpg_release.bat``` to the correct path of your environment and execute it. 
+4. Start CarMaker and select project ```CM11_proj```
+	- **SignalIpg** selet testrun ```RS_Shallowford_sumo_signal```
+	
+	- **SumoIpg** selet testrun ```merge_RS_noSimulinkRS_useManeuver```
+5. Start CarMaker simulation
+
+Note, after compiling a Simulink model, you should be able to switch to different SUMO applications or CarMaker testrun without the need to recompile the Simulink. However, after 
+
+
+	
+
+
+
+
+
+
 
