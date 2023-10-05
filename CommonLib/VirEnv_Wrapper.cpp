@@ -16,7 +16,7 @@ extern "C" {
 	void VirEnv_initialization(VirEnvHelper* VirEnv_c, const char* configPath, const char* signalTablePath) {
         VirEnv_c->CM_Log("RealSim start initialization\n");
 
-		#ifdef DSRTLX
+		#ifdef RS_DSPACE
 			FILE * fp = fopen(configPath, "r");
 			if (fp == NULL) {
 				VirEnv_c->CM_Log("RealSim: Read RealSimCarMakerConfig.txt failed\n");
