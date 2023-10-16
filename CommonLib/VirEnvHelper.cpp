@@ -19,7 +19,7 @@ int VirEnvHelper::CM_LogErrF(const char* MsgChar){
 void VirEnvHelper::shutdown() {
 	Log("RealSim shutdown \n");
 
-#ifdef DSRTLX
+#ifdef RS_DSPACE
 	try {
 		Sock_c.socketShutdown();
 		Sock_c.socketReset();
