@@ -26,6 +26,7 @@ void VirEnvHelper::shutdown() {
 		//Log("RealSim shutdown socket size %d\n", Sock_c.serverSock.size());
 		serverAddr.clear();
 		serverPort.clear();
+		Config_s.VehicleMessageField_v.clear();
 	}
 	catch (const std::exception& e) {
 		std::cout << e.what();
