@@ -1,6 +1,6 @@
 #INFOFILE1.1 - Do not remove this line!
 FileIdent = IPGRoad 11.0
-FileCreator = CarMaker 11.0.1
+FileCreator = CarMaker/HIL 11.0.1
 Description:
 	Converted OpenDRIVE File (Revision 1.4)
 	Original File: Data/Road/RS_ShallowfordRd_RL.xodr
@@ -9,14 +9,15 @@ LibVersion = 11.0.1
 Country = USA
 nLinks = 113
 nJunctions = 83
-nObjects = 7583
-nRoutes = 4
+nObjects = 7591
+nRoutes = 5
 RoadNetworkLength = 6801.18173582001
 BBox = 28078.6958864613 29186.4874017173 29907.7553072837 30912.9644709742 202.719999996363 246.080000091411
 Route.0.Length = 1142.10828290529
 Route.1.Length = 192.419
 Route.2.Length = 193.09331234
 Route.3.Length = 20.376
+Route.4.Length = 193.09331234
 GCSProjection.Method = PROJ
 GCSProjection.PROJ.String = \n +proj=utm +zone=16 +ellps=WGS84 +datum=WGS84 +units=m +no_defs\n
 GCSProjection.PROJ.Offset = -639371.48 -3848823.33 0 0
@@ -8452,6 +8453,11 @@ Route.3.Name = Route_3
 Route.3.DrvPath.ID = 2595
 Route.3.DrvPath:
 	2517
+Route.4.ID = 2321
+Route.4.Name = Route_4
+Route.4.DrvPath.ID = 2322
+Route.4.DrvPath:
+	182
 RL.1.RoadMarking.0.ID = 35 34
 RL.1.RoadMarking.0 = 0 0 0 1 0 0 0.13 0 1 0 0 0 0 1 1 0 ""
 RL.1.RoadMarking.0.Material.0 = white 0 0 0 0 0 0 0 0 0 0 0
@@ -8461,7 +8467,7 @@ RL.1.RoadMarking.1.Material.0 = white 0 0 0 0 0 0 0 0 0 0 0
 RL.1.Mount.0.ID = 3137 1
 RL.1.Mount.0 = 0 0 0 -1 1 9 0 0 0 3.2 5
 RL.1.Mount.0.0.ID = 3138
-RL.1.Mount.0.0 = 1 -1 0 0 0 0 0 0 -2 1 0
+RL.1.Mount.0.0 = 1 2323 0 0 0 0 0 0 -2 1 0
 RL.70.RoadMarking.0.ID = 92 91
 RL.70.RoadMarking.0 = 0 0 0 1 0 0 0.13 0 1 0 0 0 0 1 1 0 ""
 RL.70.RoadMarking.0.Material.0 = white 0 0 0 0 0 0 0 0 0 0 0
@@ -9059,9 +9065,9 @@ RL.1632.RoadMarking.1.Material.0 = white 0 0 0 0 0 0 0 0 0 0 0
 RL.1632.Mount.0.ID = 3072 1632
 RL.1632.Mount.0 = 0.149 0 -3.5 -1 2 9 0 0 0 6.4 5
 RL.1632.Mount.0.0.ID = 3136
-RL.1632.Mount.0.0 = 1 -1 0 0.145 0 0 0 0 -2 1 0
+RL.1632.Mount.0.0 = 1 2658 0 0.145 0 0 0 0 -2 1 0
 RL.1632.Mount.0.1.ID = 3065
-RL.1632.Mount.0.1 = 1 -1 0 -1.75 0 0 0 0 -1 1 0
+RL.1632.Mount.0.1 = 1 2659 0 -1.75 0 0 0 0 -1 1 0
 RL.1689.RoadMarking.0.ID = 1695 1694
 RL.1689.RoadMarking.0 = 0 0 0 1 0 0 0.13 0 1 0 0 0 0 1 1 0 ""
 RL.1689.RoadMarking.0.Material.0 = white 0 0 0 0 0 0 0 0 0 0 0
@@ -9088,11 +9094,11 @@ RL.1716.Mount.0.0.ID = 2055
 RL.1716.Mount.0.0 = 0 2 0 0 0 0 0 98 1 1 TurnAheadR M "" 0 0 0 - - "" 0 0 0 - - "" 0 0 0
 RL.1716.Mount.0.0.Size = 0.914399981498718 0.762000024318695
 RL.1716.Mount.0.1.ID = 3142
-RL.1716.Mount.0.1 = 1 -1 0 0 0 0 0 0 -4 1 0
+RL.1716.Mount.0.1 = 1 2596 0 0 0 0 0 0 -4 1 0
 RL.1716.Mount.0.2.ID = 3143
-RL.1716.Mount.0.2 = 1 -1 0 0 0 0 0 0 -3 1 0
+RL.1716.Mount.0.2 = 1 2656 0 0 0 0 0 0 -3 1 0
 RL.1716.Mount.0.3.ID = 3144
-RL.1716.Mount.0.3 = 1 -1 0 0 0 0 0 0 -2 1 0
+RL.1716.Mount.0.3 = 1 2657 0 0 0 0 0 0 -2 1 0
 RL.1716.Bump.0.ID = 118 1716
 RL.1716.Bump.0.Type = RaisedProfileRSR
 RL.1716.Bump.0.Param = 0.38 0 193.004 0 0 -1 0 1 0 0 0.3 0 0.2 5
@@ -10265,4 +10271,10 @@ RL.7512.RoadMarking.0.Material.0 = white 0 0 0 0 0 0 0 0 0 0 0
 Control.TrfLight.0 = 2105 3586_13 "" 0 0 0 0 0 0
 Control.TrfLight.1 = 2260 3586_14 "" 0 0 0 0 0 0
 Control.TrfLight.2 = 2261 3586_15 "" 0 0 0 0 0 0
+Control.TrfLight.3 = 2323 3586_1 "" 0 0 0 0 0 0
+Control.TrfLight.4 = 2596 3586_4 "" 0 0 0 0 0 0
+Control.TrfLight.5 = 2656 3586_5 "" 0 0 0 0 0 0
+Control.TrfLight.6 = 2657 3586_6 "" 0 0 0 0 0 0
+Control.TrfLight.7 = 2658 3586_10 "" 0 0 0 0 0 0
+Control.TrfLight.8 = 2659 3586_8 "" 0 0 0 0 0 0
 MaxUsedObjId = 7545
