@@ -7,11 +7,11 @@ VirEnvHelper::VirEnvHelper() {
 }
 
 
-int VirEnvHelper::CM_Log(const char* MsgChar){
+int VirEnvHelper::CM_Log(const char* MsgChar) {
 	Log(MsgChar);
 	return 0;
 }
-int VirEnvHelper::CM_LogErrF(const char* MsgChar){
+int VirEnvHelper::CM_LogErrF(const char* MsgChar) {
 	LogErrF(EC_General, MsgChar);
 	return 0;
 }
@@ -35,6 +35,22 @@ void VirEnvHelper::shutdown() {
 	catch (...) {
 		Log("Warning: RealSim shutdown failed\n");
 	}
+#else
+	//try {
+	//	Sock_c.socketShutdown();
+	//	Sock_c.socketReset();
+	//	//Log("RealSim shutdown socket size %d\n", Sock_c.serverSock.size());
+	//	serverAddr.clear();
+	//	serverPort.clear();
+	//	Config_c.resetConfig();
+	//}
+	//catch (const std::exception& e) {
+	//	std::cout << e.what();
+	//	Log("Warning: RealSim shutdown failed\n");
+	//}
+	//catch (...) {
+	//	Log("Warning: RealSim shutdown failed\n");
+	//}
 #endif
 	veryFirstStep = 1;
 
@@ -53,30 +69,30 @@ void VirEnvHelper::shutdown() {
 
 //#ifndef RS_DSPACE
 int VirEnvHelper::initialization(const char** errorMsg, const char* configPathInput, const char* signalTablePathInput) {
-//#else
-//int VirEnvHelper::initialization(const char** errorMsg, const char* signalTablePathInput) {
-//#endif
-	//TCHAR NPath[MAX_PATH];
-	//GetCurrentDirectory(MAX_PATH, NPath);
+	//#else
+	//int VirEnvHelper::initialization(const char** errorMsg, const char* signalTablePathInput) {
+	//#endif
+		//TCHAR NPath[MAX_PATH];
+		//GetCurrentDirectory(MAX_PATH, NPath);
 
-	// auto simStartTimestamp = chrono::system_clock::to_time_t(chrono::system_clock::now());
-	// char simStartTimestampChar[100];
-	// ctime_s(simStartTimestampChar, sizeof simStartTimestampChar, &simStartTimestamp);
-	// fstream f(CmErrorFile, std::fstream::in | std::fstream::out | std::fstream::app);
-	// f << endl << "=============================================" << endl;
-	// f << "RealSim CarMaker Starts at  " << simStartTimestampChar << endl;
-	// f.close();
+		// auto simStartTimestamp = chrono::system_clock::to_time_t(chrono::system_clock::now());
+		// char simStartTimestampChar[100];
+		// ctime_s(simStartTimestampChar, sizeof simStartTimestampChar, &simStartTimestamp);
+		// fstream f(CmErrorFile, std::fstream::in | std::fstream::out | std::fstream::app);
+		// f << endl << "=============================================" << endl;
+		// f << "RealSim CarMaker Starts at  " << simStartTimestampChar << endl;
+		// f.close();
 
 
-	// char cwd[1024];
-	// if (getcwd(cwd, sizeof(cwd)) != NULL) {
-	   // Log("RealSim Current working dir: %s\n", cwd);
-	// } else {
-	   // Log("RealSim getcwd() error");
-	// }
-	
+		// char cwd[1024];
+		// if (getcwd(cwd, sizeof(cwd)) != NULL) {
+		   // Log("RealSim Current working dir: %s\n", cwd);
+		// } else {
+		   // Log("RealSim getcwd() error");
+		// }
+
 	veryFirstStep = 0;
-	
+
 	string errorMsgStr;
 
 	time_t rawtime;
@@ -127,97 +143,100 @@ int VirEnvHelper::initialization(const char** errorMsg, const char* configPathIn
 
 #endif
 
-// check if vehicle class is defined
-if (Msg_c.VehicleMessageField_set.find("vehicleClass") == Msg_c.VehicleMessageField_set.end() || Msg_c.VehicleMessageField_set.find("heading") == Msg_c.VehicleMessageField_set.end() || Msg_c.VehicleMessageField_set.find("grade") == Msg_c.VehicleMessageField_set.end()) {
-	*errorMsg = "RealSim: Must subscribe: id, speed, vehicleClass, heading, grade, speedDesired/accelerationDesired";
-	//*errorMsg = const_cast<char*>(errorMsgStr.c_str());
-	return ERROR_INIT_MSG_FIELD;
-}
-
-if (SYNCHRONIZE_TRAFFIC_SIGNAL) {
-	// 
-	string pattern = "RS_tmp";
-	string rsTmpPath = configPath.substr(0, configPath.find(pattern));
-	string siganlTableFullPath = rsTmpPath + "RS_tmp/" + signalTablePathInput;
-
-	Log("RS signal path %s\n", siganlTableFullPath.c_str());
-	// read signal table
-	readSignalTable(siganlTableFullPath.c_str());
-}
-
-//Log("RealSim init socket size %d\n", Sock_c.serverSock.size());
-
-// try to start RealSim socket connection
-try {
-#ifndef RS_DSPACE
-	// vehicle data port
-	serverAddr.push_back(Config_c.SimulationSetup.TrafficLayerIP);
-	serverPort.push_back(Config_c.CarMakerSetup.CarMakerPort);
-
-	// if signal data, then use a separate port
-	if (SYNCHRONIZE_TRAFFIC_SIGNAL) {
-		serverAddr.push_back(Config_c.SimulationSetup.TrafficLayerIP);
-		serverPort.push_back(Config_c.CarMakerSetup.TrafficSignalPort);
+	// check if vehicle class is defined
+	if (Msg_c.VehicleMessageField_set.find("vehicleClass") == Msg_c.VehicleMessageField_set.end() || Msg_c.VehicleMessageField_set.find("heading") == Msg_c.VehicleMessageField_set.end() || Msg_c.VehicleMessageField_set.find("grade") == Msg_c.VehicleMessageField_set.end()) {
+		*errorMsg = "RealSim: Must subscribe: id, speed, vehicleClass, heading, grade, speedDesired/accelerationDesired";
+		//*errorMsg = const_cast<char*>(errorMsgStr.c_str());
+		return ERROR_INIT_MSG_FIELD;
 	}
+
+	if (SYNCHRONIZE_TRAFFIC_SIGNAL) {
+		// 
+#ifdef RS_DSPACE
+		string pattern = "RS_tmp";
+		string rsTmpPath = configPath.substr(0, configPath.find(pattern));
+		string siganlTableFullPath = rsTmpPath + "RS_tmp/" + signalTablePathInput;
 #else
-	serverAddr.push_back(Config_s.TrafficLayerIP);
-	serverPort.push_back(Config_s.CarMakerPort);
-
-	// if signal data, then use a separate port
-	if (SYNCHRONIZE_TRAFFIC_SIGNAL) {
-		serverAddr.push_back(Config_s.TrafficLayerIP);
-		serverPort.push_back(Config_s.TrafficSignalPort);
+		string siganlTableFullPath = signalTablePathInput;
+#endif
+		Log("RS signal path %s\n", siganlTableFullPath.c_str());
+		// read signal table
+		readSignalTable(siganlTableFullPath.c_str());
 	}
-#endif
 
-	Sock_c.socketSetup(serverAddr, serverPort); // connect to server Traffic Layer
-	Sock_c.disableServerTrigger();
-	Sock_c.disableWaitClientTrigger();
-#ifdef RS_DEBUG
-	Log("RealSim serverAddr[0] %s\n", serverAddr[0].c_str());
-	Log("RealSim serverPort[0] %d\n", serverPort[0]);
-#endif
-	//Log("RealSim init socket size exit %d\n", Sock_c.serverSock.size());
+	//Log("RealSim init socket size %d\n", Sock_c.serverSock.size());
 
-	if (ENABLE_REALSIM) {
-#ifdef RS_DEBUG
-		Log("RealSim socket initConnection\n");
-#endif
-		if (Sock_c.initConnection(CmErrorFile) > 0) {
-			printf("Connect to RealSim failed! Make sure start TrafficLayer first\n");
-			*errorMsg = "RealSim: Initialize Socket Failed";
-#ifdef RS_DEBUG
-			Log("RealSim socket initConnection failed");
-#endif
-			return ERROR_INIT_SOCKET;
+	// try to start RealSim socket connection
+	try {
+#ifndef RS_DSPACE
+		// vehicle data port
+		serverAddr.push_back(Config_c.SimulationSetup.TrafficLayerIP);
+		serverPort.push_back(Config_c.CarMakerSetup.CarMakerPort);
+
+		// if signal data, then use a separate port
+		if (SYNCHRONIZE_TRAFFIC_SIGNAL) {
+			serverAddr.push_back(Config_c.SimulationSetup.TrafficLayerIP);
+			serverPort.push_back(Config_c.CarMakerSetup.TrafficSignalPort);
 		}
-	}
-#ifdef RS_DEBUG
-	Log("RealSim socket initConnection succeed\n");
-#endif
-}
-catch (const std::exception& e) {
-	Sock_c.socketShutdown();
-	std::cout << e.what();
-	printf("ERROR: initialize RealSim socket failed!\n");
-	*errorMsg = "RealSim: Initialize Socket Failed";
-	return ERROR_INIT_SOCKET;
-}
-catch (...) {
-	Sock_c.socketShutdown();
-	printf("UNKNOWN ERROR: initialize RealSim socket failed!\n");
-	*errorMsg = "RealSim: Initialize Socket Failed";
-	return ERROR_INIT_SOCKET;
-}
+#else
+		serverAddr.push_back(Config_s.TrafficLayerIP);
+		serverPort.push_back(Config_s.CarMakerPort);
 
-return 0;
+		// if signal data, then use a separate port
+		if (SYNCHRONIZE_TRAFFIC_SIGNAL) {
+			serverAddr.push_back(Config_s.TrafficLayerIP);
+			serverPort.push_back(Config_s.TrafficSignalPort);
+		}
+#endif
+
+		Sock_c.socketSetup(serverAddr, serverPort); // connect to server Traffic Layer
+		Sock_c.disableServerTrigger();
+		Sock_c.disableWaitClientTrigger();
+#ifdef RS_DEBUG
+		Log("RealSim serverAddr[0] %s\n", serverAddr[0].c_str());
+		Log("RealSim serverPort[0] %d\n", serverPort[0]);
+#endif
+		//Log("RealSim init socket size exit %d\n", Sock_c.serverSock.size());
+
+		if (ENABLE_REALSIM) {
+#ifdef RS_DEBUG
+			Log("RealSim socket initConnection\n");
+#endif
+			if (Sock_c.initConnection(CmErrorFile) > 0) {
+				printf("Connect to RealSim failed! Make sure start TrafficLayer first\n");
+				*errorMsg = "RealSim: Initialize Socket Failed";
+#ifdef RS_DEBUG
+				Log("RealSim socket initConnection failed");
+#endif
+				return ERROR_INIT_SOCKET;
+			}
+		}
+#ifdef RS_DEBUG
+		Log("RealSim socket initConnection succeed\n");
+#endif
+	}
+	catch (const std::exception& e) {
+		Sock_c.socketShutdown();
+		std::cout << e.what();
+		printf("ERROR: initialize RealSim socket failed!\n");
+		*errorMsg = "RealSim: Initialize Socket Failed";
+		return ERROR_INIT_SOCKET;
+	}
+	catch (...) {
+		Sock_c.socketShutdown();
+		printf("UNKNOWN ERROR: initialize RealSim socket failed!\n");
+		*errorMsg = "RealSim: Initialize Socket Failed";
+		return ERROR_INIT_SOCKET;
+	}
+
+	return 0;
 }
 
 int VirEnvHelper::readSignalTable(const char* signalTablePathInput) {
 
 	// Open an existing file
 	string signalTablePathInput_str = signalTablePathInput;
-	if ( signalTablePathInput_str.substr(signalTablePathInput_str.size() - 4).compare(".csv" ) == 0 ){
+	if (signalTablePathInput_str.substr(signalTablePathInput_str.size() - 4).compare(".csv") == 0) {
 
 	}
 	else {
@@ -303,7 +322,7 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 	string errorMsgStr;
 
 
-	 // run real sim step every 0.1 seconds and not do this step at simTime=0
+	// run real sim step every 0.1 seconds and not do this step at simTime=0
 	int simStateRecv = 0;
 	float simTimeRecv = 0;
 	unsigned int iS = 0;
@@ -311,7 +330,7 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 	// ===========================================================================
 	// 			initialize available CM id queue and move traffic objects far away
 	// ===========================================================================
-	if (simTime < 0.05){
+	if (simTime < 0.05) {
 		try {
 			for (int iObj = 0; iObj < Traffic.nObjs; iObj++) {
 				VehFullData_t curTrfObjData;
@@ -319,6 +338,11 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 				tTrafficObj* TrfObj = Traffic_GetByTrfId(iObj);
 
 				string name = TrfObj->Cfg.Name; //
+
+				// do not touch Traffic objects that are not RS related
+				if (name.find(RealSimCarNamePattern) == string::npos && name.find(RealSimTruckNamePattern) == string::npos) {
+					continue;
+				}
 
 				/*
 				should check what character is in the name then determine vehile class/type
@@ -351,7 +375,7 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 			return ERROR_INIT_TRAFFIC;
 		}
 
-	   
+
 	}
 
 	if (simTime > 1e-5 && abs((simTime) * 10 - ceil((simTime) * 10 - 0.5)) < 1e-5) {
@@ -462,26 +486,31 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 
 				tTrafficObj* TrfObj = Traffic_GetByTrfId(TrafficSimulatorId2CarMakerId[idTs]);
 
-				 string name = TrfObj->Cfg.Name; //
+				string name = TrfObj->Cfg.Name; //
 
-				 // set position to be nonsense
-				 TrfObj->t_0[0] = 0;
-				 TrfObj->t_0[1] = 0;
-				 TrfObj->t_0[2] = -5000;
+				// do not touch Traffic objects that are not RS related
+				if (name.find(RealSimCarNamePattern) == string::npos && name.find(RealSimTruckNamePattern) == string::npos) {
+					continue;
+				}
 
-				 // now these CmId becomes available
-				 if (name.find(RealSimCarNamePattern) != string::npos) {
-					 CmAvailableCarId_queue.push(TrafficSimulatorId2CarMakerId[idTs]);
-				 }
-				 else if (name.find(RealSimTruckNamePattern) != string::npos) {
-					 CmAvailableTruckId_queue.push(TrafficSimulatorId2CarMakerId[idTs]);
-				 }
+				// set position to be nonsense
+				TrfObj->t_0[0] = 0;
+				TrfObj->t_0[1] = 0;
+				TrfObj->t_0[2] = -5000;
 
-				 TrafficSimulatorId2CarMakerId.erase(idTs);
+				// now these CmId becomes available
+				if (name.find(RealSimCarNamePattern) != string::npos) {
+					CmAvailableCarId_queue.push(TrafficSimulatorId2CarMakerId[idTs]);
+				}
+				else if (name.find(RealSimTruckNamePattern) != string::npos) {
+					CmAvailableTruckId_queue.push(TrafficSimulatorId2CarMakerId[idTs]);
+				}
 
-				 // remove from TrafficState um for interpolation
-				 TrafficStateNext_um.erase(idTs);
-				 TrafficStatePrevious_um.erase(idTs);
+				TrafficSimulatorId2CarMakerId.erase(idTs);
+
+				// remove from TrafficState um for interpolation
+				TrafficStateNext_um.erase(idTs);
+				TrafficStatePrevious_um.erase(idTs);
 
 			}
 		}
@@ -503,57 +532,57 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 		try {
 			// update state
 			TrafficSimulatorId2Remove.clear();
-			 for (auto iter : TrafficSimulatorId2CarMakerId) {
-				 string idTs = iter.first;
-				 int idCm = iter.second;
+			for (auto iter : TrafficSimulatorId2CarMakerId) {
+				string idTs = iter.first;
+				int idCm = iter.second;
 
-				 tTrafficObj* TrfObj = Traffic_GetByTrfId(idCm);
+				tTrafficObj* TrfObj = Traffic_GetByTrfId(idCm);
 
-				 TrafficSimulatorId2Remove.insert(idTs);
+				TrafficSimulatorId2Remove.insert(idTs);
 
-				 // -------------------
-				 // interpolation to smooth position change as CM position updates faster than Traffic Simulaotr 0.1second
-				 // -------------------
-				 // position, heading, grade in VehDataAuxiliary are defined according to CM convention
-				 VehDataAuxiliary_t vehDataNext;
-				 VehDataAuxiliary_t vehDataPrevious;
+				// -------------------
+				// interpolation to smooth position change as CM position updates faster than Traffic Simulaotr 0.1second
+				// -------------------
+				// position, heading, grade in VehDataAuxiliary are defined according to CM convention
+				VehDataAuxiliary_t vehDataNext;
+				VehDataAuxiliary_t vehDataPrevious;
 
-				 double heading = Msg_c.VehDataRecv_um[idTs].heading;
-				 // RS position is at front of vehicle. CM is rearmost surface
-				 // RS z is ground of vehicle, CM is CoM
-				 vehDataNext.positionX = Msg_c.VehDataRecv_um[idTs].positionX - TrfObj->Cfg.l * sin(heading * M_PI / 180);
-				 vehDataNext.positionY = Msg_c.VehDataRecv_um[idTs].positionY - TrfObj->Cfg.l * cos(heading * M_PI / 180);
-				 vehDataNext.positionZ = Msg_c.VehDataRecv_um[idTs].positionZ + TrfObj->Cfg.h / 2 + TrfObj->Cfg.zOff - TrfObj->Cfg.l*sin(Msg_c.VehDataRecv_um[idTs].grade); // 
-				 // RS heading in degree, north is 0 degree, then increasing clockwise. i.e., east is 90 degree.
-				 // convert to east 0 radian, north pi/2 radian, south -pi/2 radian system
-				 vehDataNext.yaw = 0;
-				 if (heading >= 0 && heading <= 1.5 * 180) {
-					 vehDataNext.yaw = 0.5 * M_PI - heading * M_PI / 180;
-				 }
-				 else {
-					 vehDataNext.yaw = 2.5 * M_PI - heading * M_PI / 180;
-				 }
-				 // RS positive grade climbing hill, but CM negative climbing hill
-				 vehDataNext.pitch = -Msg_c.VehDataRecv_um[idTs].grade;
+				double heading = Msg_c.VehDataRecv_um[idTs].heading;
+				// RS position is at front of vehicle. CM is rearmost surface
+				// RS z is ground of vehicle, CM is CoM
+				vehDataNext.positionX = Msg_c.VehDataRecv_um[idTs].positionX - TrfObj->Cfg.l * sin(heading * M_PI / 180);
+				vehDataNext.positionY = Msg_c.VehDataRecv_um[idTs].positionY - TrfObj->Cfg.l * cos(heading * M_PI / 180);
+				vehDataNext.positionZ = Msg_c.VehDataRecv_um[idTs].positionZ + TrfObj->Cfg.h / 2 + TrfObj->Cfg.zOff - TrfObj->Cfg.l * sin(Msg_c.VehDataRecv_um[idTs].grade); // 
+				// RS heading in degree, north is 0 degree, then increasing clockwise. i.e., east is 90 degree.
+				// convert to east 0 radian, north pi/2 radian, south -pi/2 radian system
+				vehDataNext.yaw = 0;
+				if (heading >= 0 && heading <= 1.5 * 180) {
+					vehDataNext.yaw = 0.5 * M_PI - heading * M_PI / 180;
+				}
+				else {
+					vehDataNext.yaw = 2.5 * M_PI - heading * M_PI / 180;
+				}
+				// RS positive grade climbing hill, but CM negative climbing hill
+				vehDataNext.pitch = -Msg_c.VehDataRecv_um[idTs].grade;
 
-				 // the current received state is for next 0.1 time step
-				 double simTimeNext = ceil(simTime * 10 + 0.001) / 10;
-				 TrafficStateNext_um[idTs] = make_pair(simTimeNext, vehDataNext);
-				 // if this vehicle enters first time, no interpolation yet
-				 if (TrafficStatePrevious_um.find(idTs) == TrafficStatePrevious_um.end()) {
-					 vehDataPrevious = vehDataNext;
-				 }
-				 else
-				 {
-					 // as we received one new state from RealSim, current state essentially now becomes previous state
-					 vehDataPrevious.positionX = TrfObj->t_0[0];
-					 vehDataPrevious.positionY = TrfObj->t_0[1];
-					 vehDataPrevious.positionZ = TrfObj->t_0[2];
-					 vehDataPrevious.yaw = TrfObj->r_zyx[2];
-					 vehDataPrevious.pitch = TrfObj->r_zyx[1];
-				 }
-				 TrafficStatePrevious_um[idTs] = make_pair(simTime, vehDataPrevious);
-			 }
+				// the current received state is for next 0.1 time step
+				double simTimeNext = ceil(simTime * 10 + 0.001) / 10;
+				TrafficStateNext_um[idTs] = make_pair(simTimeNext, vehDataNext);
+				// if this vehicle enters first time, no interpolation yet
+				if (TrafficStatePrevious_um.find(idTs) == TrafficStatePrevious_um.end()) {
+					vehDataPrevious = vehDataNext;
+				}
+				else
+				{
+					// as we received one new state from RealSim, current state essentially now becomes previous state
+					vehDataPrevious.positionX = TrfObj->t_0[0];
+					vehDataPrevious.positionY = TrfObj->t_0[1];
+					vehDataPrevious.positionZ = TrfObj->t_0[2];
+					vehDataPrevious.yaw = TrfObj->r_zyx[2];
+					vehDataPrevious.pitch = TrfObj->r_zyx[1];
+				}
+				TrafficStatePrevious_um[idTs] = make_pair(simTime, vehDataPrevious);
+			}
 		}
 		catch (const std::exception& e) {
 			std::cout << e.what();
@@ -611,73 +640,73 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 			// send ego states
 			VehFullData_t VehDataSend;
 
-			 if (!ENABLE_SEPARATE_EGO_TRAFFIC || simTime < 1e-5) {
+			if (!ENABLE_SEPARATE_EGO_TRAFFIC || simTime < 1e-5) {
 #ifndef RS_DSPACE
-				 VehDataSend.id = Config_c.CarMakerSetup.EgoId;
-				 VehDataSend.type = Config_c.CarMakerSetup.EgoType;
+				VehDataSend.id = Config_c.CarMakerSetup.EgoId;
+				VehDataSend.type = Config_c.CarMakerSetup.EgoType;
 #else
-				 VehDataSend.id = Config_s.EgoId;
-				 VehDataSend.type = Config_s.EgoType;
+				VehDataSend.id = Config_s.EgoId;
+				VehDataSend.type = Config_s.EgoType;
 #endif
-				 VehDataSend.speed = (float)Vehicle.v;
+				VehDataSend.speed = (float)Vehicle.v;
 
-				 if (Vehicle.Yaw >= -M_PI && Vehicle.Yaw <= 0.5 * M_PI) {
-					 VehDataSend.heading = (float)((-Vehicle.Yaw + 0.5 * M_PI) * 180 / M_PI);
-				 }
-				 else {
-					 VehDataSend.heading = (float)((-Vehicle.Yaw + 2.5 * M_PI) * 180 / M_PI);
-				 }
+				if (Vehicle.Yaw >= -M_PI && Vehicle.Yaw <= 0.5 * M_PI) {
+					VehDataSend.heading = (float)((-Vehicle.Yaw + 0.5 * M_PI) * 180 / M_PI);
+				}
+				else {
+					VehDataSend.heading = (float)((-Vehicle.Yaw + 2.5 * M_PI) * 180 / M_PI);
+				}
 
-				 VehDataSend.positionX = (float)Vehicle.PoI_Pos[0] + Vehicle.Cfg.Bdy1_CoM[0] * sin(VehDataSend.heading * M_PI / 180);
-				 VehDataSend.positionY = (float)Vehicle.PoI_Pos[1] + Vehicle.Cfg.Bdy1_CoM[0] * cos(VehDataSend.heading * M_PI / 180);
-				 VehDataSend.positionZ = (float)Vehicle.PoI_Pos[2] - Vehicle.Cfg.Bdy1_CoM[2];
+				VehDataSend.positionX = (float)Vehicle.PoI_Pos[0] + Vehicle.Cfg.Bdy1_CoM[0] * sin(VehDataSend.heading * M_PI / 180);
+				VehDataSend.positionY = (float)Vehicle.PoI_Pos[1] + Vehicle.Cfg.Bdy1_CoM[0] * cos(VehDataSend.heading * M_PI / 180);
+				VehDataSend.positionZ = (float)Vehicle.PoI_Pos[2] - Vehicle.Cfg.Bdy1_CoM[2];
 
-				 VehDataSend.acceleration = (float)0;
-				 VehDataSend.color = (uint32_t)0;
-				 VehDataSend.linkId = (string)"None";
-				 VehDataSend.laneId = (int32_t)0;
-				 VehDataSend.distanceTravel = (float)0;
-				 VehDataSend.speedDesired = (float)Vehicle.v;
-				 VehDataSend.accelerationDesired = (float)0;
-			 }
+				VehDataSend.acceleration = (float)0;
+				VehDataSend.color = (uint32_t)0;
+				VehDataSend.linkId = (string)"None";
+				VehDataSend.laneId = (int32_t)0;
+				VehDataSend.distanceTravel = (float)0;
+				VehDataSend.speedDesired = (float)Vehicle.v;
+				VehDataSend.accelerationDesired = (float)0;
+			}
 
-			 if (ENABLE_REALSIM) {
+			if (ENABLE_REALSIM) {
 
-				 for (iS = 0; iS < Sock_c.serverSock.size(); iS++) {
+				for (iS = 0; iS < Sock_c.serverSock.size(); iS++) {
 
-					 uint8_t simStateSend = simStateRecv;
+					uint8_t simStateSend = simStateRecv;
 
-					 int iByte = 0;
+					int iByte = 0;
 
-					 char sendServerBuffer[8096];
-					 // !! WE don't know the message size yet, pack a dummy header
-					 Msg_c.packHeader(simStateSend, simTimeRecv, MSG_HEADER_SIZE, sendServerBuffer, &iByte);
-					 Sock_c.sendServerByte[iS] = { MSG_HEADER_SIZE };
+					char sendServerBuffer[8096];
+					// !! WE don't know the message size yet, pack a dummy header
+					Msg_c.packHeader(simStateSend, simTimeRecv, MSG_HEADER_SIZE, sendServerBuffer, &iByte);
+					Sock_c.sendServerByte[iS] = { MSG_HEADER_SIZE };
 
-					 // only pack ego information if one connection to RealSim
-					 // if two connections, still send ego at beginning to add this ego car in SUMO/VISSIM
-					 if ((!ENABLE_SEPARATE_EGO_TRAFFIC || simTime < 1e-5) && iS == 0) {
-						 Msg_c.packVehData(VehDataSend, sendServerBuffer, &Sock_c.sendServerByte[iS]);
-					 }
+					// only pack ego information if one connection to RealSim
+					// if two connections, still send ego at beginning to add this ego car in SUMO/VISSIM
+					if ((!ENABLE_SEPARATE_EGO_TRAFFIC || simTime < 1e-5) && iS == 0) {
+						Msg_c.packVehData(VehDataSend, sendServerBuffer, &Sock_c.sendServerByte[iS]);
+					}
 
-					 // repack the header with the correct size
-					 iByte = 0;
-					 Msg_c.packHeader(simStateSend, simTimeRecv, Sock_c.sendServerByte[iS], sendServerBuffer, &iByte);
+					// repack the header with the correct size
+					iByte = 0;
+					Msg_c.packHeader(simStateSend, simTimeRecv, Sock_c.sendServerByte[iS], sendServerBuffer, &iByte);
 
-					 if (send(Sock_c.serverSock[iS], sendServerBuffer, Sock_c.sendServerByte[iS], 0) != Sock_c.sendServerByte[iS]) {
-						 char buff[1000];
+					if (send(Sock_c.serverSock[iS], sendServerBuffer, Sock_c.sendServerByte[iS], 0) != Sock_c.sendServerByte[iS]) {
+						char buff[1000];
 #ifdef WIN32
-						 snprintf(buff, sizeof(buff), "RealSim: Send failed, %d", WSAGetLastError());
-						 fprintf(stderr, "%s: %d\n", "send() failed", WSAGetLastError());
+						snprintf(buff, sizeof(buff), "RealSim: Send failed, %d", WSAGetLastError());
+						fprintf(stderr, "%s: %d\n", "send() failed", WSAGetLastError());
 #else
-						 snprintf(buff, sizeof(buff), "RealSim: Send failed, %d, %s", errno, strerror(errno));
-						 fprintf(stderr, "%s: \n", "send() failed");
+						snprintf(buff, sizeof(buff), "RealSim: Send failed, %d, %s", errno, strerror(errno));
+						fprintf(stderr, "%s: \n", "send() failed");
 #endif
-						 * errorMsg = buff;
-						 return ERROR_STEP_SEND_EGO;
-					 }
-				 }
-			 }
+						* errorMsg = buff;
+						return ERROR_STEP_SEND_EGO;
+					}
+				}
+			}
 		}
 		catch (const std::exception& e) {
 			std::cout << e.what();
@@ -702,36 +731,78 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 #endif
 		if (abs(simTime * refreshRate - ceil(simTime * refreshRate - 0.5)) < 1e-5) {
 
-			 for (auto iter : TrafficSimulatorId2CarMakerId) {
-				 string idTs = iter.first;
-				 int idCm = iter.second;
+			for (auto iter : TrafficSimulatorId2CarMakerId) {
+				string idTs = iter.first;
+				int idCm = iter.second;
 
-				 double tPrevious = get<0>(TrafficStatePrevious_um[idTs]);
-				 VehDataAuxiliary_t vehDataPrevious = get<1>(TrafficStatePrevious_um[idTs]);
-				 double tNext = get<0>(TrafficStateNext_um[idTs]);
-				 VehDataAuxiliary_t vehDataNext = get<1>(TrafficStateNext_um[idTs]);
+				double tPrevious = get<0>(TrafficStatePrevious_um[idTs]);
+				VehDataAuxiliary_t vehDataPrevious = get<1>(TrafficStatePrevious_um[idTs]);
+				double tNext = get<0>(TrafficStateNext_um[idTs]);
+				VehDataAuxiliary_t vehDataNext = get<1>(TrafficStateNext_um[idTs]);
 
-				 // do interpolation
-				 double posX = (vehDataNext.positionX - vehDataPrevious.positionX) / (tNext - tPrevious) * (simTime - tPrevious) + vehDataPrevious.positionX;
-				 double posY = (vehDataNext.positionY - vehDataPrevious.positionY) / (tNext - tPrevious) * (simTime - tPrevious) + vehDataPrevious.positionY;
-				 double posZ = (vehDataNext.positionZ - vehDataPrevious.positionZ) / (tNext - tPrevious) * (simTime - tPrevious) + vehDataPrevious.positionZ;
-				 // don't do any interpolation on yaw and pitch, just use that of vehDataNext
-				 double pitch = vehDataNext.pitch;
-				 double yaw = vehDataNext.yaw;
+				// do interpolation
+				double posX = (vehDataNext.positionX - vehDataPrevious.positionX) / (tNext - tPrevious) * (simTime - tPrevious) + vehDataPrevious.positionX;
+				double posY = (vehDataNext.positionY - vehDataPrevious.positionY) / (tNext - tPrevious) * (simTime - tPrevious) + vehDataPrevious.positionY;
+				double posZ = (vehDataNext.positionZ - vehDataPrevious.positionZ) / (tNext - tPrevious) * (simTime - tPrevious) + vehDataPrevious.positionZ;
+				// don't do any interpolation on yaw and pitch, just use that of vehDataNext
+				double pitch = vehDataNext.pitch;
+				double yaw = vehDataNext.yaw;
 
-				 // need grade to find out elevation and rotation angle
+				// need grade to find out elevation and rotation angle
 
-				 tTrafficObj* TrfObj = Traffic_GetByTrfId(idCm);
+				tTrafficObj* TrfObj = Traffic_GetByTrfId(idCm);
 
 
-				 TrfObj->t_0[0] = posX;
-				 TrfObj->t_0[1] = posY;
-				 TrfObj->t_0[2] = posZ;
+				TrfObj->t_0[0] = posX;
+				TrfObj->t_0[1] = posY;
+				TrfObj->t_0[2] = posZ;
 
-				 TrfObj->r_zyx[1] = pitch;
-				 TrfObj->r_zyx[2] = yaw;
-			 }
+				TrfObj->r_zyx[1] = pitch;
+				TrfObj->r_zyx[2] = yaw;
 
+				tLights* pLights = Traffic_Lights_GetByObjId(TrfObj->Cfg.ObjId);
+				int ig = Lights_Get_CtrlElem_Ignition(pLights);
+				Log("idCm %d, ig %d\n", idCm, ig);
+			}
+
+			{
+				// test turning indicator      
+				tTrafficObj* TrfObj = Traffic_GetByTrfId(40);
+
+				tLights* pLights = Traffic_Lights_GetByObjId(TrfObj->Cfg.ObjId);
+
+				//Lights_Get_LightElem_Brake(pLights)
+				   // Lights_Get_CtrlElem_Indicator(pLights)
+
+				// Brake light on (boolean)
+				//Turn indicator
+				   // - 1 = Right; 0 = Off; 1 = Left
+				Lights_Set_CtrlElem_Ignition(pLights, 1);
+
+				if (simTime < 30) {
+					Lights_Set_LightElem_Brake(pLights, 1);
+					//Lights_Set_LightElem_IndL(pLights, 1);
+					Lights_Set_CtrlElem_Indicator(pLights, 1);
+				}
+				else if (simTime >= 30 && simTime < 60) {
+					Lights_Set_LightElem_Brake(pLights, 0);
+					//Lights_Set_LightElem_IndL(pLights, 0);
+					//Lights_Set_LightElem_IndR(pLights, 0);
+					Lights_Set_CtrlElem_Indicator(pLights, 0);
+				}
+				else {
+					Lights_Set_LightElem_Brake(pLights, 1);
+					//Lights_Set_LightElem_IndR(pLights, 1);
+					Lights_Set_CtrlElem_Indicator(pLights, -1);
+				}
+
+				int ind = Lights_Get_CtrlElem_Indicator(pLights);
+				int indL = Lights_Get_LightElem_IndL(pLights);
+				int indR = Lights_Get_LightElem_IndR(pLights);
+				int ig = Lights_Get_CtrlElem_Ignition(pLights);
+				Log("ind %d, indL %d, indR %d, ig %d\n", ind, indL, indR, ig);
+
+			}
 		}
 	}
 	catch (const std::exception& e) {

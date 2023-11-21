@@ -12,6 +12,7 @@
 
 #include "SocketHelper.h"
 #include <CarMaker.h>
+#include <Lights.h>
 
 //namespace RealSimVirEnv
 //{
