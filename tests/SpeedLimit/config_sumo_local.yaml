@@ -29,7 +29,7 @@ SimulationSetup:
     SelectedTrafficSimulator: 'SUMO'
 
     # default will send all
-    VehicleMessageField: [id, type, vehicleClass, speed, acceleration, positionX, positionY, positionZ, color, linkId, laneId, distanceTravel, speedDesired, heading, grade]
+    VehicleMessageField: [id, type, vehicleClass, speed, acceleration, positionX, positionY, positionZ, color, linkId, laneId, distanceTravel, speedDesired, heading, grade, lightIndicators]
 
 
 # setup Application Layer

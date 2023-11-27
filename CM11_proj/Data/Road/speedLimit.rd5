@@ -1,6 +1,6 @@
 #INFOFILE1.1 - Do not remove this line!
 FileIdent = IPGRoad 11.0
-FileCreator = CarMaker/HIL 11.0.1
+FileCreator = CarMaker 11.0.1
 Description:
 	Converted OpenDRIVE File (Revision 1.4)
 	Original File: Data/Road/speedLimit.xodr
@@ -9,12 +9,13 @@ LibVersion = 11.0.1
 Country = DEU
 nLinks = 17
 nJunctions = 10
-nObjects = 888
-nRoutes = 2
+nObjects = 890
+nRoutes = 3
 RoadNetworkLength = 3901.21780807
 BBox = -172.681887627573 2410 -210.000000003205 310.000000013461 -11 11
 Route.0.Length = 2400
 Route.1.Length = 42.82085123
+Route.2.Length = 389.96212352994
 RST.Unit = kmh
 RST = 50 100 130 30 70 30 0 -1
 Movie = 0.2 1 0.01 0 0 1 1
@@ -1092,6 +1093,13 @@ Route.1.Name = Route_1
 Route.1.DrvPath.ID = 542
 Route.1.DrvPath:
 	460
+Route.2.ID = 3
+Route.2.Name = Route_2
+Route.2.DrvPath.ID = 4
+Route.2.DrvPath:
+	225
+	1003
+	281
 RL.1.RoadMarking.0.ID = 7 6
 RL.1.RoadMarking.0 = 0 0 0 1 0 0 0.13 0 1 0 0 0 0 1 1 0 ""
 RL.1.RoadMarking.0.Material.0 = white 0 0 0 0 0 0 0 0 0 0 0
