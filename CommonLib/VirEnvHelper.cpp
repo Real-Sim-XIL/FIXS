@@ -565,6 +565,8 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 				// RS positive grade climbing hill, but CM negative climbing hill
 				vehDataNext.pitch = -Msg_c.VehDataRecv_um[idTs].grade;
 
+				vehDataNext.lightIndicators = Msg_c.VehDataRecv_um[idTs].lightIndicators;
+
 				// the current received state is for next 0.1 time step
 				double simTimeNext = ceil(simTime * 10 + 0.001) / 10;
 				TrafficStateNext_um[idTs] = make_pair(simTimeNext, vehDataNext);
@@ -668,6 +670,23 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 				VehDataSend.distanceTravel = (float)0;
 				VehDataSend.speedDesired = (float)Vehicle.v;
 				VehDataSend.accelerationDesired = (float)0;
+
+				//Name	Bit
+				//VEH_SIGNAL_BLINKER_RIGHT	0
+				//VEH_SIGNAL_BLINKER_LEFT	1
+				//VEH_SIGNAL_BLINKER_EMERGENCY	2
+				//VEH_SIGNAL_BRAKELIGHT	3
+				//VEH_SIGNAL_FRONTLIGHT	4
+				//VEH_SIGNAL_FOGLIGHT	5
+				//VEH_SIGNAL_HIGHBEAM	6
+				//VEH_SIGNAL_BACKDRIVE	7
+				//VEH_SIGNAL_WIPER	8
+				//VEH_SIGNAL_DOOR_OPEN_LEFT	9
+				//VEH_SIGNAL_DOOR_OPEN_RIGHT	10
+				//VEH_SIGNAL_EMERGENCY_BLUE	11
+				//VEH_SIGNAL_EMERGENCY_RED	12
+				//VEH_SIGNAL_EMERGENCY_YELLOW	13
+				VehDataSend.lightIndicators = (uint16_t) (VehicleControl.Lights.Brake * 8 + VehicleControl.Lights.IndL * 2 + VehicleControl.Lights.IndR);
 			}
 
 			if (ENABLE_REALSIM) {
@@ -750,6 +769,22 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 
 				// need grade to find out elevation and rotation angle
 
+				// find vehicle turning indicators
+				int lightIndicators = vehDataNext.lightIndicators;
+				//Name	Bit
+				//VEH_SIGNAL_BLINKER_RIGHT	0
+				//VEH_SIGNAL_BLINKER_LEFT	1
+				//VEH_SIGNAL_BLINKER_EMERGENCY	2
+				//VEH_SIGNAL_BRAKELIGHT	3
+				//VEH_SIGNAL_FRONTLIGHT	4
+				bool indRight = (lightIndicators & (1 << 0)) >> 0;
+				bool indLeft = (lightIndicators & (1 << 1)) >> 1;
+				bool indBrake = (lightIndicators & (1 << 3)) >> 3;
+
+				//if (indRight || indLeft || indBrake) {
+				//	int aa = 1;
+				//}
+
 				tTrafficObj* TrfObj = Traffic_GetByTrfId(idCm);
 
 
@@ -760,49 +795,72 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 				TrfObj->r_zyx[1] = pitch;
 				TrfObj->r_zyx[2] = yaw;
 
-				tLights* pLights = Traffic_Lights_GetByObjId(TrfObj->Cfg.ObjId);
-				int ig = Lights_Get_CtrlElem_Ignition(pLights);
-				Log("idCm %d, ig %d\n", idCm, ig);
-			}
-
-			{
-				// test turning indicator      
-				tTrafficObj* TrfObj = Traffic_GetByTrfId(40);
 
 				tLights* pLights = Traffic_Lights_GetByObjId(TrfObj->Cfg.ObjId);
-
-				//Lights_Get_LightElem_Brake(pLights)
-				   // Lights_Get_CtrlElem_Indicator(pLights)
 
 				// Brake light on (boolean)
 				//Turn indicator
 				   // - 1 = Right; 0 = Off; 1 = Left
 				Lights_Set_CtrlElem_Ignition(pLights, 1);
 
-				if (simTime < 30) {
-					Lights_Set_LightElem_Brake(pLights, 1);
-					//Lights_Set_LightElem_IndL(pLights, 1);
-					Lights_Set_CtrlElem_Indicator(pLights, 1);
-				}
-				else if (simTime >= 30 && simTime < 60) {
-					Lights_Set_LightElem_Brake(pLights, 0);
-					//Lights_Set_LightElem_IndL(pLights, 0);
-					//Lights_Set_LightElem_IndR(pLights, 0);
-					Lights_Set_CtrlElem_Indicator(pLights, 0);
-				}
-				else {
-					Lights_Set_LightElem_Brake(pLights, 1);
-					//Lights_Set_LightElem_IndR(pLights, 1);
+				Lights_Set_LightElem_Brake(pLights, indBrake);
+				if (indRight) {
 					Lights_Set_CtrlElem_Indicator(pLights, -1);
 				}
+				else if (indLeft) {
+					Lights_Set_CtrlElem_Indicator(pLights, 1);
+				}
+				else {
+					Lights_Set_CtrlElem_Indicator(pLights, 0);
+				}
 
-				int ind = Lights_Get_CtrlElem_Indicator(pLights);
-				int indL = Lights_Get_LightElem_IndL(pLights);
-				int indR = Lights_Get_LightElem_IndR(pLights);
-				int ig = Lights_Get_CtrlElem_Ignition(pLights);
-				Log("ind %d, indL %d, indR %d, ig %d\n", ind, indL, indR, ig);
+				//int ind = Lights_Get_CtrlElem_Indicator(pLights);
+				//int indL = Lights_Get_LightElem_IndL(pLights);
+				//int indR = Lights_Get_LightElem_IndR(pLights);
+				//int indB = Lights_Get_LightElem_Brake(pLights);
+				//int ig = Lights_Get_CtrlElem_Ignition(pLights);
+				//Log("obj %d, sumo L %d R %d B %d, ipg L %d R %d B %d\n", idCm, indLeft, indRight, indBrake, indL, indR, indB);
 
 			}
+
+			//{
+			//	// test turning indicator      
+			//	tTrafficObj* TrfObj = Traffic_GetByTrfId(40);
+
+			//	tLights* pLights = Traffic_Lights_GetByObjId(TrfObj->Cfg.ObjId);
+
+			//	//Lights_Get_LightElem_Brake(pLights)
+			//	   // Lights_Get_CtrlElem_Indicator(pLights)
+
+			//	// Brake light on (boolean)
+			//	//Turn indicator
+			//	   // - 1 = Right; 0 = Off; 1 = Left
+			//	Lights_Set_CtrlElem_Ignition(pLights, 1);
+
+			//	if (simTime < 30) {
+			//		Lights_Set_LightElem_Brake(pLights, 1);
+			//		//Lights_Set_LightElem_IndL(pLights, 1);
+			//		Lights_Set_CtrlElem_Indicator(pLights, 1);
+			//	}
+			//	else if (simTime >= 30 && simTime < 60) {
+			//		Lights_Set_LightElem_Brake(pLights, 0);
+			//		//Lights_Set_LightElem_IndL(pLights, 0);
+			//		//Lights_Set_LightElem_IndR(pLights, 0);
+			//		Lights_Set_CtrlElem_Indicator(pLights, 0);
+			//	}
+			//	else {
+			//		Lights_Set_LightElem_Brake(pLights, 1);
+			//		//Lights_Set_LightElem_IndR(pLights, 1);
+			//		Lights_Set_CtrlElem_Indicator(pLights, -1);
+			//	}
+
+			//	int ind = Lights_Get_CtrlElem_Indicator(pLights);
+			//	int indL = Lights_Get_LightElem_IndL(pLights);
+			//	int indR = Lights_Get_LightElem_IndR(pLights);
+			//	int ig = Lights_Get_CtrlElem_Ignition(pLights);
+			//	Log("ind %d, indL %d, indR %d, ig %d\n", ind, indL, indR, ig);
+
+			//}
 		}
 	}
 	catch (const std::exception& e) {

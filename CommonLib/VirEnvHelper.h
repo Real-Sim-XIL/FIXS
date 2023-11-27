@@ -59,6 +59,8 @@
             double pitch; // radian, essentially negative of grade angle of RealSim convention
             double yaw; // radian, rotation along z axis, east is 0, north is pi/2, south is -pi/2. counterclockwise is positive till west, then clockwise is negative till west
 
+            int lightIndicators;
+
         }VehDataAuxiliary_t;
 
         // these are for interpolation, so need (t, data) type 

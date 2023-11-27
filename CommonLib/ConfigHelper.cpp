@@ -164,7 +164,7 @@ int ConfigHelper::getConfig(string configName) {
 		parserStringVector(node, "VehicleMessageField", SimulationSetup.VehicleMessageField);
 	}
 	else {
-		SimulationSetup.VehicleMessageField = { "id", "type", "speed", "positionX", "positionY", "positionZ", "heading", "color", "linkId", "laneId", "distanceTravel", "acceleration", "speedDesired", "acceleartionDesired", "hasPrecedingVehicle", "precedingVehicleId", "precedingVehicleDistance", "precedingVehicleSpeed", "signalLightDistance", "signalLightColor", "speedLimit", "speedLimitNext", "speedLimitChangeDistance", "linkIdNext", "grade" , "activeLaneChange", "signalLightId", "signalLightHeadId"};
+		SimulationSetup.VehicleMessageField = { "id", "type", "speed", "positionX", "positionY", "positionZ", "heading", "color", "linkId", "laneId", "distanceTravel", "acceleration", "speedDesired", "acceleartionDesired", "hasPrecedingVehicle", "precedingVehicleId", "precedingVehicleDistance", "precedingVehicleSpeed", "signalLightDistance", "signalLightColor", "speedLimit", "speedLimitNext", "speedLimitChangeDistance", "linkIdNext", "grade" , "activeLaneChange", "signalLightId", "signalLightHeadId", "lightIndicators"};
 		printf("\nWill use all available vehicle message field!\n");
 	}
 
