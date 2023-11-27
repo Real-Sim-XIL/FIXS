@@ -36,8 +36,8 @@ def addCode(fullFilePath, searchStr, addStr, addMode='prefix'):
 
 RealSimPath = os.path.abspath(os.getcwd())
 
-vehicleMessageName = 'signalLightHeadId'
-vehicleMessageDataType = 'int32_t'
+vehicleMessageName = 'lightIndicators'
+vehicleMessageDataType = 'uint16_t'
 
 #############################################################################
 ######################    ADD to CPP
@@ -50,25 +50,33 @@ fullFilePath = os.path.join(RealSimPath, 'CommonLib\MsgHelper.cpp')
 
 # 1)
 searchStr = '// printVehData: add new vehicle message field here'
-addStr = '\tif (VehicleMessageField_set.find(\"{0}\") != VehicleMessageField_set.end()) {{\n\t\tprintf(\"\\t {0}: %d\\n\", std::any_cast<{1}>(VehData[\"{0}\"]));\n\t}}\n'.format(vehicleMessageName,vehicleMessageDataType)
+addStr = '\tif (VehicleMessageField_set.find(\"{0}\") != VehicleMessageField_set.end()) {{\n\t\tprintf(\"\\t {0}: %d\\n\", VehData.{0});\n\t}}\n'.format(vehicleMessageName,vehicleMessageDataType)
 
 addCode(fullFilePath, searchStr, addStr)
 
-# 2)
-searchStr = '// VehFullDataToSubData: add new vehicle message field here'
-addStr = '\tif (VehicleMessageField_set.find(\"{0}\") != VehicleMessageField_set.end()) {{\n\t\tVehData[\"{0}\"] = VehFullData.{0};\n\t}}\n'.format(vehicleMessageName)
+# # 2)
+# searchStr = '// VehFullDataToSubData: add new vehicle message field here'
+# addStr = '\tif (VehicleMessageField_set.find(\"{0}\") != VehicleMessageField_set.end()) {{\n\t\tVehData[\"{0}\"] = VehFullData.{0};\n\t}}\n'.format(vehicleMessageName)
 
-addCode(fullFilePath, searchStr, addStr)
+# addCode(fullFilePath, searchStr, addStr)
 
 # 3)
 searchStr = '// packVehData: add new vehicle message field here'
-addStr = '\tnumericVehDataToBuffer<{1}>(VehData, \"{0}\", buffer, iByte);\n'.format(vehicleMessageName, vehicleMessageDataType)
+addStr = '\tnumericVehDataToBuffer<{1}>(VehData.{0}, \"{0}\", buffer, iByte);\n'.format(vehicleMessageName, vehicleMessageDataType)
 
 addCode(fullFilePath, searchStr, addStr)
 
 # 4)
 searchStr = '// depackVehData: add new vehicle message field here'
-addStr = '\tbufferToNumericVehData<{1}>(tempFloat, buffer, &iByte, VehData, "{0}");\n'.format(vehicleMessageName, vehicleMessageDataType)
+if (vehicleMessageDataType == 'float'):
+    pat = 'tempFloat'
+if (vehicleMessageDataType == 'uint16_t'):
+    pat = 'tempUint16'
+if (vehicleMessageDataType == 'int8_t'):
+    pat = 'tempInt8'
+if (vehicleMessageDataType == 'int32_t'):
+    pat = 'tempInt32'
+addStr = '\tbufferToNumericVehData<{1}>(buffer, &iByte, "{0}", {2}); VehData.{0} = {2};\n'.format(vehicleMessageName, vehicleMessageDataType, pat)
 
 addCode(fullFilePath, searchStr, addStr)
 
