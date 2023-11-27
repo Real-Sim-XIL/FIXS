@@ -51,6 +51,8 @@ typedef struct  {
 
 	//double positionOnLink;
 
+	uint16_t lightIndicators;
+
 
 }VehFullData_t;
 

@@ -102,7 +102,7 @@ void TrafficHelper::connectionSetup(string trafficIp, int trafficPort, int nClie
 	//VEH_SIGNAL_EMERGENCY_BLUE	11
 	//VEH_SIGNAL_EMERGENCY_RED	12
 	//VEH_SIGNAL_EMERGENCY_YELLOW	13
-	//VehDataSubscribeList.push_back(libsumo::VAR_SIGNALS);
+	VehDataSubscribeList.push_back(libsumo::VAR_SIGNALS);
 
 	// -------------------
 	// These variables are subscribed for testing purposes
@@ -570,6 +570,10 @@ int TrafficHelper::sendToSUMO(double simTime, MsgHelper Msg_c) {
 							//1 : lane permissions are ignored when mapping
 							//0 : The vehicle is mapped only to lanes that allow it's vehicle class
 
+					}
+
+					if (VehicleMessageField_set.find("lightIndicators") != VehicleMessageField_set.end()) {
+						Vehicle::setSignals(idStr, (int)Msg_c.VehDataSend_um[0][iV].lightIndicators);
 					}
 
 				}
@@ -1396,6 +1400,28 @@ void TrafficHelper::parserSumoSubscription(libsumo::TraCIResults VehDataSubscrib
 	CurVehData.activeLaneChange = 0;
 
 
+
+	//=================
+	// get vehicle indicators
+	//=================
+	//Name	Bit
+	//VEH_SIGNAL_BLINKER_RIGHT	0
+	//VEH_SIGNAL_BLINKER_LEFT	1
+	//VEH_SIGNAL_BLINKER_EMERGENCY	2
+	//VEH_SIGNAL_BRAKELIGHT	3
+	//VEH_SIGNAL_FRONTLIGHT	4
+	//VEH_SIGNAL_FOGLIGHT	5
+	//VEH_SIGNAL_HIGHBEAM	6
+	//VEH_SIGNAL_BACKDRIVE	7
+	//VEH_SIGNAL_WIPER	8
+	//VEH_SIGNAL_DOOR_OPEN_LEFT	9
+	//VEH_SIGNAL_DOOR_OPEN_RIGHT	10
+	//VEH_SIGNAL_EMERGENCY_BLUE	11
+	//VEH_SIGNAL_EMERGENCY_RED	12
+	//VEH_SIGNAL_EMERGENCY_YELLOW	13
+	tempIntPtr = static_pointer_cast<libsumo::TraCIInt> (VehDataSubscribeTraciResults[libsumo::VAR_SIGNALS]);
+	// (n & (1 << k)) >> k
+	CurVehData.lightIndicators = tempIntPtr->value;
 }
 
 

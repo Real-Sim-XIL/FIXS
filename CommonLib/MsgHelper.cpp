@@ -117,7 +117,9 @@ void MsgHelper::printVehData(VehFullData_t VehData) {
 	if (VehicleMessageField_set.find("activeLaneChange") != VehicleMessageField_set.end()) {
 		printf("\t activeLaneChange: %d\n", VehData.activeLaneChange);
 	}
-
+	if (VehicleMessageField_set.find("lightIndicators") != VehicleMessageField_set.end()) {
+		printf("\t lightIndicators: %d\n", VehData.lightIndicators);
+	}
 
 	// printVehData: add new vehicle message field here
 }
@@ -358,6 +360,7 @@ void MsgHelper::packVehData(VehFullData_t VehData, char* buffer, int* iByte) {
 	stringVehDataToBuffer(VehData.linkIdNext, "linkIdNext", buffer, iByte);
 	numericVehDataToBuffer<float>(VehData.grade, "grade", buffer, iByte);
 	numericVehDataToBuffer<int8_t>(VehData.activeLaneChange, "activeLaneChange", buffer, iByte);
+	numericVehDataToBuffer<uint16_t>(VehData.lightIndicators, "lightIndicators", buffer, iByte);
 
 	// packVehData: add new vehicle message field here
 	
@@ -376,6 +379,7 @@ void MsgHelper::depackVehData(char* buffer, VehFullData_t& VehData) {
 	string tempString = "";
 	float tempFloat = -1.0;
 	int8_t tempInt8 = -1;
+	uint16_t tempUint16 = 0;
 
 	int iByte = 0;
 
@@ -408,6 +412,8 @@ void MsgHelper::depackVehData(char* buffer, VehFullData_t& VehData) {
 	bufferToStringVehData(buffer, &iByte, "linkIdNext", tempString); VehData.linkIdNext = tempString;
 	bufferToNumericVehData<float>(buffer, &iByte, "grade", tempFloat); VehData.grade = tempFloat;
 	bufferToNumericVehData<int8_t>(buffer, &iByte, "activeLaneChange", tempInt8); VehData.activeLaneChange = tempInt8;
+	bufferToNumericVehData<uint16_t>(buffer, &iByte, "lightIndicators", tempUint16); VehData.lightIndicators = tempUint16;
+
 	// depackVehData: add new vehicle message field here
 
 }
