@@ -183,6 +183,11 @@ public:
 
 	std::unordered_set <std::string> AllEdgeList;
 
+	// counter to only add a vehicle if it has been in the subscribed list for last X seconds
+	std::unordered_map <std::string, double> VehicleId2LastSubTime_um;
+	std::unordered_map <std::string, int> VehicleId2SubCount_um;
+
+	int shouldSendVehicle(std::string vehicleId, double simTime);
 
 private:
 	void parserSumoSubscription(libsumo::TraCIResults VehDataSubscribeTraciResults, std::string vehId, VehFullData_t& CurVehData);
@@ -199,6 +204,10 @@ private:
 	SignalSubscriptionFlags_t SignalSubscriptionFlags;
 	DetectorSubscriptionFlags_t DetectorSubscriptionFlags;
 
+	const double SUB_CONT_TIME_THLD = 1; // has to be in for 10 seconds
 
+	const double SIM_STEP = 0.1;
+
+	const int N_MAX_VEH = 30;
 };
 

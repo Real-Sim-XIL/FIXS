@@ -1227,6 +1227,44 @@ int TrafficHelper::recvFromSUMO(double* simTime, MsgHelper& Msg_c) {
 }
 
 
+// this is only for visualization
+int TrafficHelper::shouldSendVehicle(std::string vehicleId, double simTime) {
+	int shouldSendFlag = 0;
+
+	if (!ENABLE_VEH_SIMULATOR) {
+		shouldSendFlag = 1;
+	}
+	else if (ENABLE_VEH_SIMULATOR){
+		if (vehicleId.compare(Config_c->CarMakerSetup.EgoId) == 0) {
+			shouldSendFlag = 1;
+		}
+		else {
+			// if does not have yet, add it
+			if (VehicleId2SubCount_um.find(vehicleId) == VehicleId2SubCount_um.end()) {
+				VehicleId2SubCount_um[vehicleId] = 0;
+			}
+			else {
+				// if last sub and this one is continous, then add count by 1, otherwise reset count
+				if (abs(VehicleId2LastSubTime_um[vehicleId] - simTime) <= SIM_STEP + 1e-5) {
+					VehicleId2SubCount_um[vehicleId] = VehicleId2SubCount_um[vehicleId] + 1;
+				}
+				else {
+					VehicleId2SubCount_um[vehicleId] = 0;
+				}
+			}
+			VehicleId2LastSubTime_um[vehicleId] = simTime;
+
+			// check last sub time
+			if (VehicleId2SubCount_um[vehicleId] > SUB_CONT_TIME_THLD / SIM_STEP) {
+				shouldSendFlag = 1;
+			}
+		}
+	}
+
+	return shouldSendFlag;
+}
+
+
 void TrafficHelper::parserSumoSubscription(libsumo::TraCIResults VehDataSubscribeTraciResults, std::string vehId, VehFullData_t& CurVehData) {
 
 	// if does not have this vehicle yet
