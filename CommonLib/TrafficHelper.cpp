@@ -929,7 +929,8 @@ int TrafficHelper::recvFromSUMO(double* simTime, MsgHelper& Msg_c) {
 		// this might make it slightly faster to not get repeated vehicles
 		unordered_set <string> processedVehId_us;
 
-
+		// temp buffer to store all vehicle received
+		std::unordered_map <std::string, VehFullData_t> VehDataRecv_um_tmp;
 		// ===========================================================================
 		// 			GET SUBSCRIBED VEHICLE
 		// ===========================================================================
@@ -964,10 +965,7 @@ int TrafficHelper::recvFromSUMO(double* simTime, MsgHelper& Msg_c) {
 				// save to Msg_c recv buffer
 				//=================
 				//Msg_c.VehDataRecvAll_v.push_back(CurVehData);
-				if (Msg_c.VehDataRecv_um.size() < 30) {
-					Msg_c.VehDataRecv_um[tempvehId] = CurVehData;
-				}
-
+				VehDataRecv_um_tmp[tempvehId] = CurVehData;
 
 				if (ENABLE_VERBOSE) {
 					float speed = CurVehData.speed;
@@ -980,7 +978,6 @@ int TrafficHelper::recvFromSUMO(double* simTime, MsgHelper& Msg_c) {
 				}
 
 			}
-
 		}
 
 	/*		i++;
@@ -1018,8 +1015,7 @@ int TrafficHelper::recvFromSUMO(double* simTime, MsgHelper& Msg_c) {
 				// save to Msg_c recv buffer
 				//=================
 				//Msg_c.VehDataRecvAll_v.push_back(CurVehData);
-				Msg_c.VehDataRecv_um[tempvehId] = CurVehData;
-
+				VehDataRecv_um_tmp[tempvehId] = CurVehData;
 
 				if (ENABLE_VERBOSE) {
 					float speed = CurVehData.speed;
@@ -1086,8 +1082,7 @@ int TrafficHelper::recvFromSUMO(double* simTime, MsgHelper& Msg_c) {
 					// save to Msg_c recv buffer          
 					//=================
 					//Msg_c.VehDataRecvAll_v.push_back(CurVehData);
-					Msg_c.VehDataRecv_um[tempvehId] = CurVehData;
-
+					VehDataRecv_um_tmp[tempvehId] = CurVehData;
 
 					if (ENABLE_VERBOSE) {
 						float speed = CurVehData.speed;
@@ -1106,6 +1101,33 @@ int TrafficHelper::recvFromSUMO(double* simTime, MsgHelper& Msg_c) {
 			}
 			//nVehSend = tempVehIdSend_v.size();
 		}
+
+
+		// temporary fix to hold only limited vehicles
+		if (ENABLE_VEH_SIMULATOR) {
+			libsumo::TraCIPosition posEgo = Vehicle::getPosition(Config_c->CarMakerSetup.EgoId);
+
+			// sort distance, pair distance to ego, vehId
+			vector <pair <double, string>> dist2ego_v;
+			for (auto& it : VehDataRecv_um_tmp) {
+				dist2ego_v.push_back(make_pair(pow(it.second.positionX - posEgo.x, 2) + pow(it.second.positionY - posEgo.y, 2), it.first));
+			}
+			sort(dist2ego_v.begin(), dist2ego_v.end());
+
+			for (auto&it: dist2ego_v) {
+				string tempvehId = it.second;
+
+				if (this->shouldSendVehicle(tempvehId, *simTime)) {
+					Msg_c.VehDataRecv_um[tempvehId] = VehDataRecv_um_tmp[tempvehId];
+				}
+
+				if (Msg_c.VehDataRecv_um.size() >= N_MAX_VEH) {
+					break;
+				}
+			}
+				
+		}
+
 
 		//=================
 		// remove vehicle from list
