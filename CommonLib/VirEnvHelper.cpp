@@ -332,33 +332,35 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 	// ===========================================================================
 	if (simTime < 0.05) {
 		try {
-			for (int iObj = 0; iObj < Traffic.nObjs; iObj++) {
-				VehFullData_t curTrfObjData;
+			if (CmAvailableCarId_queue.size() == 0) {
+				for (int iObj = 0; iObj < Traffic.nObjs; iObj++) {
+					VehFullData_t curTrfObjData;
 
-				tTrafficObj* TrfObj = Traffic_GetByTrfId(iObj);
+					tTrafficObj* TrfObj = Traffic_GetByTrfId(iObj);
 
-				string name = TrfObj->Cfg.Name; //
+					string name = TrfObj->Cfg.Name; //
 
-				// do not touch Traffic objects that are not RS related
-				if (name.find(RealSimCarNamePattern) == string::npos && name.find(RealSimTruckNamePattern) == string::npos) {
-					continue;
+					// do not touch Traffic objects that are not RS related
+					if (name.find(RealSimCarNamePattern) == string::npos && name.find(RealSimTruckNamePattern) == string::npos) {
+						continue;
+					}
+
+					/*
+					should check what character is in the name then determine vehile class/type
+					*/
+					if (name.find(RealSimCarNamePattern) != string::npos) {
+						CmAvailableCarId_queue.push(iObj);
+					}
+					else if (name.find(RealSimTruckNamePattern) != string::npos) {
+						CmAvailableTruckId_queue.push(iObj);
+					}
+
+					// set position to be nonsense
+					TrfObj->t_0[0] = 0;
+					TrfObj->t_0[1] = 0;
+					TrfObj->t_0[2] = -5000;
+
 				}
-
-				/*
-				should check what character is in the name then determine vehile class/type
-				*/
-				if (name.find(RealSimCarNamePattern) != string::npos) {
-					CmAvailableCarId_queue.push(iObj);
-				}
-				else if (name.find(RealSimTruckNamePattern) != string::npos) {
-					CmAvailableTruckId_queue.push(iObj);
-				}
-
-				// set position to be nonsense
-				TrfObj->t_0[0] = 0;
-				TrfObj->t_0[1] = 0;
-				TrfObj->t_0[2] = -5000;
-
 			}
 		}
 		catch (const std::exception& e) {
@@ -482,7 +484,9 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 		// ===========================================================================
 		try {
 			// remove those ids that not exists since last time step
-			for (string idTs : TrafficSimulatorId2Remove) {
+			for (auto &it : TrafficSimulatorId2Remove) {
+
+				string idTs = it;
 
 				tTrafficObj* TrfObj = Traffic_GetByTrfId(TrafficSimulatorId2CarMakerId[idTs]);
 
