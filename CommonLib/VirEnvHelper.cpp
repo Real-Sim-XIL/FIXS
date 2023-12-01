@@ -800,24 +800,25 @@ int VirEnvHelper::runStep(double simTime, const char** errorMsg) {
 				TrfObj->r_zyx[2] = yaw;
 
 
-				tLights* pLights = Traffic_Lights_GetByObjId(TrfObj->Cfg.ObjId);
+				if (Msg_c.VehicleMessageField_set.find("lightIndicators") != Msg_c.VehicleMessageField_set.end()){
+					tLights* pLights = Traffic_Lights_GetByObjId(TrfObj->Cfg.ObjId);
 
-				// Brake light on (boolean)
-				//Turn indicator
-				   // - 1 = Right; 0 = Off; 1 = Left
-				Lights_Set_CtrlElem_Ignition(pLights, 1);
+					// Brake light on (boolean)
+					//Turn indicator
+					   // - 1 = Right; 0 = Off; 1 = Left
+					Lights_Set_CtrlElem_Ignition(pLights, 1);
 
-				Lights_Set_LightElem_Brake(pLights, indBrake);
-				if (indRight) {
-					Lights_Set_CtrlElem_Indicator(pLights, -1);
+					Lights_Set_LightElem_Brake(pLights, indBrake);
+					if (indRight) {
+						Lights_Set_CtrlElem_Indicator(pLights, -1);
+					}
+					else if (indLeft) {
+						Lights_Set_CtrlElem_Indicator(pLights, 1);
+					}
+					else {
+						Lights_Set_CtrlElem_Indicator(pLights, 0);
+					}
 				}
-				else if (indLeft) {
-					Lights_Set_CtrlElem_Indicator(pLights, 1);
-				}
-				else {
-					Lights_Set_CtrlElem_Indicator(pLights, 0);
-				}
-
 				//int ind = Lights_Get_CtrlElem_Indicator(pLights);
 				//int indL = Lights_Get_LightElem_IndL(pLights);
 				//int indR = Lights_Get_LightElem_IndR(pLights);
