@@ -922,17 +922,18 @@ int SocketHelper::sendData(int sock, int iClient, float simTimeSend, uint8_t sim
 	int iByte = 0;
 
 	// initialize send data buffer
-	char tempVehDataBuffer[8096];
+	//char tempVehDataBuffer[8096];
+	char* tempVehDataBuffer = new char[65536];
 	int tempVehDataByte = 0;
 
-	char tempTlsDataBuffer[8096];
+	char* tempTlsDataBuffer = new char[8096];
 	int tempTlsDataByte = 0;
 
-	char tempDetDataBuffer[8096];
+	char* tempDetDataBuffer = new char[8096];
 	int tempDetDataByte = 0;
 
 	int sendMsgSize = 0;
-	char sendBuffer[8096];
+	char* sendBuffer = new char[81728];
 
 	// Pack vehicle and detector data
 	if (Msg_c.VehDataSend_um.size() > 0) {
@@ -958,15 +959,15 @@ int SocketHelper::sendData(int sock, int iClient, float simTimeSend, uint8_t sim
 	sendMsgSize = MSG_HEADER_SIZE;
 
 	// pack vehicle data
-	memcpy(sendBuffer + sendMsgSize, (char*)&tempVehDataBuffer, tempVehDataByte);
+	memcpy(sendBuffer + sendMsgSize, tempVehDataBuffer, tempVehDataByte);
 	sendMsgSize += tempVehDataByte;
 
 	// pack traffic light data
-	memcpy(sendBuffer + sendMsgSize, (char*)&tempTlsDataBuffer, tempTlsDataByte);
+	memcpy(sendBuffer + sendMsgSize, tempTlsDataBuffer, tempTlsDataByte);
 	sendMsgSize += tempTlsDataByte;
 
 	// pack detector data
-	memcpy(sendBuffer + sendMsgSize, (char*)&tempDetDataBuffer, tempDetDataByte);
+	memcpy(sendBuffer + sendMsgSize, tempDetDataBuffer, tempDetDataByte);
 	sendMsgSize += tempDetDataByte;
 
 	// send all vehicle and detector data
