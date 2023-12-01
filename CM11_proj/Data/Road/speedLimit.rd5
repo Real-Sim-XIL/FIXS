@@ -9,13 +9,14 @@ LibVersion = 11.0.1
 Country = DEU
 nLinks = 17
 nJunctions = 10
-nObjects = 890
-nRoutes = 3
+nObjects = 899
+nRoutes = 4
 RoadNetworkLength = 3901.21780807
 BBox = -172.681887627573 2410 -210.000000003205 310.000000013461 -11 11
 Route.0.Length = 2400
 Route.1.Length = 42.82085123
 Route.2.Length = 389.96212352994
+Route.3.Length = 389.96212352994
 RST.Unit = kmh
 RST = 50 100 130 30 70 30 0 -1
 Movie = 0.2 1 0.01 0 0 1 1
@@ -336,6 +337,17 @@ Junction.0.RL.35.Seg.0.PointList:
 Junction.0.RL.35.Seg.1.ID = 1079
 Junction.0.RL.35.Seg.1.Type = Connect
 Junction.0.RL.35.Seg.1.Param = 0 0 0 0 0 0 0 0
+Junction.0.RL.36.ID = 23
+Junction.0.RL.36 = -7.19999952564501 -3.2 0 0 -1.59999952564499 -8.79999999487183 269.999999816361 0 0
+Junction.0.RL.36.RefObject = 225 281
+Junction.0.RL.36.Seg.0.ID = 25
+Junction.0.RL.36.Seg.0.Type = PointList
+Junction.0.RL.36.Seg.0.Param = 0.696925011929186 -0.717144007677332 1 0 0 0 0 0
+Junction.0.RL.36.Seg.0.PointList:
+	26 -1 -2.559 -4.24
+Junction.0.RL.36.Seg.1.ID = 24
+Junction.0.RL.36.Seg.1.Type = Connect
+Junction.0.RL.36.Seg.1.Param = 0 0 0 0 0 0 0 0
 Junction.1.ID = 472
 Junction.1.Type = Standard
 Junction.1.Knot = 452 0 0
@@ -1067,12 +1079,14 @@ ConPath.13.RL = 1073
 ConPath.14 = 1077 902 205 0 1 254 0 0 31 1 -1 -1 -1
 ConPath.14.Tag = odrJuncId:2 odrRoadId:159
 ConPath.14.RL = 1078
-ConPath.15 = 481 472 167 0 1 215 0 0 31 1 -1 -1 -1
-ConPath.15.Tag = odrJuncId:6 odrRoadId:160
-ConPath.15.RL = 482
-ConPath.16 = 491 472 167 0 1 205 0 0 31 1 -1 -1 -1
-ConPath.16.Tag = odrJuncId:6 odrRoadId:161
-ConPath.16.RL = 492
+ConPath.15 = 22 902 225 0 1 281 0 0 0 1 -1 -1 -1
+ConPath.15.RL = 23
+ConPath.16 = 481 472 167 0 1 215 0 0 31 1 -1 -1 -1
+ConPath.16.Tag = odrJuncId:6 odrRoadId:160
+ConPath.16.RL = 482
+ConPath.17 = 491 472 167 0 1 205 0 0 31 1 -1 -1 -1
+ConPath.17.Tag = odrJuncId:6 odrRoadId:161
+ConPath.17.RL = 492
 Route.0.ID = 490
 Route.0.Name = Route_0
 Route.0.DrvPath.ID = 500
@@ -1099,6 +1113,13 @@ Route.2.DrvPath.ID = 4
 Route.2.DrvPath:
 	225
 	1003
+	281
+Route.3.ID = 49
+Route.3.Name = Route_3
+Route.3.DrvPath.ID = 50
+Route.3.DrvPath:
+	225
+	22
 	281
 RL.1.RoadMarking.0.ID = 7 6
 RL.1.RoadMarking.0 = 0 0 0 1 0 0 0.13 0 1 0 0 0 0 1 1 0 ""

@@ -29,7 +29,7 @@ SimulationSetup:
     SelectedTrafficSimulator: 'SUMO'
 
     # default will send all
-    VehicleMessageField: [id, type, vehicleClass, speed, acceleration, positionX, positionY, positionZ, color, linkId, laneId, distanceTravel, speedDesired, heading, grade, lightIndicators]
+    VehicleMessageField: [id, type, vehicleClass, speed, acceleration, positionX, positionY, positionZ, color, linkId, laneId, distanceTravel, speedDesired, heading, grade]
 
 
 # setup Application Layer
@@ -55,22 +55,10 @@ XilSetup:
     # for sumo-ipg, essentially give any name you want to name the ego, and the interface will create the vehicle in sumo at start of the simulation
     VehicleSubscription: 
     -   type: ego
-        attribute: {id: ['egoCm'], radius: [100]} 
-        ip: ["127.0.0.1"]
-        port: [7331]
-    # -   type: ego
-        # attribute: {id: ['egoCm'], radius: [0]} 
-        # ip: ["127.0.0.1"]
-        # port: [2333]
-    SignalSubscription:
-    # -   type: intersection
-        # attribute: {name: ['2117']}
-        # ip: ['127.0.0.1']
-        # port: [7331]
-    -   type: intersection
-        attribute: {name: ['2881']}
-        ip: ['127.0.0.1']
-        port: [2444]    
+        attribute: {id: ['egoCm123'], radius: [300]} 
+        ip: ["160.91.113.184"]
+        port: [7890]
+
 
 CarMakerSetup:
     # whether or not enable CarMaker (default: false)
@@ -83,9 +71,9 @@ CarMakerSetup:
     # # Ip and Port settings 
     # # if no setting, need to make sure have one and only one vehicle id subscription, which will be used as ip and port
     # # if set, will use whatever set here instead of what is defined in subscription
-    CarMakerIP: 127.0.0.1
+    # CarMakerIP: 127.0.0.1
     
-    CarMakerPort: 7331
+    # CarMakerPort: 7331
     
     # # refresh rate, default Traffic Objects updates every 0.001 seconds
     # TrafficRefreshRate: 0.001
@@ -96,12 +84,6 @@ CarMakerSetup:
     # # if set, will use whatever set here instead of what is defined in subscription
     # EgoId: egoCm
     
-    # EgoType: DEFAULT_PEDTYPE
-    
-    # transmit real-time traffic signal light information 
-    SynchronizeTrafficSignal: true
-    # define traffic signal port
-    # if not defined, then will automatically use the port defined in SignalSubscription
-    #TrafficSignalPort: 2444
+    # EgoType: DEFAULT_VEHTYPE
     
     

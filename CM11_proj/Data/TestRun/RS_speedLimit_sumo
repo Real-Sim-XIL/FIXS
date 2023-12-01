@@ -1,8 +1,8 @@
 #INFOFILE1.1 - Do not remove this line!
 FileIdent = CarMaker-TestRun 11
-FileCreator = CarMaker 11.0.1
+FileCreator = CarMaker/HIL 11.0.1
 Description:
-Vehicle = RAV4CompactSUV_noSensor.car
+Vehicle = Examples/Demo_Ford_Transit
 Trailer =
 Tire.0 =
 Tire.1 =
@@ -1663,7 +1663,7 @@ ErrorClass.11.WarningLimit = 3 5
 Road.FName = speedLimit.rd5
 Road.VhclStartPos.Kind = Route
 Road.VhclStartPos = 25 0 0
-Road.VhclRoute = Route_2
+Road.VhclRoute = Route_3
 Env.StartTime.Year = 2014
 Env.StartTime.Month = 7
 Env.StartTime.Day = 1
