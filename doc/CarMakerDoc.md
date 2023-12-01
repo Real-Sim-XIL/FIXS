@@ -411,7 +411,7 @@ run SUMO and Real-Sim with ```runCoordMergeSUMO.bat```, use CarMaker testrun ```
 run SUMO and Real-Sim with ```runCoordMergeSUMO_simulink.bat```, use CarMaker testrun ```coordMerge_rs_simulink```, use Simulink file ```CM11_proj\src_cm4sl\RealSimGeneric.mdl``` make sure the configuration is set properly, check [Simulink](#simulink).
 -->
 
-## dSPACE
+## dSPACE Simulation
 1. Make sure the path of the variable ```RS_configFile``` in ```User.c``` is correct for your environment
 
 2. Open the ConfigurationDesk project ```RS_DS_CM11_noSimulinkRS_useManeuver``` which is inside the ```CM11_proj/ConfigDesk``` folder. The simulink file is ```RS_DS_CM11_noSimulinkRS_useManeuver.slx``` under ```CM11_proj\src_cm4sl_ds```. Compile the ConfigurationDesk project. See more details in [this section](#setup-cm-dspace)

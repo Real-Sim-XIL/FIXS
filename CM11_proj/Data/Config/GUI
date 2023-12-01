@@ -6,22 +6,24 @@ CM_HIL.Exe.History:
 	CarMaker.rta
 CM_HIL.Args.History:
 	""
-DSRT.System =
+DSRT.System = scalexiohost
 DSRT.System.History:
+	scalexiohost
+	DSx86_32
 GPUParameters.FName =
-CM.Exe = src/CarMaker.win64.exe
-CM.Args = -f ../tests/SignalIpg/RS_config.yaml -s ./Data/Road/RS_ShallowfordRd_sumo_signal_RSsignalTable
+CM.Exe = CarMaker.win64.exe
+CM.Args =
 CM.Exe.History:
-	src/CarMaker.win64.exe
 	CarMaker.win64.exe
+	src/CarMaker.win64.exe
 	src_lib_c/CarMaker.win64.exe
 	src_lib/CarMaker.win64.exe
 CM.Args.History:
+	""
+	-f ../tests/Elevation/RS_config.yaml
 	-f ../tests/SignalIpg/RS_config.yaml -s ./Data/Road/RS_ShallowfordRd_sumo_signal_RSsignalTable
+	-f ../tests/SpeedLimit/config_sumo_local.yaml -s ./Data/Road/speedLimit_RSsignalTable
+	-f ../tests/Speed/RS_config.yaml -s ./Data/Road/RS_ShallowfordRd_sumo_signal_RSsignalTable
 	-f ../tests/SignalIpg/RS_config.yaml -s ./Data/Road/RS_ShallowfordRd_sumo_signal_RSsignalTable.rsst
 	-f ../tests/SignalIpg/RS_config.yaml -s ./Data/Road/RS_ShallowfordRd_sumo_signal_RSsignalTable.csv
 	-f ./Data/Road/RS_ShallowfordRd_sumo_signal_RSsignalTable.csv
-	-f ./Data/Road/RS_ShallowfordRd_sumo_signal_RSsignalTable
-	-f ../tests/SignalIpg/RS_config.yaml ./Data/Road/RS_ShallowfordRd_sumo_signal_RSsignalTable
-	-f ../tests/SignalIpg/RS_config.yaml -ff ./Data/Road/RS_ShallowfordRd_sumo_signal_RSsignalTable
-	-f ../tests/SignalIpg/RS_config.yaml -ff ./Data/Road/RS_ShallowfordRd_sumo_signal_RSsignalTable.csv
