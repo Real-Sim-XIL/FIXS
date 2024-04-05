@@ -471,16 +471,19 @@ int main(int argc, char* argv[]) {
 		}
 
 		Sock_c.N_ACT_CLIENT = selfServerPortUserInput.size();
-		
+
 		//Sock_c.enableWaitClientTrigger();
 		Sock_c.disableWaitClientTrigger();
-		if (Sock_c.initConnection(TrafficLayerErrorFile) > 0) {
-			printf("Connect to SUMO failed! Make sure start Traffic Simulator first and start one instance of VISSIM/SUMO \n");
-			exit(-1);
-		}
 
-		for (int i = 0; i < Sock_c.clientSock.size(); i++) {
-			actualClientSock.push_back(Sock_c.clientSock[i]);
+		if (!ENABLE_VEH_SIMULATOR) {
+			if (Sock_c.initConnection(TrafficLayerErrorFile) > 0) {
+				printf("Connect to SUMO failed! Make sure start Traffic Simulator first and start one instance of VISSIM/SUMO \n");
+				exit(-1);
+			}
+
+			for (int i = 0; i < Sock_c.clientSock.size(); i++) {
+				actualClientSock.push_back(Sock_c.clientSock[i]);
+			}
 		}
 
 	}
@@ -551,6 +554,17 @@ int main(int argc, char* argv[]) {
 		
 		Traffic_c.runOneStepSimulation();
 
+		if (ENABLE_VEH_SIMULATOR && isVeryFirstStep) {
+			if (Sock_c.initConnection(TrafficLayerErrorFile) > 0) {
+				printf("Connect to SUMO failed! Make sure start Traffic Simulator first and start one instance of VISSIM/SUMO \n");
+				exit(-1);
+			}
+
+			for (int i = 0; i < Sock_c.clientSock.size(); i++) {
+				actualClientSock.push_back(Sock_c.clientSock[i]);
+			}
+		}
+
 		if (ENABLE_VERBOSE) {
 			printf("\n===========New time step==============\n");
 			printf("===========SimTime %f==============\n", simTime);
@@ -565,6 +579,7 @@ int main(int argc, char* argv[]) {
 			printf("===========SimTime %f==============\n", simTime);
 		}
 
+		// run sumo unitial initial time finished
 		if ((Config_c.SimulationSetup.SimulationMode == 4 || Config_c.SimulationSetup.SimulationMode == 5) && !isInitialTimeFinished) {
 			Traffic_c.runSimulation(Config_c.SimulationSetup.SimulationModeParameter);
 			isInitialTimeFinished = true;
