@@ -1103,7 +1103,8 @@ int TrafficHelper::recvFromSUMO(double* simTime, MsgHelper& Msg_c) {
 		}
 
 
-		// temporary fix to hold only limited vehicles
+		// !!!temporary fix
+		// if doing vehicle simulator, e.g., CarMaker, only send limited number of vehicles
 		if (ENABLE_VEH_SIMULATOR) {
 			libsumo::TraCIPosition posEgo = Vehicle::getPosition(Config_c->CarMakerSetup.EgoId);
 
@@ -1126,6 +1127,16 @@ int TrafficHelper::recvFromSUMO(double* simTime, MsgHelper& Msg_c) {
 				}
 			}
 				
+		}
+		else {
+			for (auto& it : VehDataRecv_um_tmp) {
+				string tempvehId = it.first;
+
+				// if not doing driving simulator, shouldSendVehicle will currently always return 1
+				if (this->shouldSendVehicle(tempvehId, *simTime)) {
+					Msg_c.VehDataRecv_um[tempvehId] = VehDataRecv_um_tmp[tempvehId];
+				}
+			}
 		}
 
 
