@@ -15,7 +15,7 @@ addpath(genpath(RealSimPath))
 
 %% Run Batch Scripts
 system("ecodrivingLaunch.bat");
-% system(['start cmd /c ..\..\..\TrafficLayer\x64\Release\TrafficLayer.exe -f ', sprintf('%s', configFilename)])
+system(['start cmd /c ..\..\..\TrafficLayer\x64\Release\TrafficLayer.exe -f ', sprintf('%s', configFilename)])
 
 %% Initialize RealSim for Simulink, Read yaml file
 [VehicleMessageFieldDefInputVec, VehDataBus, TrafficLayerIP, TrafficLayerPort] = RealSimInitSimulink(configFilename);
