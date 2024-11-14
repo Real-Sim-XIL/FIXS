@@ -1,0 +1,3 @@
+[submodule "ProprietaryFiles"]
+	path = ProprietaryFiles
+	url = https://github.com/Real-Sim-XIL/ProprietaryFiles.git
