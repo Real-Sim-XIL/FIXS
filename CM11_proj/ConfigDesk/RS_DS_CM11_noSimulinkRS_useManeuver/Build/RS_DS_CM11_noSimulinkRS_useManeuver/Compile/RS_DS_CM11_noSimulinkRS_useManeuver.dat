@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?> 
-<resultfilepaths> 
-      <applicationvariant_default name="default" 
-          application_image_file="C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\Results.tmp\RS_DS_CM11_noSimulinkRS_useManeuver.x86" 
-          link_map_file="C:\CM_Projects\RS_FIXS_Ford\CM11_proj\ConfigDesk\RS_DS_CM11_noSimulinkRS_useManeuver\Build\Results.tmp\RS_DS_CM11_noSimulinkRS_useManeuver.map" 
-      /> 
-</resultfilepaths> 

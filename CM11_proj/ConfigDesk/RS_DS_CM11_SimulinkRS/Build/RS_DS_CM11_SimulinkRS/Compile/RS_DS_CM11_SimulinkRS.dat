@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?> 
-<resultfilepaths> 
-      <applicationvariant_default name="default" 
-          application_image_file="C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_SimulinkRS\Build\Results.tmp\RS_DS_CM11_SimulinkRS.x86" 
-          link_map_file="C:\CM_Projects\RealSimCm11Prj\ConfigDesk\RS_DS_CM11_SimulinkRS\Build\Results.tmp\RS_DS_CM11_SimulinkRS.map" 
-      /> 
-</resultfilepaths> 
