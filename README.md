@@ -1,15 +1,16 @@
 # Flexible Interface for XIL Simulation (FIXS)
+
+## FIXS Contacts
+**Primary Maintainer**: University of Georgia\
+realsimxil@gmail.com
+
+## About
 This interface is part of the **Real-Sim** project funded by Department of Energy (DOE)-Vehicle Technology Office (VTO)-Energy Efficient Mobility Systems (EEMS) program. It is part of the core tools of EEMS.
+
+Real-Sim develops a multi-resolution X-in-the-loop (XIL) simulation framework to support inclusive testing and evaluation of emerging technologies such as connected and automated vehicles. The Real-Sim framework connects different simulation components and integrates various traffic and vehicle simulation tools, virtual environments, and XIL systems through a Flexible Interface for XIL Simulation (FIXS). Connections among different tools are transparent to users and handled by the interface behind the scenes. Co-simulation of various vehicle and traffic simulation tools with different XIL systems can be easily achieved and become a transparent "plug-and-play" process to users. 
 
 **Real-Sim Project Lead**: Oak Ridge National Lab\
 **Real-Sim Project Team**: University of Georgia, University of Texas-Dallas
-
-## FIXS Contacts
-**FIXS Primary Maintainer**: University of Georgia
-realsimxil@gmail.com
-
-## Abouut Real-Sim
-Real-Sim develops a multi-resolution X-in-the-loop (XIL) simulation framework to support inclusive testing and evaluation of emerging technologies such as connected and automated vehicles. The Real-Sim framework connects different simulation components and integrates various traffic and vehicle simulation tools, virtual environments, and XIL systems through a Flexible Interface for XIL Simulation (FIXS). Connections among different tools are transparent to users and handled by the interface behind the scenes. Co-simulation of various vehicle and traffic simulation tools with different XIL systems can be easily achieved and become a transparent "plug-and-play" process to users. 
 
 **Links to project presentation**\
 https://www1.eere.energy.gov/vehiclesandfuels/downloads/2024_AMR/EEMS101_Chen_2024_o.pdf \
@@ -17,14 +18,13 @@ https://www1.eere.energy.gov/vehiclesandfuels/downloads/2023_AMR/eems101_Shao_20
 
 Publication list is upcoming...
 
-
+# Other links
 This README contains general information of the interface. For specific documentation of different simulators, check the following links:
 * ### [VISSIM Interface](doc/VISSIMdoc.md)
 * ### [SUMO Interface](doc/SUMOdoc.md)
 * ### [CarMaker](doc/CarMakerDoc.md)
 
-Table of Contents
-=======================
+# Table of Contents
 * [Preface](#preface)
 * [Build](#build)
    * [Prerequisite](#prerequisite)
