@@ -36,8 +36,10 @@
 Temp/*
 
 CommonLib/libevent/build/*
+CommonLib/libevent/out/build/*
 CommonLib/yaml-cpp/build/*
-
+CommonLib/yaml-cpp/out/build/*
+CommonLib/libsumo/out/build/*
 CommonLib/slprj/*
 
 ControlLayer/.vs/*
