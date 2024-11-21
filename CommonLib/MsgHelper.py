@@ -3,6 +3,12 @@ import VehDataMsgDefs
 import struct
 
 
+class MessageType:
+    vehicle_data = 1
+    traffic_light_data = 2
+    detector_data = 3
+
+
 
 class MsgHelper:
     
@@ -42,8 +48,6 @@ class MsgHelper:
         # specified for Real-Sim
         self.msg_header_size = 9
         self.msg_each_header_size = 3
-       # define data types identifier
-        self.veh_msg_identifier = 1;
         # debugging function
         # vehicle data message
         self.vehicle_data_empty = VehDataMsgDefs.VehData()
@@ -54,11 +58,10 @@ class MsgHelper:
         for field in vehicle_msg_field:
             self.vehicle_msg_field_valid[field] = True
 
-
+    @ staticmethod
     def unpack_float(data, index):
             value = struct.unpack('f', data[index:index+4])[0]
             return value, index + 4
-
     # Helper function to unpack a single int32
     @ staticmethod
     def unpack_int32(data, index):
@@ -83,7 +86,8 @@ class MsgHelper:
         value = struct.unpack('b', data[index:index+1])[0]
         return value, index + 1
     
-    def depack_veh_data(self, veh_data: dict, byte_data: bytes):
+    def depack_veh_data(self, byte_data: bytes):
+        veh_data = {}
         byte_index = 0  # Index in byte_data
         byte_index += self.msg_header_size  # Skip the message header
         byte_index += self.msg_each_header_size  # Skip the message type header
@@ -239,7 +243,7 @@ class MsgHelper:
         byte_data[byte_index:byte_index+2] = veh_msg_size
         byte_index += 2
         # Pack message type as uint8 (set to 1 as in MATLAB code)
-        byte_data[byte_index] = self.vehMsgIdentifer
+        byte_data[byte_index] = MessageType.vehicle_data
         byte_index += 1
         
 
