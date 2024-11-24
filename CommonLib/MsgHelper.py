@@ -1,5 +1,6 @@
+from re import M
 from typing import List
-import VehDataMsgDefs
+from CommonLib.VehDataMsgDefs import VehData
 import struct
 
 
@@ -50,7 +51,7 @@ class MsgHelper:
         self.msg_each_header_size = 3
         # debugging function
         # vehicle data message
-        self.vehicle_data_empty = VehDataMsgDefs.VehData()
+        # self.vehicle_data_empty = VehDataMsgDefs.VehData()
         # Vehiclemessage_fieldDefInputVec = zeros(1, 29); % Vector of 0,1 to select which message field will be transmitted
         
     
@@ -86,119 +87,119 @@ class MsgHelper:
         value = struct.unpack('b', data[index:index+1])[0]
         return value, index + 1
     
-    def depack_veh_data(self, byte_data: bytes):
-        veh_data = {}
+    def depack_veh_data(self, byte_data: bytes)-> VehData:
+        veh_data = VehData()
         byte_index = 0  # Index in byte_data
-        byte_index += self.msg_header_size  # Skip the message header
-        byte_index += self.msg_each_header_size  # Skip the message type header
+        # byte_index += self.msg_header_size  # Skip the message header
+        # byte_index += self.msg_each_header_size  # Skip the message type header
         # Helper function to unpack a single float
         
         # Unpack fields based on vehicle_msg_field_valid
         if self.vehicle_msg_field_valid.get('id'):
             str_data, str_len, byte_index, uint8Arr = MsgHelper.depack_string(byte_data, byte_index)
-            veh_data['id'] = uint8Arr
-            veh_data['idLength'] = str_len
+            veh_data.id = uint8Arr
+            veh_data.idLength = str_len
 
         if self.vehicle_msg_field_valid.get('type'):
             str_data, str_len, byte_index, uint8Arr = MsgHelper.depack_string(byte_data, byte_index)
-            veh_data['type'] = uint8Arr
-            veh_data['typeLength'] = str_len
+            veh_data.type = uint8Arr
+            veh_data.typeLength = str_len
 
         if self.vehicle_msg_field_valid.get('vehicleClass'):
             str_data, str_len, byte_index, uint8Arr = MsgHelper.depack_string(byte_data, byte_index)
-            veh_data['vehicleClass'] = uint8Arr
-            veh_data['vehicleClassLength'] = str_len
+            veh_data.vehicleClass = uint8Arr
+            veh_data.vehicleClassLength = str_len
 
         if self.vehicle_msg_field_valid.get('speed'):
-            veh_data['speed'], byte_index = MsgHelper.unpack_float(byte_data, byte_index)
+            veh_data.speed, byte_index = MsgHelper.unpack_float(byte_data, byte_index)
 
         if self.vehicle_msg_field_valid.get('acceleration'):
-            veh_data['acceleration'], byte_index = MsgHelper.unpack_float(byte_data, byte_index)
+            veh_data.acceleration, byte_index = MsgHelper.unpack_float(byte_data, byte_index)
 
         if self.vehicle_msg_field_valid.get('positionX'):
-            veh_data['positionX'], byte_index = MsgHelper.unpack_float(byte_data, byte_index)
+            veh_data.positionX, byte_index = MsgHelper.unpack_float(byte_data, byte_index)
 
         if self.vehicle_msg_field_valid.get('positionY'):
-            veh_data['positionY'], byte_index = MsgHelper.unpack_float(byte_data, byte_index)
+            veh_data.positionY, byte_index = MsgHelper.unpack_float(byte_data, byte_index)
 
         if self.vehicle_msg_field_valid.get('positionZ'):
-            veh_data['positionZ'], byte_index = MsgHelper.unpack_float(byte_data, byte_index)
+            veh_data.positionZ, byte_index = MsgHelper.unpack_float(byte_data, byte_index)
 
         if self.vehicle_msg_field_valid.get('heading'):
-            veh_data['heading'], byte_index = MsgHelper.unpack_float(byte_data, byte_index)
+            veh_data.heading, byte_index = MsgHelper.unpack_float(byte_data, byte_index)
 
         if self.vehicle_msg_field_valid.get('color'):
-            veh_data['color'], byte_index = MsgHelper.unpack_uint32(byte_data, byte_index)
+            veh_data.color, byte_index = MsgHelper.unpack_uint32(byte_data, byte_index)
 
         if self.vehicle_msg_field_valid.get('linkId'):
             str_data, str_len, byte_index, uint8Arr = MsgHelper.depack_string(byte_data, byte_index)
-            veh_data['linkId'] = uint8Arr
-            veh_data['linkIdLength'] = str_len
+            veh_data.linkId = uint8Arr
+            veh_data.linkIdLength = str_len
 
         if self.vehicle_msg_field_valid.get('laneId'):
-            veh_data['laneId'], byte_index = MsgHelper.unpack_int32(byte_data, byte_index)
+            veh_data.laneId, byte_index = MsgHelper.unpack_int32(byte_data, byte_index)
 
         if self.vehicle_msg_field_valid.get('distanceTravel'):
-            veh_data['distanceTravel'], byte_index = MsgHelper.unpack_float(byte_data, byte_index)
+            veh_data.distanceTravel, byte_index = MsgHelper.unpack_float(byte_data, byte_index)
 
         if self.vehicle_msg_field_valid.get('speedDesired'):
-            veh_data['speedDesired'], byte_index = MsgHelper.unpack_float(byte_data, byte_index)
+            veh_data.speedDesired, byte_index = MsgHelper.unpack_float(byte_data, byte_index)
 
         if self.vehicle_msg_field_valid.get('accelerationDesired'):
-            veh_data['accelerationDesired'], byte_index = MsgHelper.unpack_float(byte_data, byte_index)
+            veh_data.accelerationDesired, byte_index = MsgHelper.unpack_float(byte_data, byte_index)
 
         if self.vehicle_msg_field_valid.get('hasPrecedingVehicle'):
-            veh_data['hasPrecedingVehicle'], byte_index = MsgHelper.unpack_int8(byte_data, byte_index)
+            veh_data.hasPrecedingVehicle, byte_index = MsgHelper.unpack_int8(byte_data, byte_index)
 
         if self.vehicle_msg_field_valid.get('precedingVehicleId'):
             str_data, str_len, byte_index, uint8Arr = MsgHelper.depack_string(byte_data, byte_index)
-            veh_data['precedingVehicleId'] = uint8Arr
-            veh_data['precedingVehicleIdLength'] = str_len
+            veh_data.precedingVehicleId = uint8Arr
+            veh_data.precedingVehicleIdLength = str_len
 
         if self.vehicle_msg_field_valid.get('precedingVehicleDistance'):
-            veh_data['precedingVehicleDistance'], byte_index = MsgHelper.unpack_float(byte_data, byte_index)
+            veh_data.precedingVehicleDistance, byte_index = MsgHelper.unpack_float(byte_data, byte_index)
 
         if self.vehicle_msg_field_valid.get('precedingVehicleSpeed'):
-            veh_data['precedingVehicleSpeed'], byte_index = MsgHelper.unpack_float(byte_data, byte_index)
+            veh_data.precedingVehicleSpeed, byte_index = MsgHelper.unpack_float(byte_data, byte_index)
 
         if self.vehicle_msg_field_valid.get('signalLightId'):
             str_data, str_len, byte_index, uint8Arr = MsgHelper.depack_string(byte_data, byte_index)
-            veh_data['signalLightId'] = uint8Arr
-            veh_data['signalLightIdLength'] = str_len
+            veh_data.signalLightId = uint8Arr
+            veh_data.signalLightIdLength = str_len
 
         if self.vehicle_msg_field_valid.get('signalLightHeadId'):
-            veh_data['signalLightHeadId'], byte_index = MsgHelper.unpack_int32(byte_data, byte_index)
+            veh_data.signalLightHeadId, byte_index = MsgHelper.unpack_int32(byte_data, byte_index)
 
         if self.vehicle_msg_field_valid.get('signalLightDistance'):
-            veh_data['signalLightDistance'], byte_index = MsgHelper.unpack_float(byte_data, byte_index)
+            veh_data.signalLightDistance, byte_index = MsgHelper.unpack_float(byte_data, byte_index)
 
         if self.vehicle_msg_field_valid.get('signalLightColor'):
-            veh_data['signalLightColor'], byte_index = MsgHelper.unpack_int8(byte_data, byte_index)
+            veh_data.signalLightColor, byte_index = MsgHelper.unpack_int8(byte_data, byte_index)
 
         if self.vehicle_msg_field_valid.get('speedLimit'):
-            veh_data['speedLimit'], byte_index = MsgHelper.unpack_float(byte_data, byte_index)
+            veh_data.speedLimit, byte_index = MsgHelper.unpack_float(byte_data, byte_index)
 
         if self.vehicle_msg_field_valid.get('speedLimitNext'):
-            veh_data['speedLimitNext'], byte_index = MsgHelper.unpack_float(byte_data, byte_index)
+            veh_data.speedLimitNext, byte_index = MsgHelper.unpack_float(byte_data, byte_index)
 
         if self.vehicle_msg_field_valid.get('speedLimitChangeDistance'):
-            veh_data['speedLimitChangeDistance'], byte_index = MsgHelper.unpack_float(byte_data, byte_index)
+            veh_data.speedLimitChangeDistance, byte_index = MsgHelper.unpack_float(byte_data, byte_index)
 
         if self.vehicle_msg_field_valid.get('linkIdNext'):
             str_data, str_len, byte_index, uint8Arr = MsgHelper.depack_string(byte_data, byte_index)
-            veh_data['linkIdNext'] = uint8Arr
-            veh_data['linkIdNextLength'] = str_len
+            veh_data.linkIdNext = uint8Arr
+            veh_data.linkIdNextLength = str_len
 
         if self.vehicle_msg_field_valid.get('grade'):
-            veh_data['grade'], byte_index = MsgHelper.unpack_float(byte_data, byte_index)
+            veh_data.grade, byte_index = MsgHelper.unpack_float(byte_data, byte_index)
 
         if self.vehicle_msg_field_valid.get('activeLaneChange'):
-            veh_data['activeLaneChange'], byte_index = MsgHelper.unpack_int8(byte_data, byte_index)
+            veh_data.activeLaneChange, byte_index = MsgHelper.unpack_int8(byte_data, byte_index)
 
-        return veh_data
+        return  veh_data
 
 
-    def pack_veh_data(self, byte_data: bytearray, veh_data: dict):
+    def pack_veh_data(self, byte_data: bytearray, byte_index, veh_data: VehData):
         # Calculate nMsgSize based on vehicle_msg_field_valid flags and veh_data field lengths
         
         
@@ -234,15 +235,12 @@ class MsgHelper:
                   + self.vehicle_msg_field_valid.get('activeLaneChange', 0) * 1  # activeLaneChange
             )
         )
-        veh_msg_size = round(msg_size)
+        veh_msg_size = round(msg_size) + self.msg_each_header_size
         
-        # Initialize byte_index index for byte_data
-        byte_index = 0
-        # Message size is uint16-2 bytes, msg type is uint8-1 byte
-        # Pack message size and message type
-        byte_data[byte_index:byte_index+2] = veh_msg_size
+        # Pack message size as uint16, 2 bytes
+        byte_data[byte_index:byte_index+2] = struct.pack('H', veh_msg_size)
         byte_index += 2
-        # Pack message type as uint8 (set to 1 as in MATLAB code)
+        # Pack message type as uint8, 1 byte
         byte_data[byte_index] = MessageType.vehicle_data
         byte_index += 1
         
@@ -258,110 +256,111 @@ class MsgHelper:
             byte_data, byte_index = MsgHelper.pack_string(byte_data, byte_index, veh_data, 'vehicleClass')
 
         if self.vehicle_msg_field_valid.get('speed'):
-            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data['speed'])
+            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data.speed)
             byte_index += 4
 
         if self.vehicle_msg_field_valid.get('acceleration'):
-            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data['acceleration'])
+            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data.acceleration)
             byte_index += 4
 
         if self.vehicle_msg_field_valid.get('positionX'):
-            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data['positionX'])
+            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data.positionX)
             byte_index += 4
 
         if self.vehicle_msg_field_valid.get('positionY'):
-            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data['positionY'])
+            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data.positionY)
             byte_index += 4
 
         if self.vehicle_msg_field_valid.get('positionZ'):
-            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data['positionZ'])
+            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data.positionZ)
             byte_index += 4
 
         if self.vehicle_msg_field_valid.get('heading'):
-            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data['heading'])
+            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data.heading)
             byte_index += 4
 
         if self.vehicle_msg_field_valid.get('color'):
-            byte_data[byte_index:byte_index+4] = struct.pack('I', veh_data['color'])
+            byte_data[byte_index:byte_index+4] = struct.pack('I', veh_data.color)
             byte_index += 4
 
         if self.vehicle_msg_field_valid.get('linkId'):
             byte_data, byte_index = MsgHelper.pack_string(byte_data, byte_index, veh_data, 'linkId')
 
         if self.vehicle_msg_field_valid.get('laneId'):
-            byte_data[byte_index:byte_index+4] = struct.pack('i', veh_data['laneId'])
+            byte_data[byte_index:byte_index+4] = struct.pack('i', veh_data.laneId)
             byte_index += 4
 
         if self.vehicle_msg_field_valid.get('distanceTravel'):
-            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data['distanceTravel'])
+            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data.distanceTravel)
             byte_index += 4
 
         if self.vehicle_msg_field_valid.get('speedDesired'):
-            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data['speedDesired'])
+            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data.speedDesired)
             byte_index += 4
 
         if self.vehicle_msg_field_valid.get('accelerationDesired'):
-            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data['accelerationDesired'])
+            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data.accelerationDesired)
             byte_index += 4
 
         if self.vehicle_msg_field_valid.get('hasPrecedingVehicle'):
-            byte_data[byte_index] = veh_data['hasPrecedingVehicle']
+            byte_data[byte_index] = veh_data.hasPrecedingVehicle
             byte_index += 1
 
         if self.vehicle_msg_field_valid.get('precedingVehicleId'):
             byte_data, byte_index = MsgHelper.pack_string(byte_data, byte_index, veh_data, 'precedingVehicleId')
 
         if self.vehicle_msg_field_valid.get('precedingVehicleDistance'):
-            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data['precedingVehicleDistance'])
+            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data.precedingVehicleDistance)
             byte_index += 4
 
         if self.vehicle_msg_field_valid.get('precedingVehicleSpeed'):
-            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data['precedingVehicleSpeed'])
+            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data.precedingVehicleSpeed)
             byte_index += 4
 
         if self.vehicle_msg_field_valid.get('signalLightId'):
             byte_data, byte_index = MsgHelper.pack_string(byte_data, byte_index, veh_data, 'signalLightId')
 
         if self.vehicle_msg_field_valid.get('signalLightHeadId'):
-            byte_data[byte_index:byte_index+4] = struct.pack('i', veh_data['signalLightHeadId'])
+            byte_data[byte_index:byte_index+4] = struct.pack('i', veh_data.signalLightHeadId)
             byte_index += 4
 
         if self.vehicle_msg_field_valid.get('signalLightDistance'):
-            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data['signalLightDistance'])
+            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data.signalLightDistance)
             byte_index += 4
 
         if self.vehicle_msg_field_valid.get('signalLightColor'):
-            byte_data[byte_index] = veh_data['signalLightColor']
+            byte_data[byte_index] = veh_data.signalLightColor
             byte_index += 1
 
         if self.vehicle_msg_field_valid.get('speedLimit'):
-            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data['speedLimit'])
+            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data.speedLimit)
             byte_index += 4
 
         if self.vehicle_msg_field_valid.get('speedLimitNext'):
-            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data['speedLimitNext'])
+            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data.speedLimitNext)
             byte_index += 4
 
         if self.vehicle_msg_field_valid.get('speedLimitChangeDistance'):
-            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data['speedLimitChangeDistance'])
+            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data.speedLimitChangeDistance)
             byte_index += 4
 
         if self.vehicle_msg_field_valid.get('linkIdNext'):
             byte_data, byte_index = MsgHelper.pack_string(byte_data, byte_index, veh_data, 'linkIdNext')
 
         if self.vehicle_msg_field_valid.get('grade'):
-            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data['grade'])
+            byte_data[byte_index:byte_index+4] = struct.pack('f', veh_data.grade)
             byte_index += 4
 
         if self.vehicle_msg_field_valid.get('activeLaneChange'):
-            byte_data[byte_index] = veh_data['activeLaneChange']
+            byte_data[byte_index] = veh_data.activeLaneChange
             byte_index += 1
 
-        return byte_data, msg_size
+        return byte_data, msg_size, byte_index
 
 
 
-    def pack_msg_header(self, byte_data: bytearray, byte_index: int, simulation_state: int, t: float, total_msg_size: int):
+    def pack_msg_header(self, byte_data: bytearray, simulation_state: int, t: float, total_msg_size: int):
+        byte_index = 0
         # Pack simulation_state as uint8
         byte_data[byte_index] = simulation_state
         byte_index += 1
@@ -432,7 +431,7 @@ class MsgHelper:
         return str_data, strLen, byte_index, uint8Arr
     
     @ staticmethod
-    def pack_string(byte_data: bytes, byte_index: int, veh_data: dict, message_field: str):
+    def pack_string(byte_data: bytes, byte_index: int, veh_data: VehData, message_field: str):
         # Get the length of the string field
         str_len = veh_data.get(f"{message_field}Length", 0)
 
@@ -441,11 +440,18 @@ class MsgHelper:
         byte_index += 1
 
         # Pack the string itself up to str_len
-        byte_data[byte_index:byte_index+str_len] = veh_data[message_field][:str_len]
+        byte_data[byte_index:byte_index+str_len] = veh_data.get(message_field)[:str_len]
         byte_index += str_len
 
         return byte_data, byte_index
     
+    @ staticmethod
+    def create_vehicle_data():
+        veh_data = VehData()
+        veh_data.id = b'vehicle123'
+        veh_data.idLength = len(b'vehicle123')
+        veh_data.speed = 88.5
+        return veh_data
 
 
 def test_pack_simple_message():
@@ -456,26 +462,28 @@ def test_pack_simple_message():
     msg_helper.vehicle_msg_field_valid['speed'] = True
 
     # Sample veh_data
-    veh_data = {
-        'id': b'vehicle123',  # ID as bytes
-        'idLength': len(b'vehicle123'),
-        'speed': 88.5  # Speed as float
-    }
+    veh_data = VehData()
+    veh_data.id = b'vehicle123'
+    veh_data.idLength = len(b'vehicle123')
+    veh_data.speed = 88.5
 
     # Allocate byte_data buffer
     byte_data = bytearray(100)  # Pre-allocate buffer size
 
     # Pack data
-    packed_data, nMsgSize = msg_helper.pack_veh_data(simulation_state=1, t=123.456, byte_data=byte_data, veh_data=veh_data)
+    packed_data, nMsgSize = msg_helper.pack_veh_data(byte_data=byte_data, veh_data=veh_data)
 
     print("Packed byte_data:", packed_data[:nMsgSize])
     print("Packed message size:", nMsgSize)
 
-    veh_data = {}
-    unpacked_data = msg_helper.depack_veh_data(veh_data, packed_data)
+    msg_size, msg_type  = msg_helper.depack_msg_type(packed_data)
+    print("Unpacked msg_type:", msg_type)
+    print("Unpacked msg_size:", msg_size)
+    # veh_data = {}
+    unpacked_data = msg_helper.depack_veh_data(packed_data[msg_helper.msg_each_header_size:])
 
-    print("Unpacked veh_data:", unpacked_data)
-    print(bytes(unpacked_data['id'][: unpacked_data['idLength']]).decode('utf-8'))
+    # print("Unpacked veh_data:", unpacked_data)
+    print(bytes(unpacked_data.id[: unpacked_data.idLength]).decode('utf-8'))
 
     
 
