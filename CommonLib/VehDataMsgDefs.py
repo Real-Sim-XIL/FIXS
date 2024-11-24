@@ -3,50 +3,52 @@ import ctypes
 from typing import List
 
 @dataclass
-class VehFullData_t:
-    # Fixed-size uint8 arrays (50 bytes each) for string-like fields
-    id: List[ctypes.c_uint8] = field(default_factory=lambda: [ctypes.c_uint8(0)] * 50)
-    idLength: ctypes.c_uint8 = ctypes.c_uint8(0)
-    type: List[ctypes.c_uint8] = field(default_factory=lambda: [ctypes.c_uint8(0)] * 50)
-    typeLength: ctypes.c_uint8 = ctypes.c_uint8(0)
-    vehicleClass: List[ctypes.c_uint8] = field(default_factory=lambda: [ctypes.c_uint8(0)] * 50)
-    vehicleClassLength: ctypes.c_uint8 = ctypes.c_uint8(0)
+class VehData:
+    # Fixed-size arrays for string-like fields (50 bytes each)
+    id: List[int] = field(default_factory=lambda: [0] * 50)
+    idLength: int = 0
+    type: List[int] = field(default_factory=lambda: [0] * 50)
+    typeLength: int = 0
+    vehicleClass: List[int] = field(default_factory=lambda: [0] * 50)
+    vehicleClassLength: int = 0
     
     # Floating point and integer fields
-    speed: ctypes.c_float = ctypes.c_float(0.0)
-    acceleration: ctypes.c_float = ctypes.c_float(0.0)
-    positionX: ctypes.c_float = ctypes.c_float(0.0)
-    positionY: ctypes.c_float = ctypes.c_float(0.0)
-    positionZ: ctypes.c_float = ctypes.c_float(0.0)
-    heading: ctypes.c_float = ctypes.c_float(0.0)
-    color: ctypes.c_uint32 = ctypes.c_uint32(0)
+    speed: float = 0.0
+    acceleration: float = 0.0
+    positionX: float = 0.0
+    positionY: float = 0.0
+    positionZ: float = 0.0
+    heading: float = 0.0
+    color: int = 0  # Assuming color is an integer representation (e.g., ARGB or RGB)
     
-    linkId: List[ctypes.c_uint8] = field(default_factory=lambda: [ctypes.c_uint8(0)] * 50)
-    linkIdLength: ctypes.c_uint8 = ctypes.c_uint8(0)
-    laneId: ctypes.c_int32 = ctypes.c_int32(0)
-    distanceTravel: ctypes.c_float = ctypes.c_float(0.0)
-    speedDesired: ctypes.c_float = ctypes.c_float(0.0)
-    accelerationDesired: ctypes.c_float = ctypes.c_float(0.0)
+    linkId: List[int] = field(default_factory=lambda: [0] * 50)
+    linkIdLength: int = 0
+    laneId: int = 0
+    distanceTravel: float = 0.0
+    speedDesired: float = 0.0
+    accelerationDesired: float = 0.0
     
-    hasPrecedingVehicle: ctypes.c_uint8 = ctypes.c_uint8(0)
-    precedingVehicleId: List[ctypes.c_uint8] = field(default_factory=lambda: [ctypes.c_uint8(0)] * 50)
-    precedingVehicleIdLength: ctypes.c_uint8 = ctypes.c_uint8(0)
-    precedingVehicleDistance: ctypes.c_float = ctypes.c_float(0.0)
-    precedingVehicleSpeed: ctypes.c_float = ctypes.c_float(0.0)
+    hasPrecedingVehicle: int = 0  # Boolean-like integer (0 or 1)
+    precedingVehicleId: List[int] = field(default_factory=lambda: [0] * 50)
+    precedingVehicleIdLength: int = 0
+    precedingVehicleDistance: float = 0.0
+    precedingVehicleSpeed: float = 0.0
     
-    signalLightId: List[ctypes.c_uint8] = field(default_factory=lambda: [ctypes.c_uint8(0)] * 50)
-    signalLightIdLength: ctypes.c_uint8 = ctypes.c_uint8(0)
-    signalLightHeadId: ctypes.c_int32 = ctypes.c_int32(0)
-    signalLightDistance: ctypes.c_float = ctypes.c_float(0.0)
-    signalLightColor: ctypes.c_uint8 = ctypes.c_uint8(0)
+    signalLightId: List[int] = field(default_factory=lambda: [0] * 50)
+    signalLightIdLength: int = 0
+    signalLightHeadId: int = 0
+    signalLightDistance: float = 0.0
+    signalLightColor: int = 0  # Assuming an integer representation of the color
     
-    speedLimit: ctypes.c_float = ctypes.c_float(0.0)
-    speedLimitNext: ctypes.c_float = ctypes.c_float(0.0)
-    speedLimitChangeDistance: ctypes.c_float = ctypes.c_float(0.0)
+    speedLimit: float = 0.0
+    speedLimitNext: float = 0.0
+    speedLimitChangeDistance: float = 0.0
     
-    linkIdNext: List[ctypes.c_uint8] = field(default_factory=lambda: [ctypes.c_uint8(0)] * 50)
-    linkIdNextLength: ctypes.c_uint8 = ctypes.c_uint8(0)
-    grade: ctypes.c_float = ctypes.c_float(0.0)
-    activeLaneChange: ctypes.c_int8 = ctypes.c_int8(0)
+    linkIdNext: List[int] = field(default_factory=lambda: [0] * 50)
+    linkIdNextLength: int = 0
+    grade: float = 0.0
+    activeLaneChange: int = 0  # Boolean-like integer (-1, 0, or 1)
 
+    def get(self, field_name, default=None):
+        return getattr(self, field_name, default)
     
