@@ -1,6 +1,8 @@
 from struct import unpack, pack
+from CommonLib.VehDataMsgDefs import VehData
 from MsgHelper import MsgHelper, MessageType
 from ConfigHelper import ConfigHelper
+import typing
 CONFIG_PATH = r"C:\Users\hg25079\Documents\GitHub\FIXS\tests\Applications\Ecodriving\ecodrivingConfig.yaml"
 class SocketHelper:
 
@@ -12,10 +14,20 @@ class SocketHelper:
         config_helper = ConfigHelper()
         config_helper.getConfig(CONFIG_PATH)
         self.msg_helper = MsgHelper()
-        self.msg_helper.set_vehicle_message_field(config_helper.simulation_setup['VehicleMessageField'])
+        self.msg_helper.sef_vehicle_message_field(config_helper.simulation_setup['VehicleMessageField'])
         self.msg_header_size = self.msg_helper.msg_header_size
         self.msg_each_header_size = self.msg_helper.msg_each_header_size
 
+        # initialize lists to store sending data
+        self.vehicle_data_send_list: typing.List[VehData] = []
+        self.traffic_light_data_send_list = []
+        self.detector_data_send_list = []
+
+
+        # initialize lists to store received data
+        self.vehicle_data_receive_list: typing.List[VehData] = []
+        self.traffic_light_data_receive_list = []
+        self.detector_data_receive_list = []
 
     def pack_traffic_light_data(self, TrafficLightData):
         # need to skip the size part and add after all have been written
@@ -66,10 +78,7 @@ class SocketHelper:
 
     def recv_data(self, sock):
         # initialize return lists
-        vehicle_data_receive_list = []
-        ## TODO: implement rceiving the traffic light data and detector data 
-        traffic_light_data_receive_list = []
-        detector_data_receive_list = []
+        
 
         # get header for entire message
         received_buffer = sock.recv(self.msg_header_size)
@@ -88,8 +97,8 @@ class SocketHelper:
             # unpack message based on type identifier
             if msg_type == MessageType.vehicle_data:
                 aa = 1
-                vehicle_data_received = self.msg_helper.depack_vehicle_data(received_buffer)
-                vehicle_data_receive_list.append(vehicle_data_received)
+                vehicle_data_received = self.msg_helper.depack_veh_data(received_buffer)
+                self.vehicle_data_receive_list.append(vehicle_data_received)
             elif msg_type == MessageType.traffic_light_data:               
                 aa = 1
 
@@ -101,18 +110,29 @@ class SocketHelper:
 
             msg_processed_size = msg_processed_size + msg_size
 
-        return (
-            sim_state,
-            sim_time,
-            vehicle_data_receive_list,
-            traffic_light_data_receive_list,
-            detector_data_receive_list
-        )
+        return sim_state, sim_time,
+        
 
-    def sendData(self, simState, simTime, vehSendBuffer, tlsSendBuffer, detSendBuffer):
-        sendMsgSize = self.MSG_HEADER_SIZE + len(vehSendBuffer) + len(tlsSendBuffer) + len(detSendBuffer)
-        headerSendBuffer = self.packHeader(simState, simTime, sendMsgSize)
-            
-        buffer = headerSendBuffer + vehSendBuffer + tlsSendBuffer + detSendBuffer
+    def sendData(self, simState, simTime, sock):
+        byte_index = 0
+        total_msg_size = 0
+        total_msg_size = total_msg_size + self.msg_header_size
+        byte_index = byte_index + self.msg_header_size
+        vehicle_byte_index = 0
+        vehicle_data_buffer = bytearray(65536) 
+        # TODO: add traffic light and detector data
+        traffic_light_data_buffer = bytearray(8096)
+        detector_data_buffer = bytearray(8096)
+        data_buffer = bytearray(81728)
+        for vehicle_data in self.vehicle_data_send_list:
+            vehicle_data, vehicle_msg_size, vehicle_byte_index = self.msg_helper.pack_veh_data(vehicle_data_buffer, 
+                                                                                                   vehicle_byte_index, 
+                                                                                                   vehicle_data)
+            total_msg_size = total_msg_size + vehicle_msg_size
+        
+        data_buffer, byte_index = self.msg_helper.pack_msg_header(data_buffer, simState, simTime, total_msg_size)
+        data_buffer[byte_index:byte_index+vehicle_byte_index] = vehicle_data_buffer[0:vehicle_byte_index]
+        byte_index = byte_index + vehicle_byte_index
 
-        return buffer
+        # send data
+        sock.sendall(data_buffer[0:byte_index])
