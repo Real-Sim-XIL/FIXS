@@ -1,0 +1,35 @@
+<?xml version="1.0" ?>
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/duarouterConfiguration.xsd">
+    <random>
+        <seed value="101"/>
+    </random>
+
+    <input>
+        <net-file value="chatt.net.xml"/>
+        <route-files value="chattCavMpr.rou.xml"/>
+		<additional-files value="updated_signal.xml,Edge.add.xml"/>
+    </input>
+
+    <output>
+	<edgedata-output value="EdgeData.xml"/>
+	<fcd-output value="fcd.xml" samplingRate="1"/>
+    </output>
+
+    <time>
+        <begin value="28800"/>
+        <end value="32400"/>
+        <step-length value="1"/>
+    </time>
+
+    <processing>
+        <lateral-resolution value="0.8"/>
+    </processing>
+
+    <gui_only>
+        <start value="t"/>
+    </gui_only>
+    <report>
+        <no-warnings value="true"/>
+        <no-step-log value="true"/>
+    </report>
+</configuration>

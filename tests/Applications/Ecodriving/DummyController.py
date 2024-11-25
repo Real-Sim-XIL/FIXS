@@ -10,7 +10,7 @@ SERVER_PORT = '430'
 # IP for the simulink client to connect to
 IP='127.0.0.1'
 PORT='420'
-
+VERBOSE = False
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config", type=str, help="Path to the Configuration file", default='./ecodrivingConfig.yaml')
@@ -28,12 +28,12 @@ if __name__ == '__main__':
     socket2simulink = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     socket2simulink.bind((IP, int(PORT)))
     socket2simulink.listen(1)
-    # if a connection is established, accept it
     socket2simulink, addr = socket2simulink.accept()
     print('Connected by Simulink client')
     sim_time = 0
     while True:
-        print('receving data from FIXS server')
+        if VERBOSE:
+            print('receving data from FIXS server')
         sim_state, sim_time = socket_helper.recv_data(socket2FIXS)
         if int(sim_time) == socket_helper.config_helper.simulation_setup["SimulationEndTime"]:
             print('Simulation ends')
@@ -42,7 +42,8 @@ if __name__ == '__main__':
         for i in range(len(socket_helper.vehicle_data_send_list)):
             socket_helper.vehicle_data_send_list[i].speedDesired = socket_helper.vehicle_data_send_list[i].speed + cos(sim_time)
         # receive data from the client
-        print('sending data to Simulink client')
+        if VERBOSE:
+            print('sending data to Simulink client')
         socket_helper.sendData(sim_state, sim_time, socket2simulink)
         socket_helper.clear_data()
 

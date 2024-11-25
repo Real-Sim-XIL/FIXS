@@ -22,6 +22,9 @@
     <ClCompile Include="..\..\CommonLib\ConfigHelper.cpp" />
     <ClCompile Include="..\..\CommonLib\MsgHelper.cpp" />
     <ClCompile Include="..\..\CommonLib\SocketHelper.cpp" />
+    <ClCompile Include="..\..\CommonLib\traci\socket.cpp" />
+    <ClCompile Include="..\..\CommonLib\traci\storage.cpp" />
+    <ClCompile Include="..\..\CommonLib\traci\TraCIAPI.cpp" />
     <ClCompile Include="..\..\CommonLib\TrafficHelper.cpp" />
     <ClCompile Include="mainTrafficLayer.cpp" />
   </ItemGroup>
@@ -30,6 +33,11 @@
     <ClInclude Include="..\..\CommonLib\MsgHelper.h" />
     <ClInclude Include="..\..\CommonLib\ryml_all.hpp" />
     <ClInclude Include="..\..\CommonLib\SocketHelper.h" />
+    <ClInclude Include="..\..\CommonLib\traci\socket.h" />
+    <ClInclude Include="..\..\CommonLib\traci\storage.h" />
+    <ClInclude Include="..\..\CommonLib\traci\TraCIAPI.h" />
+    <ClInclude Include="..\..\CommonLib\traci\TraCIConstants.h" />
+    <ClInclude Include="..\..\CommonLib\traci\TraCIDefs.h" />
     <ClInclude Include="..\..\CommonLib\TrafficHelper.h" />
     <ClInclude Include="..\..\CommonLib\VehDataMsgDefs.h" />
     <ClInclude Include="..\..\CommonLib\RealSimVersion.h" />
@@ -148,7 +156,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NOMINMAX;_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\..\CommonLib\libsumo;..\..\CommonLib\yaml-cpp\build\include;..\..\CommonLib\yaml-cpp\include;..\..\CommonLib</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\CommonLib\traci;..\..\CommonLib\libsumo;..\..\CommonLib\yaml-cpp\build\include;..\..\CommonLib\yaml-cpp\include;..\..\CommonLib</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <ShowIncludes>false</ShowIncludes>
     </ClCompile>

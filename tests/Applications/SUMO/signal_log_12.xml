@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 2024-11-18 13:50:26 by Eclipse SUMO GUI Version 1.21.0
+<sumoConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+
+    <input>
+        <net-file value="D:\ORNL\OneDrive - Oak Ridge National Laboratory\ORNL\Project\Real-Twin\CAV_CaseStudy\cav_casestudy\SUMO\chatt.net.xml"/>
+        <route-files value="D:\ORNL\OneDrive - Oak Ridge National Laboratory\ORNL\Project\Real-Twin\CAV_CaseStudy\cav_casestudy\SUMO\chattCavMpr.rou.xml"/>
+        <additional-files value="D:\ORNL\OneDrive - Oak Ridge National Laboratory\ORNL\Project\Real-Twin\CAV_CaseStudy\cav_casestudy\SUMO\updated_signal.xml,D:\ORNL\OneDrive - Oak Ridge National Laboratory\ORNL\Project\Real-Twin\CAV_CaseStudy\cav_casestudy\SUMO\Edge.add.xml"/>
+    </input>
+
+    <output>
+        <fcd-output value="D:\ORNL\OneDrive - Oak Ridge National Laboratory\ORNL\Project\Real-Twin\CAV_CaseStudy\cav_casestudy\SUMO\fcd.xml"/>
+        <edgedata-output value="D:\ORNL\OneDrive - Oak Ridge National Laboratory\ORNL\Project\Real-Twin\CAV_CaseStudy\cav_casestudy\SUMO\EdgeData.xml"/>
+    </output>
+
+    <time>
+        <begin value="28800"/>
+        <end value="32400"/>
+        <step-length value="1"/>
+    </time>
+
+    <processing>
+        <lateral-resolution value="0.8"/>
+    </processing>
+
+    <report>
+        <no-warnings value="true"/>
+        <no-step-log value="true"/>
+    </report>
+
+    <traci_server>
+        <remote-port value="64647"/>
+    </traci_server>
+
+    <random_number>
+        <seed value="101"/>
+    </random_number>
+
+    <gui_only>
+        <start value="t"/>
+    </gui_only>
+
+</sumoConfiguration>
+-->
+
+<tlsStates xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/tlsstates_file.xsd">
+    <tlsState time="28800.00" id="12" programID="NEMA" phase="0" state="srrrgGGggsrrrrGGGGG" name="2+6"/>
+    <tlsState time="28831.00" id="12" programID="NEMA" phase="1" state="srrryyyyysrrrryyyyy" name="2+6"/>
+    <tlsState time="28835.00" id="12" programID="NEMA" phase="0" state="rrrrrrrrrrrrrrrrrrr" name="2+6"/>
+    <tlsState time="28836.00" id="12" programID="NEMA" phase="1" state="GGGGsrrrrgGGggsrrrr" name="4+8"/>
+    <tlsState time="28846.00" id="12" programID="NEMA" phase="0" state="yyyysrrrryyyyysrrrr" name="4+8"/>
+    <tlsState time="28850.00" id="12" programID="NEMA" phase="1" state="rrrrrrrrrrrrrrrrrrr" name="4+8"/>
+    <tlsState time="28851.00" id="12" programID="NEMA" phase="0" state="srrrgGGggsrrrrGGGGG" name="2+6"/>
+    <tlsState time="28950.00" id="12" programID="NEMA" phase="1" state="srrryyyyysrrrryyyyy" name="2+6"/>
+    <tlsState time="28954.00" id="12" programID="NEMA" phase="0" state="rrrrrrrrrrrrrrrrrrr" name="2+6"/>
+    <tlsState time="28955.00" id="12" programID="NEMA" phase="1" state="GGGGsrrrrgGGggsrrrr" name="4+8"/>
+    <tlsState time="28963.00" id="12" programID="NEMA" phase="0" state="yyyysrrrryyyyysrrrr" name="4+8"/>
+    <tlsState time="28967.00" id="12" programID="NEMA" phase="1" state="rrrrrrrrrrrrrrrrrrr" name="4+8"/>
+    <tlsState time="28968.00" id="12" programID="NEMA" phase="0" state="srrrsrrGGGrrrrsrrGG" name="1+5"/>
+    <tlsState time="28972.00" id="12" programID="NEMA" phase="1" state="srrrsrryyyrrrrsrrGG" name="1+5"/>
+    <tlsState time="28976.00" id="12" programID="NEMA" phase="0" state="srrrsrrrrsrrrrGGGGG" name="2+5"/>
+    <tlsState time="28980.00" id="12" programID="NEMA" phase="1" state="srrrsrrrrsrrrrGGGyy" name="2+5"/>
+    <tlsState time="28984.00" id="12" programID="NEMA" phase="0" state="srrrgGGggsrrrrGGGGG" name="2+6"/>
+    <tlsState time="29050.00" id="12" programID="NEMA" phase="1" state="srrryyyyysrrrryyyyy" name="2+6"/>
+    <tlsState time="29054.00" id="12" programID="NEMA" phase="0" state="rrrrrrrrrrrrrrrrrrr" name="2+6"/>
+    <tlsState time="29055.00" id="12" programID="NEMA" phase="1" state="GGGGsrrrrgGGggsrrrr" name="4+8"/>
+    <tlsState time="29067.00" id="12" programID="NEMA" phase="0" state="yyyysrrrryyyyysrrrr" name="4+8"/>
+    <tlsState time="29071.00" id="12" programID="NEMA" phase="1" state="rrrrrrrrrrrrrrrrrrr" name="4+8"/>
+    <tlsState time="29072.00" id="12" programID="NEMA" phase="0" state="srrrsrrrrsrrrrGGGGG" name="2+5"/>
+    <tlsState time="29083.00" id="12" programID="NEMA" phase="1" state="srrrsrrrrsrrrrGGGyy" name="2+5"/>
+    <tlsState time="29087.00" id="12" programID="NEMA" phase="0" state="srrrgGGggsrrrrGGGGG" name="2+6"/>
+    <tlsState time="29150.00" id="12" programID="NEMA" phase="1" state="srrryyyyysrrrryyyyy" name="2+6"/>
+    <tlsState time="29154.00" id="12" programID="NEMA" phase="0" state="rrrrrrrrrrrrrrrrrrr" name="2+6"/>
+    <tlsState time="29155.00" id="12" programID="NEMA" phase="1" state="GGGGsrrrrgGGggsrrrr" name="4+8"/>
+    <tlsState time="29163.00" id="12" programID="NEMA" phase="0" state="yyyysrrrryyyyysrrrr" name="4+8"/>
+    <tlsState time="29167.00" id="12" programID="NEMA" phase="1" state="rrrrrrrrrrrrrrrrrrr" name="4+8"/>
+    <tlsState time="29168.00" id="12" programID="NEMA" phase="0" state="srrrgGGggsrrrrGGGGG" name="2+6"/>
+    <tlsState time="29250.00" id="12" programID="NEMA" phase="1" state="srrryyyyysrrrryyyyy" name="2+6"/>
+    <tlsState time="29254.00" id="12" programID="NEMA" phase="0" state="rrrrrrrrrrrrrrrrrrr" name="2+6"/>
+    <tlsState time="29255.00" id="12" programID="NEMA" phase="1" state="GGGGsrrrrgGGggsrrrr" name="4+8"/>
+    <tlsState time="29267.00" id="12" programID="NEMA" phase="0" state="yyyysrrrryyyyysrrrr" name="4+8"/>
+    <tlsState time="29271.00" id="12" programID="NEMA" phase="1" state="rrrrrrrrrrrrrrrrrrr" name="4+8"/>
+    <tlsState time="29272.00" id="12" programID="NEMA" phase="0" state="srrrgGGggsrrrrGGGGG" name="2+6"/>
+</tlsStates>

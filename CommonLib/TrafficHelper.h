@@ -10,8 +10,8 @@
 //#include "TraCIAPI.h"
 //#define NOMINMAX
 
-#include <libsumo/libtraci.h>
-
+//#include <libsumo/libtraci.h>
+#include "TraCIAPI.h"
 #include "SocketHelper.h"
 
 
@@ -71,13 +71,13 @@ public:
 	//======================
 	// This is for SUMO
 	//======================
-	//class Client : public TraCIAPI {
-	//public:
-	//	Client() {};
-	//	~Client() {};
-	//};
+	class Client : public TraCIAPI {
+	public:
+		Client() {};
+		~Client() {};
+	};
 
-	//Client traci;
+	Client traci;
 
 	
 	/********************************************
