@@ -36,7 +36,7 @@ class ConfigHelper:
             config = yaml.safe_load(file)
 
         # Simulation Setup
-        simulation_node = config.get("simulation_setup", {})
+        simulation_node = config.get("SimulationSetup", {})
         self.simulation_setup["EnableRealSim"] = self.parserFlag(simulation_node, "EnableRealSim", True)
         self.simulation_setup["EnableVerboseLog"] = self.parserFlag(simulation_node, "EnableVerboseLog", False)
         self.simulation_setup["SimulationEndTime"] = self.parserDouble(simulation_node, "SimulationEndTime", 90000)
@@ -48,15 +48,15 @@ class ConfigHelper:
         self.simulation_setup["SimulationModeParameter"] = self.parserDouble(simulation_node, "SimulationModeParameter", 0)
         self.simulation_setup["VehicleMessageField"] = self.parserStringVector(simulation_node, "VehicleMessageField", ["id", "type", "speed", "positionX", "positionY"])
         # Sumo Setup
-        sumo_node = config.get("Sumo_setup", {})
+        sumo_node = config.get("SumoSetup", {})
         self.Sumo_setup["SpeedMode"] = sumo_node.get("SpeedMode", 0)
         # Application Setup
-        app_node = config.get("application_setup", {})
+        app_node = config.get("ApplicationSetup", {})
         self.application_setup["EnableApplicationLayer"] = self.parserFlag(app_node, "EnableApplicationLayer", False)
         self.application_setup["VehicleSubscription"] = self.parseVehicleSubscription(app_node, "VehicleSubscription", [])
 
         # Xil Setup
-        xil_node = config.get("Xil_setup", {})
+        xil_node = config.get("XilSetup", {})
         self.Xil_setup["EnableXil"] = xil_node.get("EnableXil", False)
         self.Xil_setup["VehicleSubscription"] = self.parseVehicleSubscription(xil_node, "VehicleSubscription", [])
 
@@ -105,3 +105,5 @@ class ConfigHelper:
 
 if __name__ == "__main__":
     config_helper = ConfigHelper()
+    CONFIG_PATH = r"C:\Users\hg25079\Documents\GitHub\FIXS\tests\Applications\Ecodriving\ecodrivingConfig.yaml"
+    config_helper.getConfig(CONFIG_PATH)
