@@ -1,9 +1,5 @@
 # RealSim VISSIM documentation
 
-## Contacts
-Yunli Shao\
-realsimxil@gmail.com
-
 Table of Contents
 =======================
 * [Simulation Setups](#simulation-setups)
@@ -20,7 +16,8 @@ Table of Contents
     * [Control Initial States of An Ego Vehicle](#control-initial-states-of-an-ego-vehicle)
     * [Enforce 'Go Straight' of An Ego Vehicle](#enforce-go-straight-of-an-ego-vehicle)
     * [Get Speed Limit from VISSIM](#get-speed-limit-from-vissim)
-
+* [Debugging](#debugging)
+    * [Use Visual Studio to debug VISSIM dll](#use-visual-studio-to-debug-vissim-dll)
 
 ## Simulation Setups
 
@@ -314,4 +311,8 @@ Notes:
 1. if multiple vehicles will travel the same route, ```id``` and ```vehicleType``` can be a vector holds id and vehicle type of each vehicle on this same route. see example route 4
 1. ```initialSpeedLimit``` is needed to define the speed limit the vehicle is following when first entering the VISSIM network, it should be scalar since each route should have one single initial speed limit. Unit: m/s. see example route 4
 
+## Debugging
+
+### Use Visual Studio to debug VISSIM dll
+Right now only Release version of the dll can work due to missing symbols definitions in the VISSIM internal dll. You will need to open the Visual Studio solution file, make sure you are selecting "Remote Window Debugger" with specified VISSIM executable location. Then start the debugging which will load a VISSIM instance and then you can select the VISSIM simulation file to run. Afterwards, you can debug as usual.
 
