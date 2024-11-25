@@ -55,7 +55,7 @@ class MsgHelper:
         # Vehiclemessage_fieldDefInputVec = zeros(1, 29); % Vector of 0,1 to select which message field will be transmitted
         
     
-    def sef_vehicle_message_field(self, vehicle_msg_field: List[str]):
+    def set_vehicle_message_field(self, vehicle_msg_field: List[str]):
         for field in vehicle_msg_field:
             self.vehicle_msg_field_valid[field] = True
 
@@ -445,13 +445,8 @@ class MsgHelper:
 
         return byte_data, byte_index
     
-    @ staticmethod
-    def create_vehicle_data():
-        veh_data = VehData()
-        veh_data.id = b'vehicle123'
-        veh_data.idLength = len(b'vehicle123')
-        veh_data.speed = 88.5
-        return veh_data
+
+    
 
 
 def test_pack_simple_message():

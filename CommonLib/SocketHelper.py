@@ -1,20 +1,17 @@
 from struct import unpack, pack
 from CommonLib.VehDataMsgDefs import VehData
-from MsgHelper import MsgHelper, MessageType
-from ConfigHelper import ConfigHelper
+from CommonLib.MsgHelper import MsgHelper, MessageType
+from CommonLib.ConfigHelper import ConfigHelper
 import typing
-CONFIG_PATH = r"C:\Users\hg25079\Documents\GitHub\FIXS\tests\Applications\Ecodriving\ecodrivingConfig.yaml"
 class SocketHelper:
 
     MSG_CODER = 'utf-8'
 
-    def __init__(self):
+    def __init__(self, config_helper: ConfigHelper, msg_helper: MsgHelper):
         # empty constructer
         aa = 1
-        config_helper = ConfigHelper()
-        config_helper.getConfig(CONFIG_PATH)
-        self.msg_helper = MsgHelper()
-        self.msg_helper.sef_vehicle_message_field(config_helper.simulation_setup['VehicleMessageField'])
+        self.config_helper = config_helper
+        self.msg_helper = msg_helper
         self.msg_header_size = self.msg_helper.msg_header_size
         self.msg_each_header_size = self.msg_helper.msg_each_header_size
 
@@ -28,6 +25,17 @@ class SocketHelper:
         self.vehicle_data_receive_list: typing.List[VehData] = []
         self.traffic_light_data_receive_list = []
         self.detector_data_receive_list = []
+
+    def clear_data(self):
+        self.vehicle_data_send_list.clear()
+        self.traffic_light_data_send_list.clear()
+        self.detector_data_send_list.clear()
+
+        self.vehicle_data_receive_list.clear()
+        self.traffic_light_data_receive_list.clear()
+        self.detector_data_receive_list.clear()
+
+
 
     def pack_traffic_light_data(self, TrafficLightData):
         # need to skip the size part and add after all have been written
@@ -79,21 +87,39 @@ class SocketHelper:
     def recv_data(self, sock):
         # initialize return lists
         
-
+        
         # get header for entire message
         received_buffer = sock.recv(self.msg_header_size)
+        
+
         sim_state, sim_time, total_msg_size = self.msg_helper.depack_msg_header(received_buffer)
         msg_processed_size = 0
         msg_processed_size = msg_processed_size + self.msg_header_size
         # total message size is the data to be received
+        # save received_buffer to local log for debugging
+        log_file_path = "received_header_buffer.log"
+        with open(log_file_path, 'ab') as log_file:  # 'ab' for appending binary data
+            log_file.write(received_buffer)
+            log_file.write(b'\n')
+        
         while (msg_processed_size < total_msg_size):
             # get message type header
             received_buffer = sock.recv(self.msg_each_header_size)
             msg_size, msg_type = self.msg_helper.depack_msg_type(received_buffer)
 
+            log_file_path = "received_each_header_buffer.log"
+            with open(log_file_path, 'ab') as log_file:  # 'ab' for appending binary data
+                log_file.write(received_buffer)
+                log_file.write(b'\n')
+
             # get message it self
             received_buffer = sock.recv(msg_size - self.msg_each_header_size)
-            
+
+            log_file_path = "received_msg_buffer.log"
+            with open(log_file_path, 'ab') as log_file:  # 'ab' for appending binary data
+                log_file.write(received_buffer)
+                log_file.write(b'\n')
+
             # unpack message based on type identifier
             if msg_type == MessageType.vehicle_data:
                 aa = 1
