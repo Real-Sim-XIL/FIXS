@@ -19,12 +19,12 @@ SimulationSetup:
     EnableRealSim: true
     
     # Whether or not to save verbose log during the simulation. skip log can potentially speed up
-    EnableVerboseLog: false
+    EnableVerboseLog: true
     
     # Simulation end time
     # if NOT specificed, SimulationEndTime will be set to a large value (90000 seconds)
     #--------------------------------------------------
-    #SimulationEndTime: 1800
+    SimulationEndTime: 1800
     
     # specify which traffic simulator
     #--------------------------------------------------
@@ -47,11 +47,14 @@ SumoSetup:
 # setup Application Layer
 ApplicationSetup:
     # turn on/off application layer
-    EnableApplicationLayer: false
+    EnableApplicationLayer: true
     
     #--------------------------------------------------
     VehicleSubscription: 
-
+    -   type: ego
+        attribute: {id: ['flow_0.10'], radius: [0]}
+        ip: ["127.0.0.1"]
+        port: [430]
         
 # subscription in XilSetup must be subset of ApplicationSetup
 XilSetup:
@@ -64,6 +67,7 @@ XilSetup:
         attribute: {id: ['flow_0.10'], radius: [0]}
         ip: ["127.0.0.1"]
         port: [420]
+    
     
     
     
