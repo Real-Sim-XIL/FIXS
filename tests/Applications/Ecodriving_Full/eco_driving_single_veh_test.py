@@ -118,7 +118,7 @@ class SumoEnv:
 
                 elif traci.vehicle.getRoadID('ego') == '-295':
                     self.reset()
-                    # traci.simulationStep()
+                    traci.simulationStep()
             else:
                 # self.reset()
                 traci.simulationStep()
@@ -243,19 +243,14 @@ if __name__ == "__main__":
     next_movement = config['Movement']['next_movement']
     traci.init(port=1337, host='127.0.0.1')
     traci.setOrder(2)
-    # traci.route.add(routeID='route1', edges=senv.edges)
-    # senv.reset()
+    traci.route.add(routeID='route1', edges=senv.edges)
+    senv.reset()
     
     while True:
-        traci.simulationStep()
-        print('receving data from FIXS server')
-        sim_state, sim_time = socket_helper.recv_data(socket2FIXS)
-        # if int(sim_time) == socket_helper.config_helper.simulation_setup["SimulationEndTime"]:
-        #     print('Simulation ends')
-        #     break
-
+        
+        instant_desired_speed = 0
         if 'ego' in traci.vehicle.getIDList():
-            print(traci.vehicle.getRoadID('ego'))
+            # print(traci.vehicle.getRoadID('ego'))
 
             if traci.vehicle.getRoadID('ego') != '-295':
                 traci.vehicle.setDecel('ego', senv.max_acc)
@@ -283,26 +278,33 @@ if __name__ == "__main__":
 
                 try:
                     instant_desired_speed, a_out = senv.step(dist2Stop, t1s, t1e, t2s, t2e, r1s, curr_status)
-                    
+                    instant_desired_speed = instant_desired_speed * 0.44704
+                    traci.simulationStep()
                 except:
                     senv.reset()
 
             elif traci.vehicle.getRoadID('ego') == '-295':
                 senv.reset()
+                traci.simulationStep()
+        else:
+            traci.simulationStep()
 
-
+        sim_state, sim_time = socket_helper.recv_data(socket2FIXS)
         socket_helper.vehicle_data_send_list.extend(socket_helper.vehicle_data_receive_list)
         for i in range(len(socket_helper.vehicle_data_send_list)):
-            socket_helper.vehicle_data_send_list[i].speedDesired = instant_desired_speed * 0.44704
-        print(instant_desired_speed)
-        # receive data from the client
-        print('sending data to Simulink client')
+            if instant_desired_speed == 0:
+               instant_desired_speed = socket_helper.vehicle_data_send_list[i].speed
+            socket_helper.vehicle_data_send_list[i].speedDesired = instant_desired_speed
+        
+        ###  FIXS Layer to Simulink
         socket_helper.sendData(sim_state, sim_time, socket2simulink)
         socket_helper.clear_data()
 
         # receive data from the client (the actual vehicle data after the vehidle dynamics model)
         socket_helper.recv_data(socket2simulink)
         # send data to the server
+
+        ### Simulink data to FIXS Layer
         socket_helper.vehicle_data_send_list.extend(socket_helper.vehicle_data_receive_list)
         socket_helper.sendData(sim_state, sim_time, socket2FIXS)
         socket_helper.clear_data()

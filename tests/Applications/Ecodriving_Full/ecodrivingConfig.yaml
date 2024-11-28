@@ -52,7 +52,7 @@ ApplicationSetup:
     #--------------------------------------------------
     VehicleSubscription: 
     -   type: ego
-        attribute: {id: ['flow_0.10'], radius: [0]}
+        attribute: {id: ['ego'], radius: [0]}
         ip: ["127.0.0.1"]
         port: [430]
         
@@ -64,7 +64,7 @@ XilSetup:
     #--------------------------------------------------
     VehicleSubscription: 
     -   type: ego
-        attribute: {id: ['flow_0.10'], radius: [0]}
+        attribute: {id: ['ego'], radius: [0]}
         ip: ["127.0.0.1"]
         port: [420]
     
