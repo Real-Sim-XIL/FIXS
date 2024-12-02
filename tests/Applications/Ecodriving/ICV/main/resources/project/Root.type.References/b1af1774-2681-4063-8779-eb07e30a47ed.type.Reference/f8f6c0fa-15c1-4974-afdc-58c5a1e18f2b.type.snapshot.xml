@@ -1,0 +1,266 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<Info>
+    <Files>
+        <File path="Plant/DrivetrainEv.slx" value="f83dcaf4" />
+        <File path="Plant/DrivetrainEvDD.sldd" value="55dd2d43" />
+        <File path="Plant/DrivetrainHevIps.slx" value="1c602a7d" />
+        <File path="Plant/DrivetrainHevMm.slx" value="c43f3a28" />
+        <File path="Plant/DrivetrainHevMmDD.sldd" value="efdfbc25" />
+        <File path="Plant/DrivetrainHevP2.slx" value="34c52b" />
+        <File path="Plant/SiDrivetrain.slx" value="b17993cd" />
+        <File path="Plant/SiDrivetrainDD.sldd" value="cceef250" />
+        <File path="Plant" value="-1" />
+        <File path="VDD.prj" value="c4d5cdc8" />
+        <File path="resources/project/Extensions.type.Root/Information.type.Extension.xml" value="6b61dd07" />
+        <File path="resources/project/Extensions.type.Root" value="-1" />
+        <File path="resources/project/Project.xml" value="c576b26a" />
+        <File path="resources/project/ProjectData.type.Info.xml" value="6c8fa61" />
+        <File path="resources/project/Root.type.Categories/FileClassCategory.type.Category.xml" value="d2dc6b71" />
+        <File path="resources/project/Root.type.Categories/FileClassCategory.type.Category/artifact.type.Label.xml" value="3a808e07" />
+        <File path="resources/project/Root.type.Categories/FileClassCategory.type.Category/convenience.type.Label.xml" value="9fa19c1e" />
+        <File path="resources/project/Root.type.Categories/FileClassCategory.type.Category/derived.type.Label.xml" value="b32f4cc5" />
+        <File path="resources/project/Root.type.Categories/FileClassCategory.type.Category/design.type.Label.xml" value="657f94e3" />
+        <File path="resources/project/Root.type.Categories/FileClassCategory.type.Category/none.type.Label.xml" value="4434695f" />
+        <File path="resources/project/Root.type.Categories/FileClassCategory.type.Category/other.type.Label.xml" value="7716e543" />
+        <File path="resources/project/Root.type.Categories/FileClassCategory.type.Category/test.type.Label.xml" value="eff7b485" />
+        <File path="resources/project/Root.type.Categories/FileClassCategory.type.Category" value="-1" />
+        <File path="resources/project/Root.type.Categories" value="-1" />
+        <File path="resources/project/Root.type.EntryPoints/1ef0699d-15ee-4b5d-b3c8-4afaa2559d6d.type.EntryPoint.xml" value="88592d94" />
+        <File path="resources/project/Root.type.EntryPoints/28a899dd-091f-4b57-9edb-9e85bd08a70f.type.EntryPoint.xml" value="b2eecc06" />
+        <File path="resources/project/Root.type.EntryPoints/4dbf47a5-aab1-4dd7-8cc5-89b912bf7a4c.type.EntryPoint.xml" value="c55231a6" />
+        <File path="resources/project/Root.type.EntryPoints/b7b1efd4-fbac-4f39-851c-b5833bb9da5c.type.EntryPoint.xml" value="ebfa4971" />
+        <File path="resources/project/Root.type.EntryPoints/f0da77c6-ac25-4978-8af1-7dfb4aafa456.type.EntryPoint.xml" value="9b173364" />
+        <File path="resources/project/Root.type.EntryPoints" value="-1" />
+        <File path="resources/project/Root.type.Files/Plant.type.File.xml" value="2f34bdc5" />
+        <File path="resources/project/Root.type.Files/Plant.type.File/1.type.DIR_SIGNIFIER.xml" value="3af507e" />
+        <File path="resources/project/Root.type.Files/Plant.type.File/DrivetrainEv.slx.type.File.xml" value="df0217e1" />
+        <File path="resources/project/Root.type.Files/Plant.type.File/DrivetrainEvDD.sldd.type.File.xml" value="df0217e1" />
+        <File path="resources/project/Root.type.Files/Plant.type.File/DrivetrainHevIps.slx.type.File.xml" value="df0217e1" />
+        <File path="resources/project/Root.type.Files/Plant.type.File/DrivetrainHevMm.slx.type.File.xml" value="df0217e1" />
+        <File path="resources/project/Root.type.Files/Plant.type.File/DrivetrainHevMmDD.sldd.type.File.xml" value="df0217e1" />
+        <File path="resources/project/Root.type.Files/Plant.type.File/DrivetrainHevP2.slx.type.File.xml" value="df0217e1" />
+        <File path="resources/project/Root.type.Files/Plant.type.File/SiDrivetrain.slx.type.File.xml" value="df0217e1" />
+        <File path="resources/project/Root.type.Files/Plant.type.File/SiDrivetrainDD.sldd.type.File.xml" value="df0217e1" />
+        <File path="resources/project/Root.type.Files/Plant.type.File" value="-1" />
+        <File path="resources/project/Root.type.Files" value="-1" />
+        <File path="resources/project/Root.type.ProjectPath/cae92953-ffa4-403d-9588-5c19033044e6.type.Reference.xml" value="b58596b9" />
+        <File path="resources/project/Root.type.ProjectPath" value="-1" />
+        <File path="resources/project/uuid-222a13fb-e637-4455-b732-45f87f9a1630.xml" value="3af507e" />
+        <File path="resources/project" value="-1" />
+        <File path="resources" value="-1" />
+    </Files>
+    <MetadataNode>
+        <path value="Extensions:type:Root">
+            <path value="Information:type:Extension">
+                <node name="Info">
+                    <entry value="" key="description" />
+                </node>
+            </path>
+        </path>
+        <path value="ProjectData:type:Info">
+            <node name="Info">
+                <entry value="VDD" key="Name" />
+            </node>
+        </path>
+        <path value="Root:type:Categories">
+            <path value="FileClassCategory:type:Category">
+                <node name="Info">
+                    <entry value="None" key="DataType" />
+                    <entry value="Classification" key="Name" />
+                    <entry value="1" key="ReadOnly" />
+                    <entry value="1" key="SingleValued" />
+                </node>
+                <path value="artifact:type:Label">
+                    <node name="Info">
+                        <entry value="Artifact" key="Name" />
+                        <entry value="READ_ONLY" key="ReadOnly" />
+                    </node>
+                </path>
+                <path value="convenience:type:Label">
+                    <node name="Info">
+                        <entry value="Convenience" key="Name" />
+                        <entry value="READ_ONLY" key="ReadOnly" />
+                    </node>
+                </path>
+                <path value="derived:type:Label">
+                    <node name="Info">
+                        <entry value="Derived" key="Name" />
+                        <entry value="READ_ONLY" key="ReadOnly" />
+                    </node>
+                </path>
+                <path value="design:type:Label">
+                    <node name="Info">
+                        <entry value="Design" key="Name" />
+                        <entry value="READ_ONLY" key="ReadOnly" />
+                    </node>
+                </path>
+                <path value="none:type:Label">
+                    <node name="Info">
+                        <entry value="None" key="Name" />
+                        <entry value="READ_ONLY" key="ReadOnly" />
+                    </node>
+                </path>
+                <path value="other:type:Label">
+                    <node name="Info">
+                        <entry value="Other" key="Name" />
+                        <entry value="READ_ONLY" key="ReadOnly" />
+                    </node>
+                </path>
+                <path value="test:type:Label">
+                    <node name="Info">
+                        <entry value="Test" key="Name" />
+                        <entry value="READ_ONLY" key="ReadOnly" />
+                    </node>
+                </path>
+            </path>
+        </path>
+        <path value="Root:type:EntryPoints">
+            <path value="1ef0699d-15ee-4b5d-b3c8-4afaa2559d6d:type:EntryPoint">
+                <node name="Info">
+                    <entry value="Plant/DrivetrainHevP2.slx" key="File" />
+                    <entry value="" key="Icon" />
+                    <entry value="DrivetrainHevP2" key="Name" />
+                    <entry value="Basic" key="Type" />
+                    <entry value="1" key="Visible" />
+                </node>
+            </path>
+            <path value="28a899dd-091f-4b57-9edb-9e85bd08a70f:type:EntryPoint">
+                <node name="Info">
+                    <entry value="Plant/DrivetrainHevIps.slx" key="File" />
+                    <entry value="" key="Icon" />
+                    <entry value="DrivetrainHevIps" key="Name" />
+                    <entry value="Basic" key="Type" />
+                    <entry value="1" key="Visible" />
+                </node>
+            </path>
+            <path value="4dbf47a5-aab1-4dd7-8cc5-89b912bf7a4c:type:EntryPoint">
+                <node name="Info">
+                    <entry value="Plant/DrivetrainHevMm.slx" key="File" />
+                    <entry value="" key="Icon" />
+                    <entry value="DrivetrainHevMm" key="Name" />
+                    <entry value="Basic" key="Type" />
+                </node>
+            </path>
+            <path value="b7b1efd4-fbac-4f39-851c-b5833bb9da5c:type:EntryPoint">
+                <node name="Info">
+                    <entry value="Plant/SiDrivetrain.slx" key="File" />
+                    <entry value="" key="Icon" />
+                    <entry value="SiDrivetrain" key="Name" />
+                    <entry value="Basic" key="Type" />
+                </node>
+            </path>
+            <path value="f0da77c6-ac25-4978-8af1-7dfb4aafa456:type:EntryPoint">
+                <node name="Info">
+                    <entry value="Plant/DrivetrainEv.slx" key="File" />
+                    <entry value="" key="Icon" />
+                    <entry value="DrivetrainEv" key="Name" />
+                    <entry value="Basic" key="Type" />
+                </node>
+            </path>
+        </path>
+        <path value="Root:type:Files">
+            <path value="Plant:type:File">
+                <node name="Info">
+                    <node name="Category">
+                        <entry value="FileClassCategory" key="UUID" />
+                        <node name="Label">
+                            <entry value="none" key="UUID" />
+                        </node>
+                    </node>
+                </node>
+                <path value="1:type:DIR_SIGNIFIER">
+                    <node name="Info" />
+                </path>
+                <path value="DrivetrainEv.slx:type:File">
+                    <node name="Info">
+                        <node name="Category">
+                            <entry value="FileClassCategory" key="UUID" />
+                            <node name="Label">
+                                <entry value="design" key="UUID" />
+                            </node>
+                        </node>
+                    </node>
+                </path>
+                <path value="DrivetrainEvDD.sldd:type:File">
+                    <node name="Info">
+                        <node name="Category">
+                            <entry value="FileClassCategory" key="UUID" />
+                            <node name="Label">
+                                <entry value="design" key="UUID" />
+                            </node>
+                        </node>
+                    </node>
+                </path>
+                <path value="DrivetrainHevIps.slx:type:File">
+                    <node name="Info">
+                        <node name="Category">
+                            <entry value="FileClassCategory" key="UUID" />
+                            <node name="Label">
+                                <entry value="design" key="UUID" />
+                            </node>
+                        </node>
+                    </node>
+                </path>
+                <path value="DrivetrainHevMm.slx:type:File">
+                    <node name="Info">
+                        <node name="Category">
+                            <entry value="FileClassCategory" key="UUID" />
+                            <node name="Label">
+                                <entry value="design" key="UUID" />
+                            </node>
+                        </node>
+                    </node>
+                </path>
+                <path value="DrivetrainHevMmDD.sldd:type:File">
+                    <node name="Info">
+                        <node name="Category">
+                            <entry value="FileClassCategory" key="UUID" />
+                            <node name="Label">
+                                <entry value="design" key="UUID" />
+                            </node>
+                        </node>
+                    </node>
+                </path>
+                <path value="DrivetrainHevP2.slx:type:File">
+                    <node name="Info">
+                        <node name="Category">
+                            <entry value="FileClassCategory" key="UUID" />
+                            <node name="Label">
+                                <entry value="design" key="UUID" />
+                            </node>
+                        </node>
+                    </node>
+                </path>
+                <path value="SiDrivetrain.slx:type:File">
+                    <node name="Info">
+                        <node name="Category">
+                            <entry value="FileClassCategory" key="UUID" />
+                            <node name="Label">
+                                <entry value="design" key="UUID" />
+                            </node>
+                        </node>
+                    </node>
+                </path>
+                <path value="SiDrivetrainDD.sldd:type:File">
+                    <node name="Info">
+                        <node name="Category">
+                            <entry value="FileClassCategory" key="UUID" />
+                            <node name="Label">
+                                <entry value="design" key="UUID" />
+                            </node>
+                        </node>
+                    </node>
+                </path>
+            </path>
+        </path>
+        <path value="Root:type:ProjectPath">
+            <path value="cae92953-ffa4-403d-9588-5c19033044e6:type:Reference">
+                <node name="Info">
+                    <entry value="Plant" key="Ref" />
+                    <entry value="Relative" key="Type" />
+                </node>
+            </path>
+        </path>
+    </MetadataNode>
+    <Date value="December 2, 2024 11:47:03 AM" />
+</Info>

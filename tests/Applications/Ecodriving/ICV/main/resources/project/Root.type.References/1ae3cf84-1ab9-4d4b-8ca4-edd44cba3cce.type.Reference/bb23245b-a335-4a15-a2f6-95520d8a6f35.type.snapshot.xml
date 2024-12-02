@@ -1,0 +1,279 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<Info>
+    <Files>
+        <File path="CI.prj" value="c4d5cdc8" />
+        <File path="Controller/CiEngineController.slx" value="b40cc6e6" />
+        <File path="Controller/CiEngineControllerDD.sldd" value="fd64b47" />
+        <File path="Controller" value="-1" />
+        <File path="Plant/CiEngine.slx" value="ada52f90" />
+        <File path="Plant/CiEngineCore.slx" value="c436511f" />
+        <File path="Plant/CiEngineCoreDD.sldd" value="10f1789d" />
+        <File path="Plant/CiEngineDD.sldd" value="f3a20cb3" />
+        <File path="Plant/CiMappedEngine.slx" value="637b948d" />
+        <File path="Plant/CiMappedEngineDD.sldd" value="ec4acea8" />
+        <File path="Plant" value="-1" />
+        <File path="resources/project/Extensions.type.Root/Information.type.Extension.xml" value="6b61dd07" />
+        <File path="resources/project/Extensions.type.Root" value="-1" />
+        <File path="resources/project/Project.xml" value="c576b26a" />
+        <File path="resources/project/ProjectData.type.Info.xml" value="2a4f1948" />
+        <File path="resources/project/Root.type.Categories/FileClassCategory.type.Category.xml" value="d2dc6b71" />
+        <File path="resources/project/Root.type.Categories/FileClassCategory.type.Category/artifact.type.Label.xml" value="3a808e07" />
+        <File path="resources/project/Root.type.Categories/FileClassCategory.type.Category/convenience.type.Label.xml" value="9fa19c1e" />
+        <File path="resources/project/Root.type.Categories/FileClassCategory.type.Category/derived.type.Label.xml" value="b32f4cc5" />
+        <File path="resources/project/Root.type.Categories/FileClassCategory.type.Category/design.type.Label.xml" value="657f94e3" />
+        <File path="resources/project/Root.type.Categories/FileClassCategory.type.Category/none.type.Label.xml" value="4434695f" />
+        <File path="resources/project/Root.type.Categories/FileClassCategory.type.Category/other.type.Label.xml" value="7716e543" />
+        <File path="resources/project/Root.type.Categories/FileClassCategory.type.Category/test.type.Label.xml" value="eff7b485" />
+        <File path="resources/project/Root.type.Categories/FileClassCategory.type.Category" value="-1" />
+        <File path="resources/project/Root.type.Categories" value="-1" />
+        <File path="resources/project/Root.type.EntryPoints/3255c946-6776-43e9-b2b8-05951208cb3d.type.EntryPoint.xml" value="b319b537" />
+        <File path="resources/project/Root.type.EntryPoints/855b083d-e4dc-42f0-acff-1132d8382e33.type.EntryPoint.xml" value="8d77edc6" />
+        <File path="resources/project/Root.type.EntryPoints/d3754a4b-c952-4cef-b625-f5c27f2275e2.type.EntryPoint.xml" value="45cf7f1e" />
+        <File path="resources/project/Root.type.EntryPoints/e2973629-23cc-4775-a787-d826ceb1277d.type.EntryPoint.xml" value="a9255646" />
+        <File path="resources/project/Root.type.EntryPoints" value="-1" />
+        <File path="resources/project/Root.type.Files/Controller.type.File.xml" value="2f34bdc5" />
+        <File path="resources/project/Root.type.Files/Controller.type.File/1.type.DIR_SIGNIFIER.xml" value="3af507e" />
+        <File path="resources/project/Root.type.Files/Controller.type.File/CiEngineController.slx.type.File.xml" value="df0217e1" />
+        <File path="resources/project/Root.type.Files/Controller.type.File/CiEngineControllerDD.sldd.type.File.xml" value="df0217e1" />
+        <File path="resources/project/Root.type.Files/Controller.type.File" value="-1" />
+        <File path="resources/project/Root.type.Files/Plant.type.File.xml" value="2f34bdc5" />
+        <File path="resources/project/Root.type.Files/Plant.type.File/1.type.DIR_SIGNIFIER.xml" value="3af507e" />
+        <File path="resources/project/Root.type.Files/Plant.type.File/CiEngine.slx.type.File.xml" value="df0217e1" />
+        <File path="resources/project/Root.type.Files/Plant.type.File/CiEngineCore.slx.type.File.xml" value="df0217e1" />
+        <File path="resources/project/Root.type.Files/Plant.type.File/CiEngineCoreDD.sldd.type.File.xml" value="df0217e1" />
+        <File path="resources/project/Root.type.Files/Plant.type.File/CiEngineDD.sldd.type.File.xml" value="df0217e1" />
+        <File path="resources/project/Root.type.Files/Plant.type.File/CiMappedEngine.slx.type.File.xml" value="df0217e1" />
+        <File path="resources/project/Root.type.Files/Plant.type.File/CiMappedEngineDD.sldd.type.File.xml" value="df0217e1" />
+        <File path="resources/project/Root.type.Files/Plant.type.File" value="-1" />
+        <File path="resources/project/Root.type.Files" value="-1" />
+        <File path="resources/project/Root.type.ProjectPath/4a1e1781-8acb-4c0c-ad64-312d6f5e76d3.type.Reference.xml" value="b58596b9" />
+        <File path="resources/project/Root.type.ProjectPath/edf5f516-d13f-445c-b192-417d721f3e29.type.Reference.xml" value="2acceae8" />
+        <File path="resources/project/Root.type.ProjectPath" value="-1" />
+        <File path="resources/project/uuid-824b0f91-7d29-43e0-9061-73eff746aea9.xml" value="3af507e" />
+        <File path="resources/project" value="-1" />
+        <File path="resources" value="-1" />
+    </Files>
+    <MetadataNode>
+        <path value="Extensions:type:Root">
+            <path value="Information:type:Extension">
+                <node name="Info">
+                    <entry value="" key="description" />
+                </node>
+            </path>
+        </path>
+        <path value="ProjectData:type:Info">
+            <node name="Info">
+                <entry value="CI" key="Name" />
+            </node>
+        </path>
+        <path value="Root:type:Categories">
+            <path value="FileClassCategory:type:Category">
+                <node name="Info">
+                    <entry value="None" key="DataType" />
+                    <entry value="Classification" key="Name" />
+                    <entry value="1" key="ReadOnly" />
+                    <entry value="1" key="SingleValued" />
+                </node>
+                <path value="artifact:type:Label">
+                    <node name="Info">
+                        <entry value="Artifact" key="Name" />
+                        <entry value="READ_ONLY" key="ReadOnly" />
+                    </node>
+                </path>
+                <path value="convenience:type:Label">
+                    <node name="Info">
+                        <entry value="Convenience" key="Name" />
+                        <entry value="READ_ONLY" key="ReadOnly" />
+                    </node>
+                </path>
+                <path value="derived:type:Label">
+                    <node name="Info">
+                        <entry value="Derived" key="Name" />
+                        <entry value="READ_ONLY" key="ReadOnly" />
+                    </node>
+                </path>
+                <path value="design:type:Label">
+                    <node name="Info">
+                        <entry value="Design" key="Name" />
+                        <entry value="READ_ONLY" key="ReadOnly" />
+                    </node>
+                </path>
+                <path value="none:type:Label">
+                    <node name="Info">
+                        <entry value="None" key="Name" />
+                        <entry value="READ_ONLY" key="ReadOnly" />
+                    </node>
+                </path>
+                <path value="other:type:Label">
+                    <node name="Info">
+                        <entry value="Other" key="Name" />
+                        <entry value="READ_ONLY" key="ReadOnly" />
+                    </node>
+                </path>
+                <path value="test:type:Label">
+                    <node name="Info">
+                        <entry value="Test" key="Name" />
+                        <entry value="READ_ONLY" key="ReadOnly" />
+                    </node>
+                </path>
+            </path>
+        </path>
+        <path value="Root:type:EntryPoints">
+            <path value="3255c946-6776-43e9-b2b8-05951208cb3d:type:EntryPoint">
+                <node name="Info">
+                    <entry value="Controller/CiEngineController.slx" key="File" />
+                    <entry value="" key="Icon" />
+                    <entry value="CiEngineController" key="Name" />
+                    <entry value="Basic" key="Type" />
+                </node>
+            </path>
+            <path value="855b083d-e4dc-42f0-acff-1132d8382e33:type:EntryPoint">
+                <node name="Info">
+                    <entry value="Plant/CiEngine.slx" key="File" />
+                    <entry value="" key="Icon" />
+                    <entry value="CiEngine" key="Name" />
+                    <entry value="Basic" key="Type" />
+                </node>
+            </path>
+            <path value="d3754a4b-c952-4cef-b625-f5c27f2275e2:type:EntryPoint">
+                <node name="Info">
+                    <entry value="Plant/CiEngineCore.slx" key="File" />
+                    <entry value="" key="Icon" />
+                    <entry value="CiEngineCore" key="Name" />
+                    <entry value="Basic" key="Type" />
+                </node>
+            </path>
+            <path value="e2973629-23cc-4775-a787-d826ceb1277d:type:EntryPoint">
+                <node name="Info">
+                    <entry value="Plant/CiMappedEngine.slx" key="File" />
+                    <entry value="" key="Icon" />
+                    <entry value="CiMappedEngine" key="Name" />
+                    <entry value="Basic" key="Type" />
+                </node>
+            </path>
+        </path>
+        <path value="Root:type:Files">
+            <path value="Controller:type:File">
+                <node name="Info">
+                    <node name="Category">
+                        <entry value="FileClassCategory" key="UUID" />
+                        <node name="Label">
+                            <entry value="none" key="UUID" />
+                        </node>
+                    </node>
+                </node>
+                <path value="1:type:DIR_SIGNIFIER">
+                    <node name="Info" />
+                </path>
+                <path value="CiEngineController.slx:type:File">
+                    <node name="Info">
+                        <node name="Category">
+                            <entry value="FileClassCategory" key="UUID" />
+                            <node name="Label">
+                                <entry value="design" key="UUID" />
+                            </node>
+                        </node>
+                    </node>
+                </path>
+                <path value="CiEngineControllerDD.sldd:type:File">
+                    <node name="Info">
+                        <node name="Category">
+                            <entry value="FileClassCategory" key="UUID" />
+                            <node name="Label">
+                                <entry value="design" key="UUID" />
+                            </node>
+                        </node>
+                    </node>
+                </path>
+            </path>
+            <path value="Plant:type:File">
+                <node name="Info">
+                    <node name="Category">
+                        <entry value="FileClassCategory" key="UUID" />
+                        <node name="Label">
+                            <entry value="none" key="UUID" />
+                        </node>
+                    </node>
+                </node>
+                <path value="1:type:DIR_SIGNIFIER">
+                    <node name="Info" />
+                </path>
+                <path value="CiEngine.slx:type:File">
+                    <node name="Info">
+                        <node name="Category">
+                            <entry value="FileClassCategory" key="UUID" />
+                            <node name="Label">
+                                <entry value="design" key="UUID" />
+                            </node>
+                        </node>
+                    </node>
+                </path>
+                <path value="CiEngineCore.slx:type:File">
+                    <node name="Info">
+                        <node name="Category">
+                            <entry value="FileClassCategory" key="UUID" />
+                            <node name="Label">
+                                <entry value="design" key="UUID" />
+                            </node>
+                        </node>
+                    </node>
+                </path>
+                <path value="CiEngineCoreDD.sldd:type:File">
+                    <node name="Info">
+                        <node name="Category">
+                            <entry value="FileClassCategory" key="UUID" />
+                            <node name="Label">
+                                <entry value="design" key="UUID" />
+                            </node>
+                        </node>
+                    </node>
+                </path>
+                <path value="CiEngineDD.sldd:type:File">
+                    <node name="Info">
+                        <node name="Category">
+                            <entry value="FileClassCategory" key="UUID" />
+                            <node name="Label">
+                                <entry value="design" key="UUID" />
+                            </node>
+                        </node>
+                    </node>
+                </path>
+                <path value="CiMappedEngine.slx:type:File">
+                    <node name="Info">
+                        <node name="Category">
+                            <entry value="FileClassCategory" key="UUID" />
+                            <node name="Label">
+                                <entry value="design" key="UUID" />
+                            </node>
+                        </node>
+                    </node>
+                </path>
+                <path value="CiMappedEngineDD.sldd:type:File">
+                    <node name="Info">
+                        <node name="Category">
+                            <entry value="FileClassCategory" key="UUID" />
+                            <node name="Label">
+                                <entry value="design" key="UUID" />
+                            </node>
+                        </node>
+                    </node>
+                </path>
+            </path>
+        </path>
+        <path value="Root:type:ProjectPath">
+            <path value="4a1e1781-8acb-4c0c-ad64-312d6f5e76d3:type:Reference">
+                <node name="Info">
+                    <entry value="Plant" key="Ref" />
+                    <entry value="Relative" key="Type" />
+                </node>
+            </path>
+            <path value="edf5f516-d13f-445c-b192-417d721f3e29:type:Reference">
+                <node name="Info">
+                    <entry value="Controller" key="Ref" />
+                    <entry value="Relative" key="Type" />
+                </node>
+            </path>
+        </path>
+    </MetadataNode>
+    <Date value="December 2, 2024 11:46:50 AM" />
+</Info>
