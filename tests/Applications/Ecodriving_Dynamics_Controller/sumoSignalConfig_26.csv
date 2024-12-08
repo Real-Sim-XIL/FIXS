@@ -1,0 +1,13 @@
+,duration,minDur,maxDur,vehext,yellow,red,name,state,id,offset,programID,type,movement_index,movement_index_start,movement_index_end,movement_index_start_max,approach_direction,x,y
+0,99,15,50,2,4,1,2,srrrsrrrrsrrrrGGGGG,12,0,NEMA,NEMA,"[14, 15, 16, 17, 18]",14,18,14,EB,260.95,693.13
+1,99,15,50,2,4,1,6,srrrgGGggsrrrrsrrrr,12,0,NEMA,NEMA,"[5, 6]",5,6,14,WB,260.95,693.13
+2,99,10,33,3,4,1,2,srrrrrrrrrGGGGg,9,0,NEMA,NEMA,"[10, 11, 12, 13]",10,13,10,EB,378.59,647.41
+3,99,10,67,3,4,1,6,srrrrGGrrrsrrrr,9,0,NEMA,NEMA,"[5, 6]",5,6,10,WB,378.59,647.41
+4,99,10,36,3,4,2,2,gGGGgsrrrrrrrrrr,8,0,NEMA,NEMA,"[1, 2, 3]",1,3,11,WB,556.69,570.59
+5,99,10,50,3,4,2,6,srrrrsrrrrrGGGgg,8,0,NEMA,NEMA,"[11, 12, 13]",11,13,11,EB,556.69,570.59
+6,99,10,44,3,4,2,2,srrrgGGGGrrsrrrssrrrr,10,0,NEMA,NEMA,"[5, 6, 7, 8]",5,8,17,WB,638.53,531.78
+7,99,10,44,3,4,2,6,srrrsrrrrrrsrrrggGGgg,10,0,NEMA,NEMA,"[17, 18]",17,18,17,EB,638.53,531.78
+8,99,15,62,3,4,2,2,srrrgGGGGggsrrrsrrrr,3,0,NEMA,NEMA,"[5, 6, 7, 8]",5,8,16,WB,867.66,436.43
+9,99,15,62,3,4,2,6,srrrsrrrrrrsrrrgGGgg,3,0,NEMA,NEMA,"[16, 17]",16,17,16,EB,867.66,436.43
+10,99,10,22,3,4,2,2,srrrrgGGGggsrrrrsrrrr,2,0,NEMA,NEMA,"[6, 7, 8]",6,8,17,WB,1007.86,376.97
+11,99,10,20,3,4,2,6,srrrrsrrrrrsrrrrgGGgg,2,0,NEMA,NEMA,"[17, 18]",17,18,17,EB,1007.86,376.97

@@ -45,6 +45,11 @@ class MsgHelper:
             'grade': False,
             'activeLaneChange': False
         }
+        self.traffic_light_msg_field_valid = {
+
+        }
+        
+        
         # DO NOT change. These are predetermined message header size
         # specified for Real-Sim
         self.msg_header_size = 9
