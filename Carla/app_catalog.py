@@ -27,6 +27,10 @@ Schema (schema: 1)
       "note":   "...",                  # optional, printed when the app is picked
       "maps":   ["roosevelt", ...],     # optional, DEFAULT ["<id>"]; first = default pick
       "configs":[ <config>, ... ],      # optional app-owned scenario yamls
+      "needs_map_sumo": true,           # optional: this app BUILDS its scenario from
+                                        #   the chosen map's, so run_cosim must open
+                                        #   the bundle before starting it. Default
+                                        #   false - see below.
       "launch": "run_my_app",           # optional: a command run alongside the stack
                                         #   (the app's controller / XIL host), which
                                         #   may also report the scenario to run. See
@@ -367,6 +371,13 @@ def _normalize_app(raw):
     # resolves it in the app folder and never reads its arguments, so what an app
     # needs to pass itself costs no change here.
     launch = (raw.get("launch") or "").strip() or None
+    # Whether the app needs the chosen map's sumo/ on disk BEFORE it starts.
+    # run_cosim otherwise starts an app first and reaches for the bundle after,
+    # because an app that generates its own scenario from scratch needs no sumo/
+    # half and asking for one would prompt over a ~380MB archive it discards.
+    # An app that generates its scenario FROM the map's wants the opposite, and
+    # only the app knows which it is.
+    needs_map_sumo = bool(raw.get("needs_map_sumo"))
     return {"id": app_id,
             "title": (raw.get("title") or "").strip() or app_id,
             "dir": (raw.get("dir") or "").strip() or app_id,
@@ -376,6 +387,7 @@ def _normalize_app(raw):
             "defaults": defaults,
             "sumo_args": sumo_args,
             "requirements": requirements,
+            "needs_map_sumo": needs_map_sumo,
             "launch": launch}
 
 

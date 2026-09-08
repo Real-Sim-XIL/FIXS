@@ -61,6 +61,7 @@ import sys
 import tarfile
 import tempfile
 import time
+import xml.etree.ElementTree as ET
 import zipfile
 
 import carla_env_setup as env
@@ -2085,6 +2086,210 @@ def map_sumo_dir(name):
     was extracted, or a separately-picked sumo landed), else None. Lets a Local
     (already-imported) pick reuse its sumo without re-prompting for one."""
     return _dir_with_sumocfg(os.path.join(_map_cache_dir(name), "sumo"))
+
+
+def _cached_bundle_zip(cache_name):
+    """The bundle zip sitting in ~/.fixs/maps/<name>/, or None.
+
+    download_release_zip leaves it there so a re-import is free; it is also the only
+    local record of what the library actually published for this map, which is what
+    makes the parity check below possible without a network round trip."""
+    d = _map_cache_dir(cache_name)
+    if not os.path.isdir(d):
+        return None
+    zips = sorted(f for f in os.listdir(d) if f.lower().endswith(".zip"))
+    if not zips:
+        return None
+    # More than one only happens if a map was re-fetched under a new asset name;
+    # prefer the one named after the map, else the sole candidate.
+    named = [z for z in zips if os.path.splitext(z)[0] == cache_name]
+    return os.path.join(d, (named or zips)[0])
+
+
+def scenario_outputs(sumo_dir):
+    """Basenames the scenario itself writes into its own directory.
+
+    SUMO resolves a relative path in a .sumocfg against the CONFIG FILE, not the
+    process working directory, so a scenario that names its outputs relatively
+    writes them next to itself - into the map cache. MLK's does: its additional-file
+    carries
+
+        <timedEvent type="SaveTLSSwitchStates" dest="signal_result.xml"/>
+
+    and that one cannot be redirected from the command line the way --fcd-output and
+    --tripinfo-output are, so signal_result.xml reappears in sumo/ after every run.
+
+    Those files are byproducts of running, not evidence that anyone edited the
+    scenario, and a parity check that flagged them would fire on every launch - which
+    is the same as not warning at all, except louder. Collected from the cfg's own
+    output declarations and from the `dest` of every timedEvent in the additional
+    files it names."""
+    outputs = set()
+    cfg = bundle_sumocfg(sumo_dir)
+    if not cfg:
+        return outputs
+    try:
+        root = ET.parse(cfg).getroot()
+    except (OSError, ET.ParseError):
+        return outputs
+    additional = []
+    for el in root.iter():
+        val = el.get("value")
+        if val is None:
+            continue
+        if el.tag.endswith("-output") or el.tag in ("log", "error-log"):
+            outputs.update(os.path.basename(v.strip()) for v in val.split(",") if v.strip())
+        elif el.tag in ("additional-files", "route-files"):
+            additional += [v.strip() for v in val.split(",") if v.strip()]
+    for rel in additional:
+        path = rel if os.path.isabs(rel) else os.path.join(sumo_dir, rel)
+        try:
+            for el in ET.parse(path).getroot().iter():
+                dest = el.get("dest")
+                if dest:
+                    outputs.add(os.path.basename(dest.strip()))
+        except (OSError, ET.ParseError):
+            continue
+    return outputs
+
+
+def bundle_parity(cache_name, half="sumo"):
+    """Whether the extracted `half`/ still holds exactly what the bundle ships.
+
+    Returns (verdict, changed, extra, missing):
+      "match"    - every file the bundle ships is present, byte for byte
+      "diverged" - the three lists say how
+      "unknown"  - no cached zip here to compare against, so nothing can be claimed
+
+    Compared by CRC32, which the zip already stores per entry in its central
+    directory, against zlib.crc32 of the file on disk. That reads each side once and
+    needs no extraction, no temp copy and no second download - cheap enough to run on
+    every launch, which is the point: a check that only runs when asked is a check
+    that answers after the divergent run, not before it.
+
+    A run whose results are meant to be comparable to anyone else's depends on this
+    being "match". The cache is declared re-creatable (see _map_cache_dir), so
+    divergence is not a thing to protect - it is a thing to SAY, because the same
+    .sumocfg name over different bytes produces different traffic and nothing else in
+    the run would ever mention it."""
+    import zlib
+    zip_path = _cached_bundle_zip(cache_name)
+    root = os.path.join(_map_cache_dir(cache_name), half)
+    if not zip_path or not os.path.isdir(root):
+        return "unknown", [], [], []
+
+    prefix = half + "/"
+    changed, missing = [], []
+    shipped = set()
+    try:
+        with zipfile.ZipFile(zip_path) as z:
+            for info in z.infolist():
+                if not info.filename.startswith(prefix) or info.filename.endswith("/"):
+                    continue
+                rel = info.filename[len(prefix):]
+                shipped.add(rel)
+                disk = os.path.join(root, rel.replace("/", os.sep))
+                if not os.path.isfile(disk):
+                    missing.append(rel)
+                    continue
+                crc = 0
+                with open(disk, "rb") as f:
+                    for chunk in iter(lambda: f.read(1 << 20), b""):
+                        crc = zlib.crc32(chunk, crc)
+                if crc != info.CRC:
+                    changed.append(rel)
+    except (OSError, zipfile.BadZipFile):
+        return "unknown", [], [], []
+    if not shipped:
+        return "unknown", [], [], []
+
+    # A file the scenario writes itself is a byproduct of running it, not a sign that
+    # anyone changed it - see scenario_outputs.
+    generated = scenario_outputs(root) if half == "sumo" else set()
+    extra = []
+    for dirpath, _dirs, files in os.walk(root):
+        for f in files:
+            rel = os.path.relpath(os.path.join(dirpath, f), root).replace(os.sep, "/")
+            if rel not in shipped and os.path.basename(rel) not in generated:
+                extra.append(rel)
+
+    verdict = "match" if not (changed or extra or missing) else "diverged"
+    return verdict, sorted(changed), sorted(extra), sorted(missing)
+
+
+def bundle_is_current(zip_path, repo, tag, asset):
+    """Is the cached zip the asset the release publishes today?
+
+    "current" / "stale" / "unknown" (no network, no gh, or the release does not
+    say). GitHub reports a sha256 per release asset, so this is one API call and a
+    local digest - no download. Without it the parity check answers a narrower
+    question than it appears to: the extracted files can match a zip that is itself
+    months behind the library."""
+    if not (zip_path and repo and tag and asset):
+        return "unknown"
+    try:
+        out = subprocess.run(
+            ["gh", "api", f"repos/{repo}/releases/tags/{tag}",
+             "--jq", f'.assets[] | select(.name=="{asset}") | .digest'],
+            capture_output=True, text=True, timeout=8)
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
+    digest = (out.stdout or "").strip()
+    if out.returncode != 0 or not digest.startswith("sha256:"):
+        return "unknown"
+    import hashlib
+    h = hashlib.sha256()
+    try:
+        with open(zip_path, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                h.update(chunk)
+    except OSError:
+        return "unknown"
+    return "current" if h.hexdigest() == digest.split(":", 1)[1] else "stale"
+
+
+def report_bundle_parity(cache_name, half="sumo", where=None,
+                         repo=None, tag=None, asset=None):
+    """Print what this run is about to use and whether it is what the library ships.
+
+    Always prints something. A cached half that silently differs from the published
+    bundle is the failure this exists to prevent: the run looks ordinary, the .sumocfg
+    has the name it always had, and the numbers come out different from everyone
+    else's with nothing on screen to explain it. Returns the verdict."""
+    verdict, changed, extra, missing = bundle_parity(cache_name, half)
+    at = f": {where}" if where else ""
+    zip_path = _cached_bundle_zip(cache_name)
+    zname = os.path.basename(zip_path) if zip_path else "the bundle"
+    fresh = bundle_is_current(zip_path, repo, tag, asset)
+    if verdict == "match":
+        print(f"[cosim] using the cached {half.upper()} half of '{cache_name}'{at}")
+        if fresh == "current":
+            print(f"[cosim]   matches {zname}, which is what the library publishes today")
+        elif fresh == "stale":
+            print(f"[cosim]   matches your copy of {zname} - but the library has "
+                  f"PUBLISHED A NEWER ONE since. --reimport fetches it.")
+        else:
+            print(f"[cosim]   matches your copy of {zname} (could not reach the "
+                  f"library to confirm that is the current one)")
+        return verdict
+    if verdict == "unknown":
+        print(f"[cosim] using the cached {half.upper()} half of '{cache_name}'{at}")
+        print(f"[cosim]   no local copy of the bundle here, so it cannot be compared "
+              f"with what the Digital-Twin-Library publishes. --reimport re-downloads "
+              f"and re-extracts.")
+        return verdict
+    print(f"[cosim] using the cached {half.upper()} half of '{cache_name}'{at}")
+    newer = " (and the library has published a newer one)" if fresh == "stale" else ""
+    print(f"[cosim]   *** it DIFFERS from {zname}{newer} ***")
+    for label, items in (("modified", changed), ("missing", missing),
+                         ("not in the bundle", extra)):
+        if not items:
+            continue
+        head = ", ".join(items[:4]) + (f", +{len(items) - 4} more" if len(items) > 4 else "")
+        print(f"[cosim]   {label:>18}: {head}")
+    print(f"[cosim]   this run will use the files ON DISK, not the published ones. "
+          f"--reimport restores the bundle's copy.")
+    return verdict
 
 
 # ------------------------------------------------ which bundle produced a map

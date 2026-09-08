@@ -1202,13 +1202,63 @@ def confirm_world_ready(client, expected_map, timeout):
     return None
 
 
-def wait_for_port(host, port, timeout=180):
+def _unreal_log_dir(cfg):
+    """Where the editor writes CarlaUE4.log for this build, or None."""
+    root = (cfg or {}).get("carla_root")
+    if not root:
+        return None
+    d = os.path.join(root, "Unreal", "CarlaUE4", "Saved", "Logs")
+    return d if os.path.isdir(d) else None
+
+
+def report_unreal_crash(cfg):
+    """Print the newest Unreal log's fatal lines, and its path.
+
+    A CARLA that dies during LoadMap leaves everything needed to diagnose it in
+    that file - the map it was loading and the exception - while the console says
+    only that a port did not open. Reading three greps out of it here is the
+    difference between a one-line answer and an afternoon.
+    """
+    d = _unreal_log_dir(cfg)
+    if not d:
+        return
+    logs = [os.path.join(d, f) for f in os.listdir(d) if f.lower().endswith(".log")]
+    if not logs:
+        return
+    newest = max(logs, key=os.path.getmtime)
+    print(f"[cosim]   its log: {newest}")
+    try:
+        with open(newest, encoding="utf-8", errors="replace") as f:
+            lines = f.readlines()
+    except OSError:
+        return
+    keep = [ln.rstrip() for ln in lines
+            if ("LoadMap:" in ln
+                or "Critical error" in ln
+                or "Fatal error" in ln
+                or "Unhandled Exception" in ln)]
+    for ln in keep[-6:]:
+        print(f"[cosim]   | {ln.strip()}")
+
+
+def wait_for_port(host, port, timeout=180, proc=None, cfg=None):
+    """True once `port` accepts. False on timeout, or as soon as `proc` is gone.
+
+    Watching the process matters: a server that crashed at second 13 and one still
+    compiling shaders at second 179 are the same to a socket poll, and reporting
+    both as a timeout sends you to wait longer for something that is not running.
+    """
     deadline = time.time() + timeout
     while time.time() < deadline:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.settimeout(2)
             if s.connect_ex((host, port)) == 0:
                 return True
+        if proc is not None and proc.poll() is not None:
+            print(f"[cosim] the CARLA server exited ({proc.returncode}) before "
+                  f"opening port {port} - it did not time out, it stopped.")
+            report_unreal_crash(cfg)
+            return False
         time.sleep(2)
     return False
 
@@ -1953,7 +2003,15 @@ def derived_from_yaml(config_yaml, staged, args=None):
                 "carla_tick": getattr(args, "carla_tick", None),
                 "realtime": None}
     host, port = read_carla_endpoint(config_yaml)
-    return {"engine": declared_engine(staged, config_yaml) or read_backend(config_yaml),
+    # An EXPLICIT EnablePythonBackend wins over the app's declaration: the
+    # declaration exists because a hand-written yaml usually omits the key and
+    # ConfigHelper then defaults it to py, but once the key is in the file it is
+    # the answer - edit_engine writes it there, and the row is labelled "from the
+    # yaml". Reporting the declaration regardless made a menu change that HAD been
+    # written look like it was ignored.
+    return {"engine": (read_backend(config_yaml) if _declares_backend(config_yaml)
+                       else declared_engine(staged, config_yaml)
+                       or read_backend(config_yaml)),
             "carla_host": host, "carla_port": port,
             "carla_local": _is_local_host(host) if host else None,
             # The cadence and the pacing live here too, so the summary shows what
@@ -2781,7 +2839,10 @@ def _edit_slots(slots, rec, ctx, cfg, apps, catalog, repo, tag_prefix, args=None
             # No yaml to write to yet? Park it on args, which is where the CLI
             # flags live and what generate_config_yaml reads - so a menu choice
             # and --engine take the identical path instead of one being dropped.
-            if args is not None and not _yaml_exists(rec.get("config")):
+            # Park it on args either way. With no yaml this is the only record of
+            # the choice; with one, edit_engine has just written it there, and
+            # args.engine is what makes THIS run honour it regardless of read order.
+            if args is not None:
                 args.engine = picked
         elif slot == "carla":
             now = derived_from_yaml(rec.get("config"), ctx.get("staged"), args)
@@ -3119,6 +3180,21 @@ def edit_config(staged, app_title, map_name, setup_app_id, current=None,
     picked = _config_menu(who, options, current, interactive=interactive)
     print(f"[cosim] scenario config: {picked}")
     return picked, ("app" if picked in app_paths else "map")
+
+
+def _declares_backend(config_yaml):
+    """Whether the yaml sets CarlaSetup.EnablePythonBackend itself.
+
+    read_backend cannot say: it answers 'py' both for "the file says py" and for
+    "the file says nothing", which is exactly the ambiguity declared_engine exists
+    to cover. A textual check distinguishes them without a second parse.
+    """
+    try:
+        with open(config_yaml, encoding="utf-8", errors="replace") as f:
+            return any(ln.split("#", 1)[0].strip().startswith("EnablePythonBackend:")
+                       for ln in f)
+    except OSError:
+        return False
 
 
 def declared_engine(staged, config_yaml):
@@ -3546,42 +3622,6 @@ def main():
             sys.exit(f"[cosim] '{app['id']}' is missing its declared dependencies; "
                      f"not starting the run.")
 
-    # The application starts HERE, before anything reaches for a map bundle, because
-    # it may be the one that says which scenario to run - and an app that generates
-    # its own needs no sumo/ half at all, so asking for one would prompt over a ~380MB
-    # archive whose SUMO content is about to be thrown away. It keeps running from
-    # this point: it is the controller, and it waits for TrafficLayer while the map is
-    # cooked and CARLA comes up. A first cook is minutes, so its wait for the bridge
-    # has to be patient - run_cosim stops it if anything below fails.
-    app_proc, app_sumocfg = (None, None)
-    if app and app.get("launch"):
-        # The yaml this run will hand TrafficLayer. Known already for a config that
-        # was chosen (--config, or the one the profile remembers); a first run that
-        # GENERATES a per-map config has none yet, and the app falls back to its own.
-        app_proc, app_sumocfg = start_app(app, args.config or setup.get("config"),
-                                          sumo_only=args.sumo_only,
-                                          sumocfg=args.sumocfg)
-
-    def cached_sumo_dir(name):
-        """An already-extracted ~/.fixs/maps/<name>/sumo, or None.
-
-        Consulted at EVERY site that would otherwise reach for the map bundle,
-        because opening the bundle is not free: download_release_zip prompts
-        "[U]se it / [R]e-download" over a ~380MB archive that a map with its
-        sumo/ already extracted would immediately throw away. There is more than
-        one such site - the source-build preflight, and the SUMO slot below that
-        also runs for --no-launch / packaged builds - and fixing only one of them
-        just moves the prompt. --sumocfg, an app-reported scenario and --reimport
-        deliberately bypass it: the first two supply the scenario outright, the
-        last means "refresh from the bundle"."""
-        if args.sumocfg is not None or app_sumocfg is not None or args.reimport:
-            return None
-        found = import_map.map_sumo_dir(name)
-        if found:
-            print(f"[cosim] using cached SUMO scenario for '{name}': "
-                  f"{import_map.bundle_sumocfg(found)}")
-        return found
-
     # Two slots to fill: a CARLA map (to cook + load) and a SUMO scenario. A
     # Digital-Twin-Library bundle fills both. The map itself was settled above; what
     # is derived here is how to GET it - the release to download, the per-map
@@ -3636,6 +3676,72 @@ def main():
             picked_local = import_map._select_package("map", None,
                                                        inside=("xodr", "fbx"))
             _sumo_for_local_pick(setup, ctx, picked_local, args)
+    # An app that BUILDS its scenario from the map's needs the map's scenario on disk
+    # BEFORE it starts, which is the opposite of the default the comment below
+    # describes - so it is opened here, and only for an app that says it needs it.
+    # `sumo_dir` is the same one the SUMO slot further down reuses; opening the
+    # bundle twice would prompt twice over the same archive.
+    sumo_dir = None              # dir holding the chosen bundle's .sumocfg (set on open)
+    map_sumocfg = None
+    if app and app.get("needs_map_sumo") and args.sumocfg is None:
+        sumo_dir = import_map.map_sumo_dir(target_map)
+        if sumo_dir is not None:
+            # This app BUILDS its scenario from the map's, so the map's files decide
+            # what the traffic does. Say whether they are still the published ones
+            # before anything is built on top of them.
+            import_map.report_bundle_parity(
+                target_map, "sumo", where=import_map.bundle_sumocfg(sumo_dir),
+                repo=repo, tag=(ent or {}).get("release"),
+                asset=(ent or {}).get("asset"))
+        if sumo_dir is None and (picked_local or picked_tag):
+            bundle = picked_local
+            if not bundle and picked_tag:
+                bundle = import_map.download_release_zip(
+                    repo, picked_tag, force_redownload=args.reimport,
+                    cache_name=target_map, asset=(ent or {}).get("asset"))
+            # A precooked .tar.gz is the CARLA half only - there is no sumo/ in it.
+            if bundle and not str(bundle).lower().endswith(".tar.gz"):
+                _carla_src, sumo_dir = import_map.open_bundle(bundle,
+                                                              cache_name=target_map)
+        map_sumocfg = import_map.bundle_sumocfg(sumo_dir)
+        if map_sumocfg:
+            print(f"[cosim] '{app['id']}' builds its scenario from the map's: "
+                  f"{map_sumocfg}")
+        else:
+            print(f"[cosim] '{app['id']}' declares needs_map_sumo, but '{target_map}' "
+                  f"ships no SUMO scenario to build from; it falls back to its own.")
+
+    # The application is launched further down - see "The application starts HERE".
+    # Bound now because cached_sumo_dir, defined immediately below, reads
+    # app_sumocfg, and a closure over a name that does not exist yet is a
+    # NameError waiting for the first caller.
+    app_proc, app_sumocfg = (None, None)
+
+    def cached_sumo_dir(name):
+        """An already-extracted ~/.fixs/maps/<name>/sumo, or None.
+
+        Consulted at EVERY site that would otherwise reach for the map bundle,
+        because opening the bundle is not free: download_release_zip prompts
+        "[U]se it / [R]e-download" over a ~380MB archive that a map with its
+        sumo/ already extracted would immediately throw away. There is more than
+        one such site - the source-build preflight, and the SUMO slot below that
+        also runs for --no-launch / packaged builds - and fixing only one of them
+        just moves the prompt. --sumocfg, an app-reported scenario and --reimport
+        deliberately bypass it: the first two supply the scenario outright, the
+        last means "refresh from the bundle"."""
+        if args.sumocfg is not None or app_sumocfg is not None or args.reimport:
+            return None
+        found = import_map.map_sumo_dir(name)
+        if found:
+            # Not just WHICH scenario, but whether it is still the published one.
+            # A cached sumo/ is reused for runs and runs, and nothing else on screen
+            # would ever mention that its contents had drifted from the library's.
+            import_map.report_bundle_parity(
+                name, "sumo", where=import_map.bundle_sumocfg(found),
+                repo=repo, tag=(ent or {}).get("release"),
+                asset=(ent or {}).get("asset"))
+        return found
+
     # Checkpoint. Everything the questionnaire asked is now decided, and the next
     # thing that runs - the map import - is the one that fails for reasons outside
     # this script (a cook that crashes the editor, a bundle that will not open).
@@ -3672,7 +3778,6 @@ def main():
                      else settings.get("net_offset") != "keep")
     tls_manager = args.tls_manager or settings.get("tls_manager") or "sumo"
 
-    sumo_dir = None              # dir holding the chosen bundle's .sumocfg (set on open)
     # /Game/... path to boot CARLA into (set by the source-build preflight). None
     # (packaged build / --no-launch) = let the engine pick.
     target_level = None
@@ -3733,6 +3838,48 @@ def main():
                 args.reimport = True
                 resolved = None
 
+    # The application starts HERE: after the last question this script asks, and
+    # before anything reaches for a map bundle.
+    #
+    # BEFORE THE BUNDLE, because the app may be the one that says which scenario to
+    # run - and an app that generates its own from scratch needs no sumo/ half at all,
+    # so reaching for one would prompt over a ~380MB archive whose SUMO content is
+    # about to be thrown away.
+    #
+    # AFTER THE LAST QUESTION, because the controller prints "Waiting for TrafficLayer
+    # on <host>:<port> ..." to this same terminal the moment it starts. Launched
+    # before the reimport prompt, that line landed on top of the question:
+    #
+    #     [cosim] 'mlk_no_signal' is already imported. Reimport (re-cook + re-place
+    #     TLs/signs + regen TL table)? [y/N]: Waiting for TrafficLayer on 127.0.0.1:430
+    #
+    # - a question and an unrelated status line sharing one row, with the cursor
+    # parked after the wrong one. The prompt is the LAST thing this script asks, so
+    # starting the app just after it is enough; there is no output to interleave with
+    # from here on.
+    #
+    # There is a second reason to start it late. Every sys.exit between the
+    # questionnaire and this point - an unreachable remote CARLA, a map that will not
+    # resolve, a source check that fails - used to leave the controller running as an
+    # orphan, waiting on a bridge that was never going to come.
+    #
+    # It keeps running from this point: it is the controller, and it waits for
+    # TrafficLayer while the map is cooked and CARLA comes up. A first cook is
+    # minutes, so its wait for the bridge has to be patient - run_cosim stops it if
+    # anything below fails.
+    if app and app.get("launch"):
+        # The yaml this run will hand TrafficLayer. Known already for a config that
+        # was chosen (--config, or the one the profile remembers); a first run that
+        # GENERATES a per-map config has none yet, and the app falls back to its own.
+        app_proc, app_sumocfg = start_app(app, args.config or setup.get("config"),
+                                          sumo_only=args.sumo_only,
+                                          sumocfg=args.sumocfg or map_sumocfg)
+
+    # Same condition as the preflight above, resumed. Split rather than moved so the
+    # app can start between the two: everything above this line only DECIDES what the
+    # import will do, everything below it acts on that decision, and the app has to
+    # start in between - after the last prompt, before the first bundle read.
+    if not args.no_launch and cfg is not None and cfg.get("mode") == "source":
         # The bundle fills two slots - the CARLA package to cook, and the SUMO
         # scenario - so check what is actually still missing before touching it.
         if sumo_dir is None:
@@ -4026,8 +4173,16 @@ def main():
     # the saved profile records the bridge that ACTUALLY ran instead of the raw
     # (usually empty) --engine flag. An app may declare which stack its yaml is
     # written for; --engine still wins over everything.
-    backend = args.engine or declared_engine(staged_configs, config_yaml) \
-        or read_backend(config_yaml)
+    # An EXPLICIT EnablePythonBackend outranks the app's declaration, for the same
+    # reason the summary row does: the declaration covers a yaml that OMITS the key,
+    # and edit_engine's whole job is to put it there. Ranking the declaration first
+    # made the engine menu unreachable for any config an app declares an engine for -
+    # the choice was written into the file and then ignored on this very line.
+    backend = (args.engine
+               or (read_backend(config_yaml) if _declares_backend(config_yaml)
+                   else None)
+               or declared_engine(staged_configs, config_yaml)
+               or read_backend(config_yaml))
     args.engine = backend
 
     # CARLA RPC endpoint: the scenario yaml is the source of truth, because that is
@@ -4247,8 +4402,10 @@ def main():
             _tell_peer(ctl_sock, "launch", "starting the CARLA server")
             carla_proc = launch_carla(cfg, args.carla_port, args.render_offscreen,
                                       args.quality_level, target_level)
-            if not wait_for_port(args.carla_host, args.carla_port):
-                sys.exit("CARLA RPC port did not open in time.")
+            if not wait_for_port(args.carla_host, args.carla_port,
+                                 proc=carla_proc, cfg=cfg):
+                sys.exit("[cosim] CARLA never became reachable; not starting the "
+                         "stack. See the lines above for why.")
 
         # A remote CARLA with a peer listening: ask it to serve this map rather
         # than requiring someone to have started it by hand with the right one.
