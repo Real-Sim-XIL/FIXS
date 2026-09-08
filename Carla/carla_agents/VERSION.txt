@@ -2,7 +2,26 @@ CARLA agent code, vendored.
 
 source      CARLA 0.9.15  --  PythonAPI/carla/agents
 copied from C:/src_ext/Carla/PythonAPI/carla/agents
-files       8, all BYTE-IDENTICAL to the originals (verified by md5sum)
+files       8 of upstream's 11, all BYTE-IDENTICAL (verified by md5sum)
+
+NOT COPIED, and the omission is load-bearing:
+    behavior_agent.py        BehaviorAgent -- car following. Its
+                             car_following_manager bands on time-to-collision
+                             and sets a target speed in three regimes.
+    behavior_types.py        the cautious / normal / aggressive profiles it reads
+                             (safety_time, speed_decrease, min_speed, ...)
+    constant_velocity_agent.py
+
+Only BasicAgent came across, and BasicAgent has NO longitudinal following model
+at all: run_step tests "is anything inside 5 + speed metres" and, if so, calls
+add_emergency_stop -- zero throttle, full brake. On/off, with no gap, headway or
+relative-speed term. Measured on the MLK U-turn corridor: 27 impacts in 3189 s,
+11 of them with the hazard flagged continuously for the preceding 2 s, closing to
+3.0 m. The agent saw them and had no way to respond but to slam on.
+
+If an application needs to drive in traffic rather than follow a path, vendor
+those two and subclass BehaviorAgent. The FIXS sensing overrides carry across
+unchanged -- BehaviorAgent inherits _vehicle_obstacle_detected from BasicAgent.
 lines       1682
 licence     MIT (headers retained in each file)
 
