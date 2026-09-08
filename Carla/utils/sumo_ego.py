@@ -276,17 +276,21 @@ def build_sumocfg(opt, base_cfg, ego_rou, replace_demand=None):
     routes = inp.find("route-files")
     if routes is None or not routes.get("value"):
         raise SystemExit(f"{base_cfg} names no route-files")
-    bundle_routes = _apply_replacements(
-        [_abs_from(base_dir, f) for f in _split_list(routes.get("value"))], repl, used)
+    resolved = [_abs_from(base_dir, f) for f in _split_list(routes.get("value"))]
     if replace_demand:
-        # The ego is INSIDE this copy, so the demand entry is swapped for it and no
-        # second route file is appended - one vehicle-bearing file, as before.
+        # Swap the demand for the copy the ego was injected into, and do it BEFORE
+        # --replace rewrites the list: a bundle whose vTypes still live in the demand
+        # has that same entry substituted by --replace, and matching afterwards would
+        # find nothing and silently drop the file carrying the ego.
         demand, injected = replace_demand
-        bundle_routes = [injected if os.path.samefile(f, demand) else f
-                         for f in bundle_routes]
-        routes.set("value", ",".join(bundle_routes))
-    else:
-        routes.set("value", ",".join(bundle_routes + [str(ego_rou)]))
+        resolved = [injected if os.path.samefile(f, demand) else f for f in resolved]
+    bundle_routes = _apply_replacements(resolved, repl, used)
+    # The ego is INSIDE the demand copy when injecting, so nothing is appended -
+    # one vehicle-bearing file, as a hand-prepared scenario has. Appending it as
+    # well would define vehicle 'ego' twice and SUMO refuses the scenario.
+    if not replace_demand:
+        bundle_routes = bundle_routes + [str(ego_rou)]
+    routes.set("value", ",".join(bundle_routes))
 
     # A --replace that matched nothing is a typo, and a silent one would leave the
     # bundle's own file running while the caller believes theirs is.
