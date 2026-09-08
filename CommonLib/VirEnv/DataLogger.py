@@ -76,16 +76,23 @@ class DataLogger:
         self._f.flush()
         return True
 
-    def logVehicle(self, simTime, v):
-        """(float, VehData) -> None -- append one record.
+    def logVehicle(self, simTime, v, idOverride=None):
+        """(float, VehData[, string]) -> None -- append one record.
 
         The record's values must already be in the FIXS wire convention documented
         above.
+
+        ``idOverride`` labels the row with a different id than the record
+        carries, for logging two VIEWS of one vehicle on the same clock --
+        the CARLA ego and the traffic simulator's copy of it, as 'ego' and
+        'ego_sumo'. It belongs here rather than at the call site because a
+        fixs record refuses assignment to `id` (it is measured data), and a
+        copy carries the same guard.
         """
         if self._f is None:
             return
         self._f.write('%.3f,%s%s\n'
-                      % (simTime, v.id,
+                      % (simTime, idOverride or v.id,
                          ''.join(',' + self._cell(f, v) for f in self._fields)))
         # Flushed per record: at a 10 Hz feed that is cheap, and it means the log
         # survives a hard kill of the demo -- which is when it is most wanted.

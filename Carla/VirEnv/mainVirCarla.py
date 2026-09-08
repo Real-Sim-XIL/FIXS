@@ -291,11 +291,12 @@ def main(argv=None):
             raise SystemExit('EgoMode %d (Pursuit) needs EgoRoutePoints' % egoMode)
 
         egoIsUp = False
+        haveTick = False       # has a feed actually been received yet
         if egoMode >= 1 and not deferEgoSpawn:
             sp = Pose(x=cs['EgoSpawnPose'][0], y=cs['EgoSpawnPose'][1],
                       z=cs['EgoSpawnPose'][2], headingDeg=cs['EgoSpawnPose'][3])
             if not _bringUpEgo(cs, backend, egoDriver, world, egoMode,
-                               useFallbackDriver, useWireActuation, sp, True):
+                               useFallbackDriver, useWireActuation, useEmbedded, sp, True):
                 return -1
             egoIsUp = True
         elif deferEgoSpawn:
@@ -365,7 +366,7 @@ def main(argv=None):
                           % (egoId, simTime, sp.x, sp.y, sp.z, sp.headingDeg))
                     if not _bringUpEgo(cs, backend, egoDriver, world, egoMode,
                                        useFallbackDriver, useWireActuation,
-                                       sp, False):
+                                       useEmbedded, sp, False):
                         break
                     egoIsUp = True
             # #266/#267: the batch is NOT flushed here. It is flushed just before
@@ -387,6 +388,7 @@ def main(argv=None):
             # not symmetric here, and neither should be made to match the other
             # until that is explained. The bisect is on the #325 thread, finding A.
             onFeed = simTime > 1e-5 and onFeedBoundary(simTime, 1e-6)
+            haveTick = haveTick or onFeed
 
             if replyCarriesNothing and onFeed and core.ENABLE_REALSIM:
                 _t0 = time.monotonic()
@@ -425,7 +427,13 @@ def main(argv=None):
             # #325 embedded controller: same slot, same per-step rate. The
             # step itself lives in CommonLib so this file stays a faithful peer
             # of mainVirCarla.cpp, which has no such hook.
-            if egoMode >= 1 and embedded is not None:
+            # egoIsUp AND haveTick, both needed. The ego is nothing to control
+            # before it exists; and fixs.vehicle.get RAISES rather than answering
+            # empty when no tick has been received, which is deliberate -- "no
+            # tick yet" and "a tick with no ego in it" are different states and
+            # the accessor refuses to conflate them. The core skips the recv at
+            # simTime 0, so the first pass through here has no tick at all.
+            if egoMode >= 1 and embedded is not None and egoIsUp and haveTick:
                 from CommonLib import fixs as _fixs
                 runController(backend, embedded, _fixs.vehicle.get(egoId),
                               carlaStep, onFeed, kMaxSteerRad)
@@ -508,10 +516,11 @@ def main(argv=None):
                         if dataLog.isOpen():
                             fromSumo = core.Msg_c.VehDataRecv_um.get(egoId)
                             if fromSumo is not None:
-                                import copy
-                                dsumo = copy.copy(fromSumo)
-                                dsumo.id = 'ego_sumo'
-                                dataLog.logVehicle(simTime, dsumo)
+                                # Records refuse assignment -- 'id' is measured
+                                # data -- and copy.copy carries the same guard, so
+                                # the relabel goes through the logger rather than
+                                # through the record.
+                                dataLog.logVehicle(simTime, fromSumo, idOverride='ego_sumo')
                     if spectatorFollow and egoId == centeredViewId and backend.egoActor():
                         spectator.set_transform(_spectatorTransform(
                             backend.egoActor().get_transform(),
@@ -637,7 +646,7 @@ def main(argv=None):
 
 
 def _bringUpEgo(cs, backend, egoDriver, world, egoMode, useFallbackDriver,
-                useWireActuation, sp, settleOutOfBand):
+                useWireActuation, useEmbedded, sp, settleOutOfBand):
     """Spawn the ego at `sp` and wire whichever driver owns it. -> bool
 
     Peer of the ``bringUpEgo`` lambda in mainVirCarla.cpp:282, and callable from
@@ -672,6 +681,12 @@ def _bringUpEgo(cs, backend, egoDriver, world, egoMode, useFallbackDriver,
     if useWireActuation:
         print('EgoMode %d (Actuation): ego driven by external FIXS actuation command '
               '(no TM, no route).' % egoMode)
+    elif useEmbedded:
+        # The controller in the driver slot owns the ego. Autopilot here would
+        # fight it: TM would steer to its own plan while the controller's pedals
+        # are applied on top, and the ego would track neither.
+        print('EgoMode %d (Embedded): ego driven by the EgoController, called '
+              'every Carla step (no TM, no route).' % egoMode)
     elif not useFallbackDriver:
         backend.enableEgoTM(cs['TrafficManagerPort'], cs['EgoTargetSpeed'])
         # TM builds its InMemoryMap on the FIRST tick after autopilot, which can
@@ -692,6 +707,7 @@ def _bringUpEgo(cs, backend, egoDriver, world, egoMode, useFallbackDriver,
         print('L2: external speed advisory via FIXS (ego.speedDesired) -- driver: %s'
               % ('EgoDriver (in-bridge pure pursuit)' if useFallbackDriver
                  else 'external (pedals over FIXS)' if useWireActuation
+                 else 'EgoController, in-process per Carla step' if useEmbedded
                  else 'TM (Carla Traffic Manager)'))
     return True
 

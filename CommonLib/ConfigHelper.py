@@ -128,12 +128,63 @@ class ConfigHelper:
         # L0 driver: native Carla TM by default; "Pursuit" selects the EgoDriver
         # fallback module, "Actuation" the external wire-command path.
         self.Carla_setup["EgoL0Driver"] = self.parserString(carla_node, "EgoL0Driver", "TM")
+        # #325: the user controller that occupies the driver slot, as a path
+        # relative to where the run was launched. Read here rather than left to
+        # the bridge's dict lookup, so a scenario that names one and a loader
+        # that does not parse it cannot silently disagree.
+        self.Carla_setup["EgoController"] = self.parserString(carla_node, "EgoController", "")
         self.Carla_setup["EgoId"] = self.parserString(carla_node, "EgoId", "ego")
         self.Carla_setup["EgoSumoType"] = self.parserString(carla_node, "EgoSumoType", "car")
         self.Carla_setup["EgoBlueprint"] = self.parserString(carla_node, "EgoBlueprint", "vehicle.tesla.model3")
         self.Carla_setup["EgoSpawnPose"] = [float(v) for v in (carla_node.get("EgoSpawnPose") or [])]
         self.Carla_setup["EgoRoutePoints"] = [(float(pt[0]), float(pt[1]))
                                               for pt in (carla_node.get("EgoRoutePoints") or [])]
+
+
+        # EgoDynamics / EgoActuationSource -- the two knobs a scenario actually
+        # sets. EgoMode and EgoL0Driver above are what the bridge reads, and are
+        # DERIVED from them here exactly as ConfigHelper.cpp:712 derives them.
+        #
+        # This peer had no derivation, so a config using the declared vocabulary
+        # was read as EgoMode 0 (the traffic simulator owns the ego) and the
+        # Python bridge quietly ran an L0 scenario while TrafficLayer, reading the
+        # C++ helper, ran an L2 one. Nothing failed; the ego simply was not taken
+        # over, and the embedded controller was never called.
+        egoDynamics = self.parserString(carla_node, "EgoDynamics", "")
+        if egoDynamics:
+            dyn = egoDynamics.strip().lower()
+            if dyn == "traffic":
+                self.Carla_setup["EgoMode"] = 0
+                self.Carla_setup["EnableExternalControl"] = False
+            elif dyn == "carla":
+                # 2, not 1, on purpose: "advisory-capable" costs nothing when no
+                # controller is wired in (the advisory read falls back to
+                # EgoTargetSpeed), and it keeps L0 and L2 ONE configuration.
+                self.Carla_setup["EgoMode"] = 2
+                # Also what TrafficLayer's carlaOwnsId reads. Deriving both from
+                # one key is the point: the two processes decide ego ownership
+                # together and have no arbiter, so they must not be able to
+                # disagree.
+                self.Carla_setup["EnableExternalControl"] = True
+            elif dyn == "xil":
+                raise SystemExit(
+                    "ERROR: EgoDynamics: 'xil' is a declared value but is not "
+                    "implemented yet. Use 'traffic' or 'carla'.")
+            else:
+                raise SystemExit(
+                    "ERROR: EgoDynamics must be one of traffic|carla|xil, got '%s'"
+                    % egoDynamics)
+
+        egoActuation = self.parserString(carla_node, "EgoActuationSource", "")
+        if egoActuation:
+            src = egoActuation.strip().lower()
+            driver = {"carlatm": "TM", "internal": "Pursuit",
+                      "external": "Actuation", "embedded": "Embedded"}.get(src)
+            if driver is None:
+                raise SystemExit(
+                    "ERROR: EgoActuationSource must be one of "
+                    "carlaTM|internal|external|embedded, got '%s'" % egoActuation)
+            self.Carla_setup["EgoL0Driver"] = driver
         self.Carla_setup["EgoRouteRepeat"] = self.parserInteger(carla_node, "EgoRouteRepeat", 50)
         self.Carla_setup["EgoTargetSpeed"] = self.parserDouble(carla_node, "EgoTargetSpeed", 8.33)
         self.Carla_setup["TrafficManagerPort"] = self.parserInteger(carla_node, "TrafficManagerPort", 8000)
