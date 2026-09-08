@@ -3690,7 +3690,9 @@ def main():
             # what the traffic does. Say whether they are still the published ones
             # before anything is built on top of them.
             import_map.report_bundle_parity(
-                target_map, "sumo", where=import_map.bundle_sumocfg(sumo_dir))
+                target_map, "sumo", where=import_map.bundle_sumocfg(sumo_dir),
+                repo=repo, tag=(ent or {}).get("release"),
+                asset=(ent or {}).get("asset"))
         if sumo_dir is None and (picked_local or picked_tag):
             bundle = picked_local
             if not bundle and picked_tag:
@@ -3735,7 +3737,9 @@ def main():
             # A cached sumo/ is reused for runs and runs, and nothing else on screen
             # would ever mention that its contents had drifted from the library's.
             import_map.report_bundle_parity(
-                name, "sumo", where=import_map.bundle_sumocfg(found))
+                name, "sumo", where=import_map.bundle_sumocfg(found),
+                repo=repo, tag=(ent or {}).get("release"),
+                asset=(ent or {}).get("asset"))
         return found
 
     # Checkpoint. Everything the questionnaire asked is now decided, and the next

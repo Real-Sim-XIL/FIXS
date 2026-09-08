@@ -2217,7 +2217,39 @@ def bundle_parity(cache_name, half="sumo"):
     return verdict, sorted(changed), sorted(extra), sorted(missing)
 
 
-def report_bundle_parity(cache_name, half="sumo", where=None):
+def bundle_is_current(zip_path, repo, tag, asset):
+    """Is the cached zip the asset the release publishes today?
+
+    "current" / "stale" / "unknown" (no network, no gh, or the release does not
+    say). GitHub reports a sha256 per release asset, so this is one API call and a
+    local digest - no download. Without it the parity check answers a narrower
+    question than it appears to: the extracted files can match a zip that is itself
+    months behind the library."""
+    if not (zip_path and repo and tag and asset):
+        return "unknown"
+    try:
+        out = subprocess.run(
+            ["gh", "api", f"repos/{repo}/releases/tags/{tag}",
+             "--jq", f'.assets[] | select(.name=="{asset}") | .digest'],
+            capture_output=True, text=True, timeout=8)
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
+    digest = (out.stdout or "").strip()
+    if out.returncode != 0 or not digest.startswith("sha256:"):
+        return "unknown"
+    import hashlib
+    h = hashlib.sha256()
+    try:
+        with open(zip_path, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                h.update(chunk)
+    except OSError:
+        return "unknown"
+    return "current" if h.hexdigest() == digest.split(":", 1)[1] else "stale"
+
+
+def report_bundle_parity(cache_name, half="sumo", where=None,
+                         repo=None, tag=None, asset=None):
     """Print what this run is about to use and whether it is what the library ships.
 
     Always prints something. A cached half that silently differs from the published
@@ -2226,10 +2258,19 @@ def report_bundle_parity(cache_name, half="sumo", where=None):
     else's with nothing on screen to explain it. Returns the verdict."""
     verdict, changed, extra, missing = bundle_parity(cache_name, half)
     at = f": {where}" if where else ""
+    zip_path = _cached_bundle_zip(cache_name)
+    zname = os.path.basename(zip_path) if zip_path else "the bundle"
+    fresh = bundle_is_current(zip_path, repo, tag, asset)
     if verdict == "match":
         print(f"[cosim] using the cached {half.upper()} half of '{cache_name}'{at}")
-        print(f"[cosim]   matches the published bundle "
-              f"({os.path.basename(_cached_bundle_zip(cache_name))}) exactly")
+        if fresh == "current":
+            print(f"[cosim]   matches {zname}, which is what the library publishes today")
+        elif fresh == "stale":
+            print(f"[cosim]   matches your copy of {zname} - but the library has "
+                  f"PUBLISHED A NEWER ONE since. --reimport fetches it.")
+        else:
+            print(f"[cosim]   matches your copy of {zname} (could not reach the "
+                  f"library to confirm that is the current one)")
         return verdict
     if verdict == "unknown":
         print(f"[cosim] using the cached {half.upper()} half of '{cache_name}'{at}")
@@ -2238,8 +2279,8 @@ def report_bundle_parity(cache_name, half="sumo", where=None):
               f"and re-extracts.")
         return verdict
     print(f"[cosim] using the cached {half.upper()} half of '{cache_name}'{at}")
-    print(f"[cosim]   *** it DIFFERS from the published bundle "
-          f"({os.path.basename(_cached_bundle_zip(cache_name))}) ***")
+    newer = " (and the library has published a newer one)" if fresh == "stale" else ""
+    print(f"[cosim]   *** it DIFFERS from {zname}{newer} ***")
     for label, items in (("modified", changed), ("missing", missing),
                          ("not in the bundle", extra)):
         if not items:
