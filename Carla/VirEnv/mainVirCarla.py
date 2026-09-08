@@ -185,8 +185,17 @@ def main(argv=None):
     # That is the whole reason the hook exists; see IEgoController.
     useEmbedded = egoL0 == 'embedded' or bool(cs.get('EgoController'))
 
-    if egoMode >= 1 and len(cs['EgoSpawnPose']) < 4:
-        raise SystemExit('EgoMode %d needs EgoSpawnPose: [x, y, z, headingDeg]' % egoMode)
+    # WHO CREATES THE EGO -- decided by whether EgoSpawnPose is configured, the
+    # same predicate mainVirCarla.cpp:188 uses:
+    #   given  -- Carla creates it before the loop, and TrafficLayer injects the
+    #             result into the traffic simulator on a single-edge dummy route
+    #   absent -- the traffic simulator creates it, on its own route with its own
+    #             depart time, and we spawn a physics actor at the pose it reports
+    #             the first tick its id arrives
+    # The deferred direction is what keeps the ego's next traffic signal: a
+    # single-edge route has none, and that is the only stop-bar input a
+    # signal-aware controller has.
+    deferEgoSpawn = egoMode >= 1 and len(cs['EgoSpawnPose']) < 4
 
     interestedIds = set(cs['InterestedIds'] or [])
 
@@ -276,8 +285,22 @@ def main(argv=None):
     lastAdvisory = cs['EgoTargetSpeed']
 
     try:
-        _setUpEgo(cs, backend, egoDriver, world, egoMode,
-                  useFallbackDriver, useWireActuation)
+        # Checked here rather than inside the bring-up, so a missing route fails
+        # at start-up and not 400 ticks in when a deferred ego finally arrives.
+        if egoMode >= 1 and useFallbackDriver and not cs['EgoRoutePoints']:
+            raise SystemExit('EgoMode %d (Pursuit) needs EgoRoutePoints' % egoMode)
+
+        egoIsUp = False
+        if egoMode >= 1 and not deferEgoSpawn:
+            sp = Pose(x=cs['EgoSpawnPose'][0], y=cs['EgoSpawnPose'][1],
+                      z=cs['EgoSpawnPose'][2], headingDeg=cs['EgoSpawnPose'][3])
+            if not _bringUpEgo(cs, backend, egoDriver, world, egoMode,
+                               useFallbackDriver, useWireActuation, sp, True):
+                return -1
+            egoIsUp = True
+        elif deferEgoSpawn:
+            print("EgoMode %d: no EgoSpawnPose -- waiting for '%s' to enter the "
+                  "traffic simulator, then taking it over." % (egoMode, egoId))
 
         dataLog = _openDataLog(config)
         logWanted = _logWantedPredicate(config)
@@ -321,6 +344,30 @@ def main(argv=None):
             if rc < 0:
                 print('co-sim recv/step ended: %s' % (err or '?'), file=sys.stderr)
                 break
+
+            # ---- deferred ego: the traffic simulator inserted it, take it over --
+            # Spawn at the pose it just reported, so the physics actor starts
+            # exactly where the traffic simulator put its vehicle and the two are
+            # one from the first tick. Reads the pose out of the FIXS record, not
+            # off a Carla actor, so it does not depend on the pose batch having
+            # been flushed yet. Everything downstream already tolerates a missing
+            # ego -- applyEgoActuation, the fallback driver and readEgoState all
+            # return early without an actor -- so before this fires the bridge
+            # simply mirrors traffic, and nothing about the ego reaches the
+            # traffic simulator.
+            if deferEgoSpawn and not egoIsUp:
+                rec = core.Msg_c.VehDataRecv_um.get(egoId)
+                if rec is not None:
+                    sp = Pose(x=rec.positionX, y=rec.positionY, z=rec.positionZ,
+                              headingDeg=rec.heading)
+                    print("Ego '%s' entered at t=%.2f (%.2f, %.2f, %.2f, %.1f deg)"
+                          " -- spawning the physics ego."
+                          % (egoId, simTime, sp.x, sp.y, sp.z, sp.headingDeg))
+                    if not _bringUpEgo(cs, backend, egoDriver, world, egoMode,
+                                       useFallbackDriver, useWireActuation,
+                                       sp, False):
+                        break
+                    egoIsUp = True
             # #266/#267: the batch is NOT flushed here. It is flushed just before
             # world.tick(), AFTER the spectator has been queued into it, so the
             # camera and the vehicles it follows are applied by ONE acknowledged
@@ -589,32 +636,38 @@ def main(argv=None):
     return 0
 
 
-def _setUpEgo(cs, backend, egoDriver, world, egoMode, useFallbackDriver, useWireActuation):
-    """L0+ (EgoMode >= 1): spawn the ego and wire whichever driver owns it.
+def _bringUpEgo(cs, backend, egoDriver, world, egoMode, useFallbackDriver,
+                useWireActuation, sp, settleOutOfBand):
+    """Spawn the ego at `sp` and wire whichever driver owns it. -> bool
+
+    Peer of the ``bringUpEgo`` lambda in mainVirCarla.cpp:282, and callable from
+    the same two places: before the loop at a configured EgoSpawnPose, or from
+    inside it at the pose the traffic simulator just reported.
 
     Order matters and mirrors the proven sequence: spawn + physics first, THEN the
     traffic manager, sync and autopilot. TM must be synchronous in a synchronous
     world; ``world.tick()`` then drives its synchronous tick automatically.
+
+    ``settleOutOfBand`` is the difference between those two call sites. Before the
+    loop the extra ticks settle the ego onto its tyres and pay TM's one-time map
+    build up front. Inside the loop they must NOT happen: an out-of-band tick
+    there advances Carla past the feed and desyncs every mirrored vehicle. A
+    deferred ego therefore settles inside the co-sim ticks instead.
     """
-    if egoMode < 1:
-        return
-    sp = Pose(x=cs['EgoSpawnPose'][0], y=cs['EgoSpawnPose'][1],
-              z=cs['EgoSpawnPose'][2], headingDeg=cs['EgoSpawnPose'][3])
     if backend.spawnEgo(cs['EgoBlueprint'], sp, cs['TrafficManagerPort']) == kNoHandle:
-        raise SystemExit('EgoMode %d: ego spawn failed' % egoMode)
+        print('EgoMode %d: ego spawn failed' % egoMode, file=sys.stderr)
+        return False
 
     if useFallbackDriver:
-        if not cs['EgoRoutePoints']:
-            raise SystemExit('EgoMode %d (Pursuit) needs EgoRoutePoints' % egoMode)
         # The only Carla-specific step is the frame conversion (FIXS -> Carla is a
         # Y flip); the module then owns densification and the pursuit control law.
         egoDriver.setRoute([(x, -y) for x, y in cs['EgoRoutePoints']], True)
         print('L0 ego route: %d waypoints -> %d path points (EgoDriver fallback module)'
               % (len(cs['EgoRoutePoints']), egoDriver.routeSize()))
 
-    # settle the spawned ego onto its tires before wiring the driver / the loop
-    for _ in range(10):
-        world.tick()
+    if settleOutOfBand:
+        for _ in range(10):
+            world.tick()
 
     if useWireActuation:
         print('EgoMode %d (Actuation): ego driven by external FIXS actuation command '
@@ -625,14 +678,22 @@ def _setUpEgo(cs, backend, egoDriver, world, egoMode, useFallbackDriver, useWire
         # take 15-30 s on a generated map. Absorb that ONE-TIME cost HERE, before
         # the co-sim loop couples with TrafficLayer, so the loop's tight tick never
         # stalls past its timeout and drops the connection.
-        print('Pre-building TM InMemoryMap (one-time, may take ~30 s)...')
-        for _ in range(5):
-            world.tick()
-        print('TM InMemoryMap ready; entering co-sim loop.')
+        if settleOutOfBand:
+            print('Pre-building TM InMemoryMap (one-time, may take ~30 s)...')
+            for _ in range(5):
+                world.tick()
+            print('TM InMemoryMap ready; entering co-sim loop.')
+        else:
+            print('WARNING: TM autopilot on a deferred ego -- its one-time '
+                  'InMemoryMap build happens now, inside the co-sim loop. '
+                  'Configure EgoSpawnPose to pay it up front.', file=sys.stderr)
 
     if egoMode >= 2:
         print('L2: external speed advisory via FIXS (ego.speedDesired) -- driver: %s'
-              % ('EgoDriver' if useFallbackDriver else 'TM'))
+              % ('EgoDriver (in-bridge pure pursuit)' if useFallbackDriver
+                 else 'external (pedals over FIXS)' if useWireActuation
+                 else 'TM (Carla Traffic Manager)'))
+    return True
 
 
 def _driveEgoFallback(backend, egoDriver, targetSpeed, lastAdvisory, egoMode):

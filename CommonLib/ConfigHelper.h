@@ -248,6 +248,17 @@ struct CarlaSetup_t {
 	//     "carlaTM"  : Carla's Traffic Manager, in-process
 	//     "internal" : the built-in EgoDriver module (pure pursuit on EgoRoutePoints)
 	//     "external" : taken off the ego's FIXS record, i.e. from a controller client
+	//     "embedded" : a user controller named by EgoController, called in-process
+	//                  once per Carla step (Python backend only; see FIXS#325)
+	//
+	// "external" and "embedded" are the same controller in two places, and the
+	// difference is not stylistic. An external client is served at the 0.1 s feed,
+	// so it sees the ego record as the traffic simulator left it -- including
+	// `speed`, which under L2 carries the eco advisory rather than the measured
+	// speed. A controller closing a speed loop there reads back its own setpoint,
+	// its error is ~0 by construction, and it never corrects. Embedded, the record
+	// is refreshed from the backend before every call, so the loop closes on the
+	// plant.
 	//
 	// L0 vs L2 is deliberately NOT a value here. Both are "carla" plus a driver;
 	// they differ only in whether a controller is wired in upstream on a lower

@@ -743,8 +743,9 @@ int ConfigHelper::getConfig(string configName) {
 			if      (src == "carlatm")  CarlaSetup.EgoL0Driver = "TM";
 			else if (src == "internal") CarlaSetup.EgoL0Driver = "Pursuit";
 			else if (src == "external") CarlaSetup.EgoL0Driver = "Actuation";
+			else if (src == "embedded") CarlaSetup.EgoL0Driver = "Embedded";
 			else {
-				printf("ERROR: EgoActuationSource must be one of carlaTM|internal|external, got '%s'\n",
+				printf("ERROR: EgoActuationSource must be one of carlaTM|internal|external|embedded, got '%s'\n",
 				       CarlaSetup.EgoActuationSource.c_str());
 				exit(-1);
 			}
