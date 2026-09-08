@@ -3703,21 +3703,11 @@ def main():
             print(f"[cosim] '{app['id']}' declares needs_map_sumo, but '{target_map}' "
                   f"ships no SUMO scenario to build from; it falls back to its own.")
 
-    # The application starts HERE, and (needs_map_sumo above aside) before anything
-    # reaches for a map bundle, because it may be the one that says which scenario to
-    # run - and an app that generates its own from scratch needs no sumo/ half at all,
-    # so asking for one would prompt over a ~380MB archive whose SUMO content is about
-    # to be thrown away. It keeps running from this point: it is the controller, and
-    # it waits for TrafficLayer while the map is cooked and CARLA comes up. A first cook is minutes, so its wait for the bridge
-    # has to be patient - run_cosim stops it if anything below fails.
+    # The application is launched further down - see "The application starts HERE".
+    # Bound now because cached_sumo_dir, defined immediately below, reads
+    # app_sumocfg, and a closure over a name that does not exist yet is a
+    # NameError waiting for the first caller.
     app_proc, app_sumocfg = (None, None)
-    if app and app.get("launch"):
-        # The yaml this run will hand TrafficLayer. Known already for a config that
-        # was chosen (--config, or the one the profile remembers); a first run that
-        # GENERATES a per-map config has none yet, and the app falls back to its own.
-        app_proc, app_sumocfg = start_app(app, args.config or setup.get("config"),
-                                          sumo_only=args.sumo_only,
-                                          sumocfg=args.sumocfg or map_sumocfg)
 
     def cached_sumo_dir(name):
         """An already-extracted ~/.fixs/maps/<name>/sumo, or None.
@@ -3835,6 +3825,48 @@ def main():
                 args.reimport = True
                 resolved = None
 
+    # The application starts HERE: after the last question this script asks, and
+    # before anything reaches for a map bundle.
+    #
+    # BEFORE THE BUNDLE, because the app may be the one that says which scenario to
+    # run - and an app that generates its own from scratch needs no sumo/ half at all,
+    # so reaching for one would prompt over a ~380MB archive whose SUMO content is
+    # about to be thrown away.
+    #
+    # AFTER THE LAST QUESTION, because the controller prints "Waiting for TrafficLayer
+    # on <host>:<port> ..." to this same terminal the moment it starts. Launched
+    # before the reimport prompt, that line landed on top of the question:
+    #
+    #     [cosim] 'mlk_no_signal' is already imported. Reimport (re-cook + re-place
+    #     TLs/signs + regen TL table)? [y/N]: Waiting for TrafficLayer on 127.0.0.1:430
+    #
+    # - a question and an unrelated status line sharing one row, with the cursor
+    # parked after the wrong one. The prompt is the LAST thing this script asks, so
+    # starting the app just after it is enough; there is no output to interleave with
+    # from here on.
+    #
+    # There is a second reason to start it late. Every sys.exit between the
+    # questionnaire and this point - an unreachable remote CARLA, a map that will not
+    # resolve, a source check that fails - used to leave the controller running as an
+    # orphan, waiting on a bridge that was never going to come.
+    #
+    # It keeps running from this point: it is the controller, and it waits for
+    # TrafficLayer while the map is cooked and CARLA comes up. A first cook is
+    # minutes, so its wait for the bridge has to be patient - run_cosim stops it if
+    # anything below fails.
+    if app and app.get("launch"):
+        # The yaml this run will hand TrafficLayer. Known already for a config that
+        # was chosen (--config, or the one the profile remembers); a first run that
+        # GENERATES a per-map config has none yet, and the app falls back to its own.
+        app_proc, app_sumocfg = start_app(app, args.config or setup.get("config"),
+                                          sumo_only=args.sumo_only,
+                                          sumocfg=args.sumocfg or map_sumocfg)
+
+    # Same condition as the preflight above, resumed. Split rather than moved so the
+    # app can start between the two: everything above this line only DECIDES what the
+    # import will do, everything below it acts on that decision, and the app has to
+    # start in between - after the last prompt, before the first bundle read.
+    if not args.no_launch and cfg is not None and cfg.get("mode") == "source":
         # The bundle fills two slots - the CARLA package to cook, and the SUMO
         # scenario - so check what is actually still missing before touching it.
         if sumo_dir is None:
