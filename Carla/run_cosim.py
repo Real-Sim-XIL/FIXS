@@ -3685,6 +3685,12 @@ def main():
     map_sumocfg = None
     if app and app.get("needs_map_sumo") and args.sumocfg is None:
         sumo_dir = import_map.map_sumo_dir(target_map)
+        if sumo_dir is not None:
+            # This app BUILDS its scenario from the map's, so the map's files decide
+            # what the traffic does. Say whether they are still the published ones
+            # before anything is built on top of them.
+            import_map.report_bundle_parity(
+                target_map, "sumo", where=import_map.bundle_sumocfg(sumo_dir))
         if sumo_dir is None and (picked_local or picked_tag):
             bundle = picked_local
             if not bundle and picked_tag:
@@ -3725,8 +3731,11 @@ def main():
             return None
         found = import_map.map_sumo_dir(name)
         if found:
-            print(f"[cosim] using cached SUMO scenario for '{name}': "
-                  f"{import_map.bundle_sumocfg(found)}")
+            # Not just WHICH scenario, but whether it is still the published one.
+            # A cached sumo/ is reused for runs and runs, and nothing else on screen
+            # would ever mention that its contents had drifted from the library's.
+            import_map.report_bundle_parity(
+                name, "sumo", where=import_map.bundle_sumocfg(found))
         return found
 
     # Checkpoint. Everything the questionnaire asked is now decided, and the next
