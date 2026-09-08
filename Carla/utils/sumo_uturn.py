@@ -743,6 +743,50 @@ def surplus_turnarounds(source_net, built_net):
     return _turnarounds(built_net) - _turnarounds(source_net)
 
 
+def keep_source_edge_order(net_in, out):
+    """Reorder `out` so the source net's edges keep their positions and the new
+    ones come last. Returns how many were moved.
+
+    SUMO hands each lane one of a pre-allocated pool of random generators, chosen
+    by the LANE'S POSITION in load order - and load order is the order edges
+    appear in the file. netconvert writes them sorted by id, so edges added
+    anywhere but the end of the alphabet land interleaved and shift every lane
+    after them onto a different generator. Every vehicle then draws its
+    car-following randomness from a different stream, network-wide, from the
+    second step, with no causal path to the edit.
+
+    Measured on MLK: the 16 U-turn edges land at positions 4-6, 14-16, 483-486 and
+    724-729, and 16 vehicles differ on the second step, on six edges nowhere near
+    either terminus, each by one dawdle quantum. With the added edges written last
+    the patched network reproduces the source network exactly - and, unlike
+    `--thread-rngs 1`, it does so at SUMO's own defaults, so a result recorded
+    before the edit stays a valid reference after it.
+
+    This only holds while the patch is strictly ADDITIVE. Removing or renaming a
+    source edge shifts the lanes after it whatever the order, and then one
+    generator on both sides is the only instrument left.
+    """
+    order = {e.get("id"): i
+             for i, e in enumerate(ET.parse(net_in).getroot().findall("edge"))}
+    tree = ET.parse(out)
+    root = tree.getroot()
+    edges = root.findall("edge")
+    if not edges:
+        return 0
+    added = [e for e in edges if e.get("id") not in order]
+    if not added:
+        return 0
+    kept = sorted((e for e in edges if e.get("id") in order),
+                  key=lambda e: order[e.get("id")])
+    at = list(root).index(edges[0])
+    for e in edges:
+        root.remove(e)
+    for i, e in enumerate(kept + added):
+        root.insert(at + i, e)
+    tree.write(out, encoding="UTF-8", xml_declaration=True)
+    return len(added)
+
+
 def run_netconvert(net_in, out, nod, edg, con, extra=()):
     cmd = [find_netconvert(),
            "--sumo-net-file", str(net_in),
@@ -772,6 +816,10 @@ def run_netconvert(net_in, out, nod, edg, con, extra=()):
     if res.returncode != 0:
         print(res.stderr.strip(), file=sys.stderr)
         raise SystemExit(f"netconvert failed ({res.returncode})")
+    moved = keep_source_edge_order(net_in, out)
+    if moved:
+        print(f"[sumo_uturn] {moved} added edge(s) written last, so the source net's "
+              f"lanes keep their index (see keep_source_edge_order)")
     warn = [l for l in res.stderr.splitlines() if l.strip()]
     if warn:
         print("[sumo_uturn] netconvert notes:")

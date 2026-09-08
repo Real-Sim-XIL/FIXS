@@ -131,12 +131,131 @@ def build_ego_routes(opt, route_files):
     return ET.ElementTree(root), len(edges)
 
 
-def build_sumocfg(opt, base_cfg, ego_rou):
+def _substitutions(pairs):
+    """--replace as {basename: absolute replacement}, checked for existence."""
+    out = {}
+    for spec in pairs or []:
+        name, sep, path = spec.partition("=")
+        if not sep or not name.strip() or not path.strip():
+            raise SystemExit(f"--replace wants NAME=PATH, got '{spec}'")
+        repl = Path(path.strip()).resolve()
+        if not repl.is_file():
+            raise SystemExit(f"--replace target does not exist: {repl}")
+        out[name.strip()] = str(repl)
+    return out
+
+
+def _apply_replacements(files, repl, used):
+    """Swap any file the caller is substituting, by basename."""
+    out = []
+    for f in files:
+        name = Path(f).name
+        if name in repl:
+            used.add(name)
+            out.append(repl[name])
+        else:
+            out.append(f)
+    return out
+
+
+def _set_value(root, section, tag, value):
+    """<section><tag value="..."/></section>, created if absent.
+
+    `x = root.find(t) or ET.SubElement(...)` is wrong here: an Element with no
+    children is FALSY, so an existing childless node would be replaced by a second
+    one and SUMO refuses the config as "defined twice".
+    """
+    sec = root.find(section)
+    if sec is None:
+        sec = ET.SubElement(root, section)
+    node = sec.find(tag)
+    if node is None:
+        node = ET.SubElement(sec, tag)
+    node.set("value", str(value))
+
+
+def demand_file_with(route_files, route_id):
+    """The route file that defines `route_id` - the bundle's demand."""
+    for f in route_files:
+        for _, el in ET.iterparse(f, events=("end",)):
+            if el.tag == "route" and el.get("id") == route_id:
+                return f
+            if el.tag in ("route", "vehicle", "flow"):
+                el.clear()
+    return None
+
+
+def _insert_by_depart(root, vehicle):
+    """Before the first vehicle that departs later; else at the end.
+
+    The POSITION is the point. SUMO draws each vehicle's speedFactor as it is
+    created, from one stream, so a vehicle's index decides which number every
+    vehicle after it gets. Appending the ego instead of placing it in depart order
+    moves ~8000 draws by one slot and the whole background traffic changes -
+    measured: ego at index 758 vs last diverges at t=29109.2 on a vehicle 522 m
+    away, which nothing physical connects to the ego.
+    """
+    depart = float(vehicle.get("depart", "inf"))
+    for i, child in enumerate(list(root)):
+        if child.tag != "vehicle":
+            continue
+        d = child.get("depart")
+        if d is not None and float(d) > depart:
+            root.insert(i, vehicle)
+            return i
+    root.append(vehicle)
+    return len(list(root)) - 1
+
+
+def inject_ego(opt, demand, out_path, vtype, edges):
+    """A copy of `demand` with the ego's vType, route and vehicle written into it.
+
+    Mirrors what prepare_scenario.py does, because matching it is the whole
+    purpose: vType first, the named route reused in place, vehicle in depart
+    order. Returns the path written.
+    """
+    tree = ET.parse(demand)
+    root = tree.getroot()
+
+    if vtype is not None:
+        root.insert(0, vtype)
+
+    route = root.find(f"./route[@id='{opt.route_from}']") if opt.route_from else None
+    if route is None:
+        route = ET.Element("route", {"id": opt.route_id})
+        root.insert(0, route)
+    route.set("edges", " ".join(edges))
+    if opt.repeat > 0:
+        route.set("repeat", str(opt.repeat))
+
+    veh = ET.Element("vehicle", {
+        "id": opt.ego_id, "type": opt.type_id, "route": route.get("id"),
+        "depart": str(opt.depart), "departLane": opt.depart_lane,
+        "departPos": opt.depart_pos, "departSpeed": str(opt.depart_speed)})
+    idx = _insert_by_depart(root, veh)
+
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    tree.write(out_path, encoding="UTF-8", xml_declaration=True)
+    n = sum(1 for _ in root.iter("vehicle"))
+    print(f"[sumo_ego] ego injected into a copy of {Path(demand).name} at element "
+          f"{idx} of {n} vehicles -> {out_path}")
+    return str(out_path)
+
+
+def build_sumocfg(opt, base_cfg, ego_rou, replace_demand=None):
     """The bundle's config, with the ego file appended and outputs redirected.
 
     Everything the bundle names is rewritten to an ABSOLUTE path so the generated
     config can live in the run directory while the network and demand stay in the
     map cache. That is the whole point: nothing is copied.
+
+    --replace NAME=PATH swaps one of those files for the caller's own, by base
+    name. It exists because some of what a bundle ships is a DEFAULT rather than a
+    fact: the vType file carries the map's calibrated type mix, and a study that
+    wants a different one would otherwise have to copy the demand to change two
+    attributes. Substituting a few-hundred-byte file leaves the demand untouched
+    and still uncopied.
     """
     base_dir = base_cfg.parent
     tree = ET.parse(base_cfg)
@@ -145,29 +264,54 @@ def build_sumocfg(opt, base_cfg, ego_rou):
     if inp is None:
         raise SystemExit(f"{base_cfg} has no <input> section")
 
+    repl = _substitutions(opt.replace)
+    used = set()
+
     for tag in ("net-file", "additional-files"):
         node = inp.find(tag)
         if node is not None and node.get("value"):
-            node.set("value", ",".join(_abs_from(base_dir, f)
-                                       for f in _split_list(node.get("value"))))
+            files = [_abs_from(base_dir, f) for f in _split_list(node.get("value"))]
+            node.set("value", ",".join(_apply_replacements(files, repl, used)))
 
     routes = inp.find("route-files")
     if routes is None or not routes.get("value"):
         raise SystemExit(f"{base_cfg} names no route-files")
-    bundle_routes = [_abs_from(base_dir, f) for f in _split_list(routes.get("value"))]
-    routes.set("value", ",".join(bundle_routes + [str(ego_rou)]))
+    resolved = [_abs_from(base_dir, f) for f in _split_list(routes.get("value"))]
+    if replace_demand:
+        # Swap the demand for the copy the ego was injected into, and do it BEFORE
+        # --replace rewrites the list: a bundle whose vTypes still live in the demand
+        # has that same entry substituted by --replace, and matching afterwards would
+        # find nothing and silently drop the file carrying the ego.
+        demand, injected = replace_demand
+        resolved = [injected if os.path.samefile(f, demand) else f for f in resolved]
+    bundle_routes = _apply_replacements(resolved, repl, used)
+    # The ego is INSIDE the demand copy when injecting, so nothing is appended -
+    # one vehicle-bearing file, as a hand-prepared scenario has. Appending it as
+    # well would define vehicle 'ego' twice and SUMO refuses the scenario.
+    if not replace_demand:
+        bundle_routes = bundle_routes + [str(ego_rou)]
+    routes.set("value", ",".join(bundle_routes))
 
+    # A --replace that matched nothing is a typo, and a silent one would leave the
+    # bundle's own file running while the caller believes theirs is.
+    missing = sorted(set(repl) - used)
+    if missing:
+        raise SystemExit(f"{base_cfg} names no input file called "
+                         f"{', '.join(missing)}; --replace matched nothing")
+
+    # The scenario's own SUMO settings. These belong in the generated config, not
+    # on the runner's command line: a value declared per-app there overrides
+    # whatever the scenario says, silently, so the two drift and the flag wins.
+    # (FIXS_Applications#45: a restated --time-to-teleport 30 overrode a generated
+    # config's 150 and walked an app 12.75 m/s off its reference results.)
     if opt.end is not None:
-        # `x = root.find(t) or ET.SubElement(...)` is wrong here: an Element with
-        # no children is FALSY, so an existing childless <end/> would be replaced
-        # by a second one and SUMO refuses the config as "defined twice".
-        time = root.find("time")
-        if time is None:
-            time = ET.SubElement(root, "time")
-        node = time.find("end")
-        if node is None:
-            node = ET.SubElement(time, "end")
-        node.set("value", str(opt.end))
+        _set_value(root, "time", "end", opt.end)
+    if opt.step_length is not None:
+        _set_value(root, "time", "step-length", opt.step_length)
+    if opt.time_to_teleport is not None:
+        _set_value(root, "processing", "time-to-teleport", opt.time_to_teleport)
+    if opt.seed is not None:
+        _set_value(root, "random_number", "seed", opt.seed)
 
     for section in ("output", "report"):
         sec = root.find(section)
@@ -220,6 +364,26 @@ def build_parser():
 
     o = p.add_argument_group("run")
     o.add_argument("--end", type=float, default=None, help="override the scenario end time")
+    o.add_argument("--step-length", type=float, default=None,
+                   help="SUMO step length written into the generated config")
+    o.add_argument("--time-to-teleport", type=float, default=None,
+                   help="seconds a blocked vehicle waits before SUMO teleports it. "
+                        "Set it here rather than as a per-app SUMO flag: a flag "
+                        "overrides the scenario silently, and the two then drift")
+    o.add_argument("--seed", type=int, default=None,
+                   help="SUMO random seed written into the generated config")
+    o.add_argument("--inject", metavar="PATH", default=None,
+                   help="write the ego INTO a copy of the bundle's demand at PATH, at "
+                        "its depart position, instead of adding it as a second route "
+                        "file. Costs one copy of the demand; buys a run that matches "
+                        "one built by editing the demand directly, because a "
+                        "vehicle's index decides which speedFactor every later "
+                        "vehicle draws")
+    o.add_argument("--replace", action="append", default=[], metavar="NAME=PATH",
+                   help="swap one of the bundle's input files for your own, by base "
+                        "name (repeatable). For what a bundle ships as a default "
+                        "rather than a fact - its vType file, say - so a run can "
+                        "differ from it without copying the demand")
     o.add_argument("--name", default=None,
                    help="basename for the generated files (default: the bundle cfg's stem + _ego)")
     return p
@@ -255,15 +419,32 @@ def main(argv=None):
         if not Path(f).is_file():
             raise SystemExit(f"no such --route-file: {f}")
     routes_tree, n_edges = build_ego_routes(opt, search)
-    routes_tree.write(ego_rou, encoding="UTF-8", xml_declaration=True)
 
-    cfg_tree, _ = build_sumocfg(opt, base_cfg, ego_rou)
+    replace_demand = None
+    if opt.inject:
+        demand = demand_file_with(bundle_routes, opt.route_from) if opt.route_from else None
+        if demand is None:
+            demand = bundle_routes[-1]
+        # Reuse exactly what build_ego_routes resolved, so --inject and the default
+        # differ ONLY in where the ego is written, never in what the ego is.
+        built = routes_tree.getroot()
+        vt = built.find("vType")
+        edges = built.find("route").get("edges").split()
+        injected = inject_ego(opt, demand, opt.inject, vt, edges)
+        replace_demand = (demand, injected)
+    else:
+        routes_tree.write(ego_rou, encoding="UTF-8", xml_declaration=True)
+
+    cfg_tree, _ = build_sumocfg(opt, base_cfg, ego_rou, replace_demand=replace_demand)
     cfg_tree.write(out_cfg, encoding="UTF-8", xml_declaration=True)
 
-    print(f"[sumo_ego] bundle   {base_cfg}   (not copied, not modified)")
-    print(f"[sumo_ego] ego      {opt.ego_id} on {n_edges} edges, depart {opt.depart:g}"
-          + (f", repeat {opt.repeat}" if opt.repeat else "")
-          + f"  -> {ego_rou.name} ({ego_rou.stat().st_size} bytes)")
+    print(f"[sumo_ego] bundle   {base_cfg}   (not copied, not modified)"
+          if not opt.inject else
+          f"[sumo_ego] bundle   {base_cfg}   (net/signals not copied; demand copied)")
+    if not opt.inject:
+        print(f"[sumo_ego] ego      {opt.ego_id} on {n_edges} edges, depart {opt.depart:g}"
+              + (f", repeat {opt.repeat}" if opt.repeat else "")
+              + f"  -> {ego_rou.name} ({ego_rou.stat().st_size} bytes)")
     print(out_cfg)
     return 0
 

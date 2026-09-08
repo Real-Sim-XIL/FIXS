@@ -378,12 +378,38 @@ def choose_setup(doc, interactive=True):
         if ans in ("q", "quit"):
             return QUIT
         if ans == "d":
-            victim = _input(f"[cosim] Delete which? [1-{len(names)}], Enter = cancel: ")
-            if victim.isdigit() and 1 <= int(victim) <= len(names):
-                gone = names[int(victim) - 1]
-                delete(gone)
-                print(f"[cosim] deleted '{gone}'.")
-                doc = load_doc()
+            # Same answer syntax as --purge-map, from the same parser: these are the
+            # two lists a user deletes from, and one of them accepting '1,3,4' while
+            # the other took a single number was a difference with nothing behind it.
+            import import_map
+            picked = import_map.parse_selection(
+                _input(f"[cosim] Delete which? [1-{len(names)}, a list like 1,3,4, "
+                       f"or 'all'; Enter to cancel]: "), len(names))
+            if picked:
+                doomed = [names[i] for i in picked]
+                # One setup goes on the word 'delete' alone, as it always has.
+                # Several are named back first: a mistyped range is the one way to
+                # lose work here that a single number cannot.
+                if len(doomed) > 1:
+                    print(f"[cosim] about to delete {len(doomed)} setup(s):")
+                    for n in doomed:
+                        print(f"[cosim]    {n}")
+                    if not _input("[cosim] Delete them? [y/N]: ").startswith("y"):
+                        print("[cosim] cancelled; nothing was deleted.")
+                        continue
+                for n in doomed:
+                    delete(n)
+                print(f"[cosim] deleted {', '.join(repr(n) for n in doomed)}.")
+                # IN PLACE, not `doc = load_doc()`. The caller passed this dict and
+                # goes on using it after we return - to name the setup, to suggest a
+                # free name, to decide whether switching is possible - so rebinding a
+                # local here left every one of those reading setups that no longer
+                # exist. It showed up as "'uga_default' exists. Overwrite it?" for a
+                # setup deleted moments earlier in this very menu. Nothing was ever
+                # resurrected by it: save/save_partial/delete each re-read the file,
+                # so the damage was confined to decisions made from the stale view.
+                doc.clear()
+                doc.update(load_doc())
                 names = order(doc)
                 if not names:
                     return None

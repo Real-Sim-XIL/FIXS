@@ -568,3 +568,192 @@ def test_ensure_runtime_repairs_missing_python(monkeypatch, tmp_path):
     assert out["python"] == sys.executable
     assert out["carla_root"] == "C:/src_ext/Carla" and out["ue4_root"] == "C:/ue4"
     assert saved.get("python") == sys.executable  # persisted
+
+
+# --------------------------------------------------------------- --purge-map
+
+def _fake_map(carla_root, name, cooked=True, umap=True, staged=True, cache_root=None,
+              cached=False):
+    """Lay down the on-disk traces one imported map leaves, each half optional, so
+    a test can build the half-states a purge exists to clean up."""
+    if cooked:
+        cfg = import_map.package_descriptor(carla_root, name)
+        os.makedirs(os.path.dirname(cfg), exist_ok=True)
+        with open(cfg, "w", encoding="utf-8") as f:
+            f.write("{}")
+        if umap:
+            path = import_map.cooked_map_path(carla_root, name)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write("umap")
+    if staged:
+        stage = os.path.join(carla_root, "Import", name)
+        os.makedirs(stage, exist_ok=True)
+        with open(os.path.join(stage, name + ".fbx"), "w", encoding="utf-8") as f:
+            f.write("fbx")
+        with open(os.path.join(carla_root, "Import", name + ".json"),
+                  "w", encoding="utf-8") as f:
+            f.write("{}")
+    if cached and cache_root:
+        sumo = os.path.join(cache_root, name, "sumo")
+        os.makedirs(sumo, exist_ok=True)
+        with open(os.path.join(sumo, name + ".sumocfg"), "w", encoding="utf-8") as f:
+            f.write("<configuration/>")
+
+
+def _labels(record):
+    return sorted(label for label, _p, _b in record["pieces"])
+
+
+def test_purge_candidates_skips_carlas_own_content(tmp_path, monkeypatch):
+    """CARLA's own Content/Carla/ ships a Config/Carla.Package.json exactly like an
+    imported package does, so the descriptor alone cannot be the test - the engine's
+    own content must never be offered for deletion."""
+    monkeypatch.setenv("FIXS_MAP_CACHE", str(tmp_path / "cache"))
+    root = str(tmp_path / "carla")
+    _fake_map(root, "Carla", umap=False, staged=False)       # the engine's own
+    _fake_map(root, "mlk_no_signal", cache_root=str(tmp_path / "cache"))
+    names = [r["name"] for r in import_map.purge_candidates(root, mode="source")]
+    assert names == ["mlk_no_signal"]
+
+
+def test_purge_candidates_does_not_create_the_cache_dir(tmp_path, monkeypatch):
+    """Taking an inventory must not bring into being the thing it reports on:
+    _map_cache_dir(name) CREATES its folder, so using it here would invent an empty
+    cache for every map and then offer it up."""
+    cache = tmp_path / "cache"
+    monkeypatch.setenv("FIXS_MAP_CACHE", str(cache))
+    root = str(tmp_path / "carla")
+    _fake_map(root, "mlk_no_signal")
+    records = import_map.purge_candidates(root, mode="source")
+    assert not (cache / "mlk_no_signal").exists()
+    assert "cache" not in _labels(records[0])
+
+
+def test_purge_candidates_offers_a_cook_that_died_partway(tmp_path, monkeypatch):
+    """Content/<name>/ with a descriptor but no .umap is a crashed cook - exactly
+    the wreckage this command exists to clear - so it is listed, and flagged."""
+    monkeypatch.setenv("FIXS_MAP_CACHE", str(tmp_path / "cache"))
+    root = str(tmp_path / "carla")
+    _fake_map(root, "half_cooked", umap=False)
+    records = import_map.purge_candidates(root, mode="source")
+    assert [r["name"] for r in records] == ["half_cooked"]
+    assert records[0]["cooked_umap"] is False
+
+
+def test_purge_candidates_ignores_a_lone_descriptor(tmp_path, monkeypatch):
+    """CARLA's Import/ holds descriptors that name no map (roadpainter_decals.json).
+    A .json with no folder beside it must not conjure a purge candidate."""
+    monkeypatch.setenv("FIXS_MAP_CACHE", str(tmp_path / "cache"))
+    root = str(tmp_path / "carla")
+    os.makedirs(os.path.join(root, "Import"), exist_ok=True)
+    with open(os.path.join(root, "Import", "roadpainter_decals.json"),
+              "w", encoding="utf-8") as f:
+        f.write("{}")
+    assert import_map.purge_candidates(root, mode="source") == []
+
+
+def test_purge_candidates_finds_a_cache_with_no_carla(tmp_path, monkeypatch):
+    """carla_root=None is a valid call: a client-mode machine has no local CARLA but
+    still has a bundle cache, and reclaiming it is the point of asking."""
+    cache = tmp_path / "cache"
+    monkeypatch.setenv("FIXS_MAP_CACHE", str(cache))
+    _fake_map(None, "x", cooked=False, staged=False)   # no CARLA halves at all
+    os.makedirs(str(cache / "roosevelt_full" / "sumo"), exist_ok=True)
+    with open(str(cache / "roosevelt_full" / "sumo" / "r.sumocfg"),
+              "w", encoding="utf-8") as f:
+        f.write("<configuration/>")
+    records = import_map.purge_candidates(None, mode="client")
+    assert [r["name"] for r in records] == ["roosevelt_full"]
+    assert _labels(records[0]) == ["cache"]
+
+
+def test_purge_sweeps_the_reimport_backup(tmp_path, monkeypatch):
+    """A failed re-import leaves Content/<name>.bak_reimport - a full second copy of
+    the map. Purging the map without it would strand that copy forever."""
+    monkeypatch.setenv("FIXS_MAP_CACHE", str(tmp_path / "cache"))
+    root = str(tmp_path / "carla")
+    _fake_map(root, "mlk_no_signal")
+    backup = import_map.cooked_content_dir(root, "mlk_no_signal") + ".bak_reimport"
+    os.makedirs(backup, exist_ok=True)
+    with open(os.path.join(backup, "old.uasset"), "w", encoding="utf-8") as f:
+        f.write("old")
+    records = import_map.purge_candidates(root, mode="source")
+    assert backup in [p for _l, p, _b in records[0]["pieces"]]
+    import_map.purge_maps(records)
+    assert not os.path.exists(backup)
+
+
+def test_purge_keeps_the_cache_unless_asked(tmp_path, monkeypatch):
+    """The default deletes the CARLA halves only. The bundle cache costs a download
+    to rebuild AND is read at run time (the .sumocfg lives there), so it takes its
+    own yes."""
+    cache = tmp_path / "cache"
+    monkeypatch.setenv("FIXS_MAP_CACHE", str(cache))
+    root = str(tmp_path / "carla")
+    _fake_map(root, "mlk_no_signal", cache_root=str(cache), cached=True)
+    records = import_map.purge_candidates(root, mode="source")
+    assert _labels(records[0]) == ["cache", "cooked", "staged", "staged"]
+
+    removed, failed = import_map.purge_maps(records)
+    assert failed == []
+    assert not os.path.isdir(import_map.cooked_content_dir(root, "mlk_no_signal"))
+    assert not os.path.exists(os.path.join(root, "Import", "mlk_no_signal"))
+    assert not os.path.exists(os.path.join(root, "Import", "mlk_no_signal.json"))
+    assert (cache / "mlk_no_signal" / "sumo" / "mlk_no_signal.sumocfg").exists()
+    assert all(label != "cache" for _n, label, _p, _b in removed)
+
+
+def test_purge_drops_the_cache_when_asked(tmp_path, monkeypatch):
+    cache = tmp_path / "cache"
+    monkeypatch.setenv("FIXS_MAP_CACHE", str(cache))
+    root = str(tmp_path / "carla")
+    _fake_map(root, "mlk_no_signal", cache_root=str(cache), cached=True)
+    records = import_map.purge_candidates(root, mode="source")
+    _removed, failed = import_map.purge_maps(records, drop_cache=True)
+    assert failed == []
+    assert not (cache / "mlk_no_signal").exists()
+
+
+def test_purge_reports_a_failure_instead_of_raising(tmp_path, monkeypatch):
+    """The inventory is taken before the deletion, so a path can vanish in between.
+    That must be reported per item, not abort the whole purge."""
+    monkeypatch.setenv("FIXS_MAP_CACHE", str(tmp_path / "cache"))
+    root = str(tmp_path / "carla")
+    _fake_map(root, "a")
+    _fake_map(root, "b")
+    records = import_map.purge_candidates(root, mode="source")
+    shutil.rmtree(import_map.cooked_content_dir(root, "a"))   # vanishes underneath
+    removed, failed = import_map.purge_maps(records)
+    assert [name for name, _l, _p, _e in failed] == ["a"]
+    assert not os.path.isdir(import_map.cooked_content_dir(root, "b"))   # b still done
+
+
+def test_record_bytes_excludes_the_cache_by_default(tmp_path, monkeypatch):
+    cache = tmp_path / "cache"
+    monkeypatch.setenv("FIXS_MAP_CACHE", str(cache))
+    root = str(tmp_path / "carla")
+    _fake_map(root, "m", cache_root=str(cache), cached=True)
+    record = import_map.purge_candidates(root, mode="source")[0]
+    assert import_map.record_bytes(record) < import_map.record_bytes(record, True)
+
+
+@pytest.mark.parametrize("answer,expected", [
+    ("2", [1]),
+    ("1,3,4", [0, 2, 3]),
+    (" 1 , 3 ", [0, 2]),
+    ("2-4", [1, 2, 3]),
+    ("1,3-5", [0, 2, 3, 4]),
+    ("all", [0, 1, 2, 3, 4]),
+    ("a", [0, 1, 2, 3, 4]),
+    ("3,3", [2]),
+    ("1,", [0]),        # a trailing comma has one reading; do not re-ask over it
+])
+def test_parse_selection_accepts(answer, expected):
+    assert import_map._parse_selection(answer, 5) == expected
+
+
+@pytest.mark.parametrize("answer", ["", "0", "6", "4-2", "1-9", "x", "1,x", "-"])
+def test_parse_selection_rejects(answer):
+    """None means re-ask. Nothing here may be guessed at: the next step deletes."""
+    assert import_map._parse_selection(answer, 5) is None
