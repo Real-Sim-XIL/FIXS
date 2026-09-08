@@ -256,6 +256,30 @@ def motion_heading_to_carla_yaw(dx_fixs, dy_fixs):
 # BasicAgent, with two methods replaced
 # ---------------------------------------------------------------------------
 
+def _bodyPolygon(Polygon, rec):
+    """A vehicle record -> its footprint in the FIXS frame.
+
+    `positionX/Y` is the FRONT-of-vehicle anchor (the wire convention the
+    DataLogger header states), so the body runs BACKWARDS from it along the
+    heading. Getting this wrong puts every car half a length ahead of where it
+    is, which on a queue is the difference between clear and blocked.
+    """
+    length = float(getattr(rec, "length", 0.0) or 0.0) or 4.5
+    width = float(getattr(rec, "width", 0.0) or 0.0) or 1.8
+    # FIXS heading is navigational: 0 = +y (north), clockwise.
+    h = math.radians(float(rec.heading or 0.0))
+    fx, fy = math.sin(h), math.cos(h)          # unit vector along travel
+    rx, ry = fy, -fx                           # unit vector to its right
+    x, y = rec.positionX, rec.positionY
+    hw = width / 2.0
+    return Polygon([
+        (x + rx * hw, y + ry * hw),
+        (x - rx * hw, y - ry * hw),
+        (x - fx * length - rx * hw, y - fy * length - ry * hw),
+        (x - fx * length + rx * hw, y - fy * length + ry * hw),
+    ])
+
+
 def make_agent_class(BasicAgent):
     """CARLA's BasicAgent with SUMO's answers behind its two detectors.
 
@@ -279,15 +303,92 @@ def make_agent_class(BasicAgent):
     class FixsBasicAgent(BasicAgent):
         ego_record = None       # set from the tick loop before each run_step
 
+        #: Every vehicle on the wire this tick, set from the control loop next to
+        #: ego_record. A list of FIXS records, not CARLA actors.
+        fixs_vehicles = ()
+
         def _vehicle_obstacle_detected(self, vehicle_list=None, max_distance=None,
                                        up_angle_th=90, low_angle_th=0, lane_offset=0):
+            """Two answers to two different questions, and the nearer wins.
+
+            SUMO's precedingVehicle* answers "what is ahead of me ON MY ROUTE",
+            which is the right answer for car-following and the wrong one for
+            "is anything in my way". It is route-topological: a vehicle on any
+            other edge is not the leader, so an oncoming left-turner cutting the
+            corner, cross traffic in a junction, and anything drifting over the
+            line all read as clear. Measured on the U-turn corridor with only
+            this answer wired in: three impacts at 45-70 m/s2, one of them an
+            opposing left-turner encroaching into the ego's lane.
+
+            So the geometric sweep comes back -- stock BasicAgent's own test,
+            against the FIXS vehicle list instead of a CARLA actor list, since
+            this controller is handed records and not a world.
+            """
+            if self._ignore_vehicles:
+                return (False, None, -1)
+            md = max_distance or self._base_vehicle_threshold
+
+            gaps = []
             e = self.ego_record
-            if e is None or not getattr(e, "hasPrecedingVehicle", 0):
+            if e is not None and getattr(e, "hasPrecedingVehicle", 0):
+                gap = e.precedingVehicleDistance or 0.0
+                if 0.0 < gap < md:
+                    gaps.append(gap)
+
+            swept = self._sweptObstacle(md)
+            if swept is not None:
+                gaps.append(swept)
+
+            if not gaps:
                 return (False, None, -1)
-            gap = e.precedingVehicleDistance or 0.0
-            if gap <= 0.0:
-                return (False, None, -1)
-            return (gap < (max_distance or self._base_vehicle_threshold), None, gap)
+            return (True, None, min(gaps))
+
+        def _sweptObstacle(self, maxDistance):
+            """Nearest vehicle whose body intersects the corridor ahead, or None.
+
+            The corridor is the planned path buffered by the ego's half-width --
+            the same shape stock builds by offsetting each waypoint left and
+            right, expressed as a buffer because these waypoints carry a location
+            and no rotation to take a right-vector from.
+
+            Records are in the FIXS frame and give the FRONT of the vehicle, so
+            each body is laid backwards from its reported point.
+            """
+            ego = self.ego_record
+            if ego is None or not self.fixs_vehicles:
+                return None
+            try:
+                from shapely.geometry import LineString, Polygon
+            except ImportError:
+                return None
+
+            ex, ey = ego.positionX, ego.positionY
+            path = [(ex, ey)]
+            for wp, _ in self._local_planner.get_plan():
+                # Waypoints are stored CARLA-side; bring them back to the FIXS
+                # frame so everything here is in one frame.
+                wx, wy = wp.transform.location.x, -wp.transform.location.y
+                if math.hypot(wx - ex, wy - ey) > maxDistance:
+                    break
+                path.append((wx, wy))
+            if len(path) < 2:
+                return None
+
+            halfWidth = max(float(getattr(ego, "width", 0.0) or 0.0), 1.8) / 2.0
+            corridor = LineString(path).buffer(halfWidth)
+
+            nearest = None
+            egoId = (ego.id or "").strip()
+            for v in self.fixs_vehicles:
+                if (v.id or "").strip() == egoId:
+                    continue
+                d = math.hypot(v.positionX - ex, v.positionY - ey)
+                if d > maxDistance:
+                    continue
+                if corridor.intersects(_bodyPolygon(Polygon, v)):
+                    if nearest is None or d < nearest:
+                        nearest = d
+            return nearest
 
         def _affected_by_traffic_light(self, lights_list=None, max_distance=None):
             e = self.ego_record
