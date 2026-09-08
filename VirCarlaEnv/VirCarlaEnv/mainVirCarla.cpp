@@ -353,8 +353,16 @@ int main(int argc, const char* argv[]) {
         // advisory client (e.g. py_ego_speed_advisor.py) feeds through TrafficLayer's
         // sequential-client path. No controller attached -> falls back to EgoTargetSpeed.
         if (carlaOwnsEgo && egoMode >= 2)
+            // Name all three, not two. This line predates wire actuation and read
+            // "EgoDriver" or "TM", so an EgoActuationSource: external run -- where
+            // NO in-Carla driver runs at all, the pedals arriving over the wire --
+            // announced itself as being driven by the Traffic Manager. That is the
+            // one option this scenario explicitly rejects, and the operator has no
+            // other line telling them which driver they got.
             std::cout << "L2: external speed advisory via FIXS (ego.speedDesired) -- driver: "
-                      << (useFallbackDriver ? "EgoDriver" : "TM") << "\n";
+                      << (useFallbackDriver ? "EgoDriver (in-bridge pure pursuit)"
+                          : useWireActuation ? "external (pedals over FIXS)"
+                          : "TM (Carla Traffic Manager)") << "\n";
         double lastAdvisory = cs.EgoTargetSpeed;   // most-recent commanded desired speed (for the driver/log)
 
         const int sock0 = 0;
