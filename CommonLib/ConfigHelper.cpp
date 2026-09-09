@@ -779,10 +779,8 @@ int ConfigHelper::getConfig(string configName) {
 	// ===========================================================================
 	// 			READ Ego Setup section (#305)
 	// ===========================================================================
-	// LAST on purpose: this is the one description of the ego, and it resolves the
-	// per-backend keys it replaced. Those keys are still read here as fallbacks;
-	// their struct fields are gone, because two fields holding the same value are
-	// still two things a later change can set apart.
+	// LAST on purpose: it resolves the per-backend keys it replaced, which are
+	// still read here as fallbacks. See #305.
 	{
 		YAML::Node egoNode   = config["EgoSetup"];
 		YAML::Node cmNode    = config["CarMakerSetup"];
@@ -827,8 +825,7 @@ int ConfigHelper::getConfig(string configName) {
 		// ---- Id -------------------------------------------------------------
 		if (!resolve("Id", "EgoId", "EgoId", EgoSetup.Id)) {
 			// Nothing named it: infer from the lone vehicle subscription, which
-			// beats the old per-backend magic defaults (they named vehicles that
-			// did not exist -- FIXS#305).
+			// beats the old per-backend defaults (#305).
 			if (SubscriptionVehicleList.vehicleSubscribeId_v.size() == 1) {
 				EgoSetup.Id = SubscriptionVehicleList.vehicleSubscribeId_v.begin()->first;
 			}

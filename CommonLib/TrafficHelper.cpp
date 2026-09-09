@@ -1883,13 +1883,10 @@ void TrafficHelper::parserSumoSubscription(libsumo::TraCIResults VehDataSubscrib
 		double odo = static_pointer_cast<libsumo::TraCIDouble>(
 			VehDataSubscribeTraciResults[libsumo::VAR_DISTANCE])->value;
 
-		// Is this vehicle one whose motion an external environment owns? Its route
-		// is then the one thing SUMO still decides for it, and a reroute nobody
-		// asked for is how a co-sim silently stops being signal-aware -- see the
-		// two guards below.
-		// Same test the mirror uses, so the two can never disagree about which
-		// vehicle is externally driven -- and so the CarMaker ego, which is also
-		// moveToXY-placed, gets the per-tick reseed it has always needed.
+		// Externally driven? Its route is then the one thing SUMO still decides for
+		// it, which is what the two guards below protect.
+		// Same test the mirror uses, so the CarMaker ego -- also moveToXY-placed --
+		// gets the per-tick reseed it has always needed (#305).
 		const bool externallyDriven = (externalEgoOwnerOf(vehId) != ExternalEgoOwner::None);
 
 		// seed once per vehicle (or when the route changed): one getNextTLS walk
@@ -1905,11 +1902,8 @@ void TrafficHelper::parserSumoSubscription(libsumo::TraCIResults VehDataSubscrib
 			(cacheIt == VehicleId2Tls_um.end() || cacheIt->second.routeId != routeId
 			 || externallyDriven);
 		if (tlsCacheReseeded) {
-			// The route changed, this is the first sight of the vehicle, or the
-			// vehicle is externally driven and reseeds every tick (see above).
-			// Refresh the cached edge list: it is read below to reconstruct the
-			// signal head, and it is captured when a vehicle is FIRST seen -- so
-			// after a reroute it describes a route the vehicle is no longer on.
+			// Refresh the cached edge list -- it is read below to reconstruct the
+			// signal head, and a reroute leaves it describing the old route.
 			if (cacheIt != VehicleId2Tls_um.end()) {
 				vector<string> newEdges = SUMO_TRACI_NAMESPACE::Vehicle::getRoute(vehId);
 
@@ -1998,13 +1992,9 @@ void TrafficHelper::parserSumoSubscription(libsumo::TraCIResults VehDataSubscrib
 		// (An opt-in RS_EGO_ROUTE_LOG probe lived here while the next-signal loss
 		// was being diagnosed. Removed once the cause was found -- see FIXS#305.)
 
-		// NOTE: "the ego had a next signal and now has none" is deliberately NOT
-		// guarded here. signalLightId only goes empty when no cached entry is still
-		// ahead of the odometer, which means either the cached list is empty -- the
-		// route was replaced by one without signals, which changed routeId and the
-		// guard above already fired -- or the vehicle has passed the last signal on
-		// its route, which is ordinary. Guarding it would warn at the end of every
-		// run and teach everyone to ignore the one warning that matters.
+		// "had a next signal, now has none" is deliberately NOT guarded: the guard
+		// above already covers the interesting half, and the other half is a vehicle
+		// passing its last signal, which is ordinary. See FIXS#305.
 	}
 
 	//=================

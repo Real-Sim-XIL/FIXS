@@ -179,8 +179,7 @@ def main(argv=None):
     virEnvOwnsEgo = egoCfg['Dynamics'] == 'virenv'
     useFixsDriver = egoCfg['ActuationSource'] == 'fixs'
     # "user" is one value; the Controller key decides where it runs. In-process
-    # inherits the CARLA step rate, which is the whole reason the hook exists --
-    # over the feed the record carries the advisory, not the plant's speed.
+    # inherits the CARLA step rate and reads the plant, not the feed (#305).
     useEmbedded = egoCfg['ActuationSource'] == 'user' and bool(egoCfg['Controller'])
     useWireActuation = egoCfg['ActuationSource'] == 'user' and not egoCfg['Controller']
 
@@ -192,8 +191,7 @@ def main(argv=None):
     #             depart time, and we spawn a physics actor at the pose it reports
     #             the first tick its id arrives
     # The deferred direction is what keeps the ego's next traffic signal: a
-    # single-edge route has none, and that is the only stop-bar input a
-    # signal-aware controller has.
+    # single-edge dummy route has none.
     deferEgoSpawn = virEnvOwnsEgo and len(cs['EgoSpawnPose']) < 4
 
     interestedIds = set(cs['InterestedIds'] or [])
@@ -310,15 +308,9 @@ def main(argv=None):
                 break
 
             # ---- deferred ego: the traffic simulator inserted it, take it over --
-            # Spawn at the pose it just reported, so the physics actor starts
-            # exactly where the traffic simulator put its vehicle and the two are
-            # one from the first tick. Reads the pose out of the FIXS record, not
-            # off a Carla actor, so it does not depend on the pose batch having
-            # been flushed yet. Everything downstream already tolerates a missing
-            # ego -- applyEgoActuation, the fallback driver and readEgoState all
-            # return early without an actor -- so before this fires the bridge
-            # simply mirrors traffic, and nothing about the ego reaches the
-            # traffic simulator.
+            # Spawn at the pose it just reported, read out of the FIXS record
+            # rather than off a Carla actor, so it does not wait on the pose
+            # batch. Everything downstream already tolerates a missing ego.
             if deferEgoSpawn and not egoIsUp:
                 rec = core.Msg_c.VehDataRecv_um.get(egoId)
                 if rec is not None:
@@ -389,12 +381,9 @@ def main(argv=None):
             # #325 embedded controller: same slot, same per-step rate. The
             # step itself lives in CommonLib so this file stays a faithful peer
             # of mainVirCarla.cpp, which has no such hook.
-            # egoIsUp AND haveTick, both needed. The ego is nothing to control
-            # before it exists; and fixs.vehicle.get RAISES rather than answering
-            # empty when no tick has been received, which is deliberate -- "no
-            # tick yet" and "a tick with no ego in it" are different states and
-            # the accessor refuses to conflate them. The core skips the recv at
-            # simTime 0, so the first pass through here has no tick at all.
+            # Both needed: nothing to control before the ego exists, and
+            # fixs.vehicle.get RAISES rather than answering empty with no tick
+            # received -- and the core skips the recv at simTime 0.
             if virEnvOwnsEgo and embedded is not None and egoIsUp and haveTick:
                 from CommonLib import fixs as _fixs
                 runController(backend, embedded, _fixs.vehicle.get(egoId),
@@ -465,10 +454,8 @@ def main(argv=None):
                         if dataLog.isOpen():
                             fromSumo = core.Msg_c.VehDataRecv_um.get(egoId)
                             if fromSumo is not None:
-                                # Records refuse assignment -- 'id' is measured
-                                # data -- and copy.copy carries the same guard, so
-                                # the relabel goes through the logger rather than
-                                # through the record.
+                                # Records refuse assignment ('id' is measured
+                                # data), so the relabel goes through the logger.
                                 dataLog.logVehicle(simTime, fromSumo, idOverride='ego_sumo')
                     if spectatorFollow and egoId == centeredViewId and backend.egoActor():
                         spectator.set_transform(_spectatorTransform(

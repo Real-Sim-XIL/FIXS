@@ -287,7 +287,7 @@ void CarlaBackend::setEgoRoute(const std::vector<std::pair<double, double>>& fix
               << egoDriver_.routeSize() << " path points (EgoDriver fallback module)\n";
 }
 
-void CarlaBackend::driveEgoFallback(double targetSpeed) {
+void CarlaBackend::stepEgoDriver(double targetSpeed) {
     // Per-tick fallback driver: read the ego pose in the Carla frame, ask the
     // module for a neutral DriveCommand, apply it through full PhysX dynamics.
     if (!egoActor_ || !egoDriver_.hasRoute()) return;
@@ -319,7 +319,7 @@ void CarlaBackend::driveEgoFallback(double targetSpeed) {
 void CarlaBackend::applyEgoActuation(double throttle, double brake, double steerNorm) {
     // #174 unified EgoDriver apply-path: the actuation comes from an external FIXS
     // client (EgoDriver client / L4 controller) via the ego's wire record; Carla just
-    // realizes it on the physics ego. Same VehicleControl seam as driveEgoFallback.
+    // realizes it on the physics ego. Same VehicleControl seam as stepEgoDriver.
     if (!egoActor_) return;
     carla::rpc::VehicleControl c;
     c.throttle = (float)std::max(0.0, std::min(1.0, throttle));
@@ -336,7 +336,7 @@ void CarlaBackend::applyEgoActuation(double throttle, double brake, double steer
 void CarlaBackend::applyEgoControl(const std::string& /*egoId*/, double desiredSpeed) {
     // L2 actuation seam: route an EXTERNAL desired-speed advisory to whichever L0
     // driver owns the ego. Native TM -> SetDesiredSpeed (km/h) on the ego's TM
-    // instance; EgoDriver fallback -> stash the target for the next driveEgoFallback
+    // instance; EgoDriver fallback -> stash the target for the next stepEgoDriver
     // tick. No ego -> nothing to advise.
     if (!egoActor_) return;
     egoDesiredOverride_ = desiredSpeed;

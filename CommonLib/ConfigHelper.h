@@ -63,15 +63,12 @@ struct SimulationSetup_t {
 
 	int TrafficSimulatorPort;
 
-	// Warm-up (#86): advance the traffic simulator with the FIXS boundary CLOSED,
-	// so no client sees the fill-in traffic being built. See #86 for the cost
-	// model and why WarmUpServePorts is not optional.
+	// Warm-up (#86): advance the traffic simulator with the FIXS boundary CLOSED.
 	bool WarmUpUntilEgoEntry;
 
 	double WarmUpTime;
 
-	// Client ports SERVED THROUGH the warm-up rather than joining when it ends --
-	// a virtual environment needs its map loaded before the ego arrives. #86.
+	// Client ports served THROUGH the warm-up rather than joining at its end (#86).
 	std::vector<int> WarmUpServePorts;
 
 	std::string TrafficLayerIP;
@@ -109,35 +106,22 @@ struct XilSetup_t {
 };
 
 
-// The ego, described once, for every backend (ORNL-Real-Sim/FIXS#305).
-//
-// CarMaker, an XIL plant and Carla are the same situation from the traffic
-// simulator's side: a vehicle SUMO holds but does not drive. The per-backend
-// keys this replaces are still parsed as fallbacks; they no longer exist as
-// fields, because two fields holding one value can be set apart later.
+// The ego, described once, for every backend. See ORNL-Real-Sim/FIXS#305 for why,
+// and for the per-backend keys this replaces (still parsed as fallbacks).
 struct EgoSetup_t {
 
 	std::string Id;         // FIXS id of the ego
-	std::string Type;       // vehicle type the TRAFFIC simulator knows the ego by,
-	                        // used when it has to be injected. Not the virtual
-	                        // environment's model -- that is CarlaSetup.EgoBlueprint.
+	std::string Type;       // vehicle type the TRAFFIC simulator knows it by
+	                        // (the rendered model is CarlaSetup.EgoBlueprint)
 
-	// WHAT COMPUTES THE EGO'S MOTION.
-	//   traffic : the traffic simulator does
-	//   virenv  : the virtual environment's physics does (Carla PhysX today);
-	//             named for the role, not the backend
-	//   xil     : an external plant does
-	// Stored CANONICAL (lower case), so consumers compare strings.
+	// What computes the ego's motion. Canonical, lower case.
+	//   traffic | virenv (the virtual environment's physics) | xil
 	std::string Dynamics;
 
-	// WHO PRODUCES THE PEDALS AND STEER.
-	//   simulator : the driver the environment brought (Carla TM, IPGDriver)
-	//   fixs      : the driver FIXS ships (EgoDriver)
-	//   user      : yours -- name a Controller below and it runs in-process once
-	//               per environment step; leave it unset and the pedals come off
-	//               the FIXS record at the 0.1 s feed, which is NOT equivalent
-	//               (see FIXS#305: the feed carries the advisory in `speed`).
-	// Stored CANONICAL.
+	// Who produces the pedals and steer. Canonical, lower case.
+	//   simulator (Carla TM, IPGDriver) | fixs (EgoDriver) | user
+	// "user" runs in-process when Controller names a file, else off the FIXS
+	// record at the feed -- not equivalent; see #305.
 	std::string ActuationSource;
 
 	std::string Controller;   // user control law (.py); Python backend only
@@ -212,9 +196,6 @@ struct CarlaSetup_t {
 
 	std::vector<std::string> InterestedIds;
 
-	// EgoMode / EgoL0Driver / EnableExternalControl deleted: a second encoding of
-	// EgoSetup.Dynamics + ActuationSource + Controller. Their KEYS are still read
-	// (they shipped in v0.9.0); nothing derives a mode any more (#305).
 	std::string EgoBlueprint;          // Carla blueprint for the ego actor
 	std::vector<double> EgoSpawnPose;  // [x, y, z, headingDeg] FIXS frame (mode >= 1)
 	int TrafficManagerPort;            // Carla TM port (client-side instance)
@@ -249,10 +230,7 @@ struct SumoSetup_t {
 	// 1000 preserves the previously hard-coded behaviour.
 	double PrecedingVehicleLookahead;
 
-	// keepRoute bitmask for the moveToXY that mirrors an externally-driven ego,
-	// for EVERY owner now -- the CarMaker call site used to hardcode 6 (#305).
-	// A choice of failure mode: bit 0 pins the ego to its own route and makes
-	// SUMO raise; bit 1 places it exactly and lets it leave the network silently.
+	// keepRoute bitmask for the mirror's moveToXY, for every ego owner (#305).
 	// https://sumo.dlr.de/docs/TraCI/Change_Vehicle_State.html#move_to_xy
 	int EgoKeepRoute;
 

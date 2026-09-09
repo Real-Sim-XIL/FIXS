@@ -87,9 +87,9 @@ public:
     // applied here so the module stays frame-neutral.
     void setEgoRoute(const std::vector<std::pair<double, double>>& fixsPts,
                      int repeat, int tmPort);
-    void driveEgoFallback(double targetSpeed);   // per-tick: EgoDriver -> ApplyControl
+    void stepEgoDriver(double targetSpeed);   // per-tick: EgoDriver -> ApplyControl
 
-    // What driveEgoFallback last applied, and the speed it was chasing. "The ego
+    // What stepEgoDriver last applied, and the speed it was chasing. "The ego
     // did not move" is the same symptom whether the driver commanded nothing,
     // commanded the wrong thing, or commanded correctly into a vehicle that could
     // not act on it -- these separate the three.
@@ -104,7 +104,7 @@ public:
     // L2 (EgoMode >= 2): advise the active L0 driver of an EXTERNAL desired speed
     // (m/s), overriding the static EgoTargetSpeed until changed. Native TM path ->
     // tm.SetDesiredSpeed; EgoDriver fallback -> the per-tick target used by
-    // driveEgoFallback. No-op if no ego is owned. This is the actuation seam; the
+    // stepEgoDriver. No-op if no ego is owned. This is the actuation seam; the
     // advisory SOURCE (wire field / external client) is the caller's concern.
     void applyEgoControl(const std::string& egoId, double desiredSpeed) override;
 

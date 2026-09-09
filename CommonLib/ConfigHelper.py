@@ -117,10 +117,8 @@ class ConfigHelper:
 
         # EgoMode / EgoL0Driver / EnableExternalControl: read in the EgoSetup
         # block below, as the v0.9.0 spelling of Dynamics and ActuationSource.
-        # #325: the user controller that occupies the driver slot, as a path
-        # relative to where the run was launched. Read here rather than left to
-        # the bridge's dict lookup, so a scenario that names one and a loader
-        # that does not parse it cannot silently disagree.
+        # #325: the user controller, as a path relative to where the run was
+        # launched.
         self.Carla_setup["EgoBlueprint"] = self.parserString(carla_node, "EgoBlueprint", "vehicle.tesla.model3")
         self.Carla_setup["EgoSpawnPose"] = [float(v) for v in (carla_node.get("EgoSpawnPose") or [])]
         self.Carla_setup["EgoRoutePoints"] = [(float(pt[0]), float(pt[1]))
@@ -128,17 +126,10 @@ class ConfigHelper:
 
 
         # ---- EgoSetup: the ego, described once (#305) --------------------------
-        # A vehicle whose motion something outside the traffic simulator computes
-        # is the same situation whether that something is CarMaker, an XIL plant
-        # or Carla. It used to be described twice -- CarMakerSetup.EgoId and
-        # CarlaSetup.EgoId, and a separate branch in TrafficHelper for each -- and
-        # nothing stopped the two descriptions naming different vehicles.
-        #
-        # EgoSetup is that description. Every key falls back to the CarlaSetup key
-        # it replaces, so scenarios written before it parse unchanged. Mirrors the
-        # EgoSetup section in ConfigHelper.cpp; a key defaulted differently in the
-        # two parsers is a config that means two things depending on which bridge
-        # reads it.
+        # Every key falls back to the per-backend key it replaces, so older
+        # scenarios parse unchanged. MIRRORS the EgoSetup section in
+        # ConfigHelper.cpp -- a key defaulted differently in the two parsers means
+        # two things depending on which bridge reads it.
         ego_node = config.get("EgoSetup", {}) or {}
 
         def _egoKey(name, fallback):
@@ -156,10 +147,8 @@ class ConfigHelper:
             "Controller", self.parserString(carla_node, "EgoController", ""))
 
         # Dynamics -- WHAT COMPUTES THE EGO'S MOTION. Canonical values, so the
-        # bridge compares strings and nothing re-derives a mode (FIXS#305).
-        # v0.9.0 said this with EgoMode AND EnableExternalControl, two keys that
-        # could disagree -- and when they did, TrafficLayer and the bridge each
-        # believed something different about who owned the ego.
+        # bridge compares strings. v0.9.0 said this with EgoMode AND
+        # EnableExternalControl, two keys that could disagree (#305).
         dyn = self.parserString(ego_node, "Dynamics", "").strip().lower()
         if not dyn and ("EnableExternalControl" in carla_node or "EgoMode" in carla_node):
             ext = self.parserFlag(carla_node, "EnableExternalControl", False)
@@ -176,8 +165,7 @@ class ConfigHelper:
         self.Ego_setup["Dynamics"] = dyn
 
         # ActuationSource -- WHO PRODUCES THE PEDALS AND STEER. "user" is ONE
-        # value; the Controller key decides whether it runs in-process (once per
-        # CARLA step, reading the plant) or on the far side of the 0.1 s feed.
+        # value; the Controller key decides where it runs.
         src = self.parserString(ego_node, "ActuationSource", "").strip().lower()
         if not src:
             l0 = (self.parserString(carla_node, "EgoL0Driver", "") or "").strip().lower()
