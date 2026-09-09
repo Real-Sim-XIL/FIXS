@@ -577,28 +577,19 @@ int TrafficHelper::sendToTrafficSimulator(double simTime, MsgHelper Msg_c) {
 
 
 // Which layer owns this vehicle's motion, if the traffic simulator does not?
-//
-// The two answers used to be two conditions written at two call sites, one keyed
-// on CarMakerSetup.EgoId and one on CarlaSetup.InterestedIds, each with its own
-// copy of the mirror that follows. They describe the same thing -- SUMO holding a
-// vehicle it does not drive -- so they are one function now, and sendToSUMO has
-// one body for whatever it returns.
+// One test for what used to be two conditions at two call sites (FIXS#305).
 TrafficHelper::ExternalEgoOwner TrafficHelper::externalEgoOwnerOf(const std::string& vehId) const {
 
-	// VirEnv FIRST, and not for tidiness: when the CarMakerSetup section is absent,
-	// CarMakerSetup.EgoId is inferred from the lone vehicle subscription and can
-	// come out equal to the virtual environment's ego id. Testing CarMaker first
-	// would then shadow the VirEnv injection and moveToXY a vehicle nobody added.
-	// VirEnv ownership is the more specific claim -- it also requires external
-	// control to be on and the id to be listed -- so it is the one that wins.
+	// VirEnv FIRST: the two id sets can coincide when EgoSetup.Id was inferred,
+	// and testing CarMaker first would moveToXY a vehicle nobody added.
 	if (ENABLE_CARLA && ENABLE_CARLA_EXTERNAL_CONTROL &&
 		find(Config_c->CarlaSetup.InterestedIds.begin(), Config_c->CarlaSetup.InterestedIds.end(), vehId)
 			!= Config_c->CarlaSetup.InterestedIds.end()) {
 		return ExternalEgoOwner::VirEnv;
 	}
 
-	if (ENABLE_VEH_SIMULATOR && !Config_c->CarMakerSetup.EgoId.empty() &&
-		vehId == Config_c->CarMakerSetup.EgoId) {
+	if (ENABLE_VEH_SIMULATOR && !Config_c->EgoSetup.Id.empty() &&
+		vehId == Config_c->EgoSetup.Id) {
 		return ExternalEgoOwner::VehSimulator;
 	}
 
@@ -612,7 +603,7 @@ int TrafficHelper::addEgoVehicle(double simTime) {
 		if (ENABLE_VEH_SIMULATOR) {
 			// !!!!check if what received is ego vehicle
 			// use default type if not specified!!
-			string idStr = Config_c->CarMakerSetup.EgoId;   // filled by EgoSetup.Id
+			string idStr = Config_c->EgoSetup.Id;
 
 			// Get all vehicle IDs from SUMO
 			vector<string> vehicleIds = SUMO_TRACI_NAMESPACE::Vehicle::getIDList();
@@ -622,7 +613,7 @@ int TrafficHelper::addEgoVehicle(double simTime) {
 
 			// if ego not exist yet, add it
 			if (!vehicleExist) {
-				string typeStr = Config_c->CarMakerSetup.EgoType;   // filled by EgoSetup.SumoType
+				string typeStr = Config_c->EgoSetup.SumoType;
 
 				// if is empty
 				if (typeStr.size() == 0) {
@@ -845,14 +836,9 @@ int TrafficHelper::sendToSUMO(double simTime, MsgHelper Msg_c) {
 				}
 			}
 
-			// #305 ONE mirror for an externally-driven ego.
-			//
-			// CarMaker/XIL and the virtual environment are the same situation from
-			// here: a vehicle SUMO holds but does not drive, whose position is
-			// written in every tick. What differs is only which config named the id,
-			// so ownership is resolved once (externalEgoOwnerOf) and this body runs
-			// for either answer. The two places it still branches on the owner are
-			// marked, and neither is a difference in mechanism.
+			// ONE mirror for an externally-driven ego, whichever layer owns it.
+			// The two places it still branches on the owner are marked below;
+			// neither is a difference in mechanism (FIXS#305).
 			const ExternalEgoOwner egoOwner = externalEgoOwnerOf(idStr);
 
 			if (egoOwner != ExternalEgoOwner::None) {
@@ -866,26 +852,11 @@ int TrafficHelper::sendToSUMO(double simTime, MsgHelper Msg_c) {
 
 				try {
 					// --- 1. inject once, if the scenario did not declare the ego ---
-					//
-					// OWNER-SPECIFIC, and this one is about timing, not mechanism.
-					// CarMaker's ego is added at the very first step by
-					// addEgoVehicle(), on a route SUMO picks; a vehicle that has been
-					// added but has not departed yet is ABSENT from getIDList, so
-					// running the add here too would try to create it a second time
-					// and throw. The VirEnv ego has no such first-step hook, and its
-					// spawn position is only known from the feed, so it is injected
-					// here from (x,y).
-					//
-					// Either way: add ONCE (re-adding every step resets the pending
-					// vehicle so it never departs), then moveToXY EVERY step --
-					// moveToXY also works on a not-yet-departed vehicle and INSERTS it
-					// at the given position, which is what gets the ego past an edge
-					// start that background flow is occupying.
-					//
-					// And a vehicle the scenario ALREADY declared is adopted, not
-					// recreated: the traffic simulator inserts it on its own route at
-					// its own depart time, and the virtual environment takes its
-					// dynamics over from there.
+					// OWNER-SPECIFIC, and about timing: CarMaker's ego is added at
+					// the first step by addEgoVehicle(), and a pending vehicle is
+					// absent from getIDList, so adding here too would throw. Add
+					// ONCE, then moveToXY every step (it inserts a pending vehicle).
+					// An ego the scenario declared is adopted, not recreated.
 					if (egoOwner == ExternalEgoOwner::VirEnv &&
 						!vehicleExist && externalEgoInjected_.find(idStr) == externalEgoInjected_.end()) {
 						addEgoVehicleFromXY(simTime, idStr, vehicleType, positionX, positionY);
@@ -893,12 +864,9 @@ int TrafficHelper::sendToSUMO(double simTime, MsgHelper Msg_c) {
 					}
 
 					// --- 2. off-map guard (#174), warn-only ------------------------
-					// getPosition is where SUMO placed the ego on the PREVIOUS
-					// moveToXY. Far from what we fed it then means SUMO could not keep
-					// it on the drivable network -- it snapped, or the mapping failed,
-					// i.e. the ego left the road. Isolated try so a getPosition hiccup
-					// cannot skip the move below. Shared with CarMaker now; it is a
-					// diagnostic, and the failure it reports is not Carla-specific.
+					// SUMO's placement on the PREVIOUS moveToXY vs what we fed it:
+					// far apart means the ego left the drivable network. Isolated
+					// try so a getPosition hiccup cannot skip the move below.
 					auto itLast = externalEgoLastFedXY_.find(idStr);
 					if (itLast != externalEgoLastFedXY_.end()) {
 						try {
@@ -911,32 +879,20 @@ int TrafficHelper::sendToSUMO(double simTime, MsgHelper Msg_c) {
 
 					// --- 3. write the externally-computed motion in ----------------
 					if (ENABLE_EXT_DYN) {
-						// SimulationSetup.EnableExternalDynamics: the plant integrates
-						// the ego and SUMO is told the speed at (k), which is reflected
-						// at (k) immediately rather than at (k+1).
+						// the plant integrates the ego; speed at (k) applies at (k)
 						SUMO_TRACI_NAMESPACE::Vehicle::setPreviousSpeed(idStr, speed);
 					}
 					else {
-						// keepRoute is EgoSetup.KeepRoute for BOTH owners now (default
-						// 6, the value the CarMaker call site used to hardcode). It is
-						// really a choice of FAILURE MODE for a vehicle SUMO no longer
-						// drives: bit 1 (2/6) places it at the exact position and lets
-						// it leave the drivable network -- which is what allows
-						// off-road driving but also lets it quietly lose its lane, and
-						// with it the next-signal lookup an eco/CAV controller depends
-						// on. Bit 0 (1/5) pins it to its own route and makes SUMO raise
-						// when it cannot, i.e. fail loudly instead.
+						// EgoSetup.KeepRoute for BOTH owners now; CarMaker used to
+						// hardcode 6. See ConfigHelper.h for what the bits cost.
 						SUMO_TRACI_NAMESPACE::Vehicle::moveToXY(idStr, "", -1, positionX, positionY, heading,
 							Config_c->EgoSetup.KeepRoute);
 						externalEgoLastFedXY_[idStr] = std::make_pair(positionX, positionY);
 
-						// OWNER-SPECIFIC. setSpeed makes SUMO's getSpeed report the ego's
-						// ACTUAL speed -- the `.speed` field, never `speedDesired`, which
-						// under L2 is the command and would give SUMO a shadow speed. It
-						// matters because background car-following reads it. Not applied
-						// to the CarMaker ego only because nobody has run CarMaker since
-						// this merged, and its speed has always come out of the moveToXY
-						// displacement instead; the mechanism applies there equally.
+						// OWNER-SPECIFIC. Makes SUMO's getSpeed the ego's ACTUAL speed
+						// (never speedDesired, which under L2 is the command), because
+						// background car-following reads it. Not yet applied to the
+						// CarMaker ego -- untested there, not inapplicable (FIXS#305).
 						if (egoOwner == ExternalEgoOwner::VirEnv) {
 							SUMO_TRACI_NAMESPACE::Vehicle::setSpeed(idStr, (double)Msg_c.VehDataSend_um[0][iV].speed);
 						}
@@ -1598,7 +1554,7 @@ int TrafficHelper::recvFromSUMO(double* simTime, MsgHelper& Msg_c) {
 		// !!!temporary fix
 		// if doing vehicle simulator, e.g., CarMaker, only send limited number of vehicles
 		if (ENABLE_VEH_SIMULATOR) {
-			libsumo::TraCIPosition posEgo = SUMO_TRACI_NAMESPACE::Vehicle::getPosition(Config_c->CarMakerSetup.EgoId);
+			libsumo::TraCIPosition posEgo = SUMO_TRACI_NAMESPACE::Vehicle::getPosition(Config_c->EgoSetup.Id);
 
 			// sort distance, pair distance to ego, vehId
 			vector <pair <double, string>> dist2ego_v;
@@ -1766,7 +1722,7 @@ int TrafficHelper::shouldSendVehicle(std::string vehicleId, double simTime) {
 		shouldSendFlag = 1;
 	}
 	else if (ENABLE_VEH_SIMULATOR){
-		if (vehicleId.compare(Config_c->CarMakerSetup.EgoId) == 0) {
+		if (vehicleId.compare(Config_c->EgoSetup.Id) == 0) {
 			shouldSendFlag = 1;
 		}
 		else {

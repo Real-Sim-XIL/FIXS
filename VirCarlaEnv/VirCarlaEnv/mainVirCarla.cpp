@@ -130,7 +130,7 @@ int main(int argc, const char* argv[]) {
     // (a real external controller). No TM, no route needed on the Carla side.
     const bool   useWireActuation = (cs.EgoL0Driver == "Actuation" || cs.EgoL0Driver == "actuation");
     const double kMaxSteerRad = 0.7;   // must match the client's DriveCommand steer scaling
-    const std::string egoId = cs.EgoId;
+    const std::string egoId = config.EgoSetup.Id;
 
     // DOES THIS BRIDGE OWN THE EGO? This must be the SAME predicate TrafficLayer
     // uses for carlaOwnsId (TrafficHelper.cpp), because the two processes are
@@ -582,7 +582,7 @@ int main(int argc, const char* argv[]) {
                 if (backend.readEgoState(egoId, es)) {
             if (onFeed && core.ENABLE_REALSIM) {
                         VehFullData_t d;
-                        d.id = egoId; d.type = cs.EgoSumoType;
+                        d.id = egoId; d.type = config.EgoSetup.SumoType;
                         // L2: report the COMMANDED advisory as speedDesired (measured
                         // speed stays in `speed`) so the DataLogger captures both and
                         // the ego's tracking of the external target is verifiable.

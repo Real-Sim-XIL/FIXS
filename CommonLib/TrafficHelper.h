@@ -51,17 +51,10 @@ public:
 	int addEgoVehicle(double simTime);
 	int addEgoVehicleFromXY(double simTime, std::string vehicleId, std::string vehicleType, double positionX, double positionY);
 
-	// #305 Which layer owns this vehicle's motion, if the traffic simulator does
-	// not? CarMaker/XIL and the virtual environment (Carla) are the SAME situation
-	// from SUMO's side -- a vehicle it holds but does not drive, whose position is
-	// written in from outside every tick. They were two branches only because two
-	// config sections named the id. One test now answers it for both, and one body
-	// in sendToSUMO mirrors whatever it returns.
-	//
-	// The order inside matters: when the CarMakerSetup section is absent,
-	// CarMakerSetup.EgoId is inferred from the lone subscription and can equal the
-	// Carla ego id. VirEnv ownership is the more specific condition (it also needs
-	// EnableExternalControl and the id in InterestedIds), so it wins.
+	// Which layer owns this vehicle's motion, if the traffic simulator does not?
+	// CarMaker/XIL and the virtual environment are the same case, so one test
+	// answers it and one body in sendToSUMO mirrors either answer. VirEnv is
+	// checked first because it is the more specific claim (FIXS#305).
 	enum class ExternalEgoOwner { None, VehSimulator, VirEnv };
 	ExternalEgoOwner externalEgoOwnerOf(const std::string& vehId) const;
 	bool isWarmUpEgoInNetwork(double* simTime);

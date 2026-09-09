@@ -485,41 +485,7 @@ int ConfigHelper::getConfig(string configName) {
 		CarMakerSetup.TrafficRefreshRate = 0.001;
 		//printf("\nCarMaker Port not specified! Will use 7331 as default!\n");
 	}	
-	if (node["EgoId"]) {
-		CarMakerSetup.EgoId = parserString(node, "EgoId");
-	}
-	else {
-		// Derive the ego id from the lone subscription if there is exactly one;
-		// otherwise the config is ambiguous about which vehicle is the ego. Do
-		// NOT silently fabricate a magic default (the old "egoCm" / Carla "ego"
-		// defaults differed per backend and bred cross-backend id mismatches).
-		// Fail loudly so a missing/typo'd ego is caught at parse time.
-		if (SubscriptionVehicleList.vehicleSubscribeId_v.size() == 1) {
-			CarMakerSetup.EgoId = SubscriptionVehicleList.vehicleSubscribeId_v.begin()->first;
-		}
-		else if (CarMakerSetup.EnableCosimulation) {
-			// Only a CarMaker run actually needs an ego id. This block is parsed
-			// unconditionally, so without this gate a SUMO<->Carla config (no
-			// CarMakerSetup section at all) aborted here - and an 'all' vehicle
-			// subscription (#176) populates subscribeAllVehicle, not
-			// vehicleSubscribeId_v, so there is nothing to infer from. See #214.
-			printf("ERROR: CarMakerSetup.EgoId is not defined and cannot be inferred "
-			       "(expected an explicit 'EgoId' or exactly one ego VehicleSubscription, "
-			       "found %zu). Define the ego id in config.yaml.\n",
-			       SubscriptionVehicleList.vehicleSubscribeId_v.size());
-			exit(-1);
-		}
-		else {
-			CarMakerSetup.EgoId = "";   // no CarMaker in this run; nothing to infer
-		}
-	}
-	if (node["EgoType"]) {
-		CarMakerSetup.EgoType = parserString(node, "EgoType");
-	}
-	else {
-		CarMakerSetup.EgoType = "";
-		//printf("\nCarMaker IP not specified! Will use localhost 127.0.0.1 as default!\n");
-	}
+	// EgoId / EgoType moved to the EgoSetup section at the end of this file (#305).
 
 	if (node["SynchronizeTrafficSignal"]) {
 		CarMakerSetup.SynchronizeTrafficSignal = parserFlag(node, "SynchronizeTrafficSignal");
@@ -586,12 +552,7 @@ int ConfigHelper::getConfig(string configName) {
 	}
 	// keepRoute for the externally-driven ego's moveToXY. 6 is what that call
 	// site hardcoded, so an absent key changes nothing. See SumoSetup_t.
-	if (node["EgoKeepRoute"]) {
-		SumoSetup.EgoKeepRoute = parserInteger(node, "EgoKeepRoute");
-	}
-	else {
-		SumoSetup.EgoKeepRoute = 6;
-	}
+	// EgoKeepRoute is read in the EgoSetup section (#305).
 	if (node["EnableAutoLaunch"]) {
 		SumoSetup.EnableAutoLaunch = parserFlag(node, "EnableAutoLaunch");
 	}
@@ -646,16 +607,6 @@ int ConfigHelper::getConfig(string configName) {
 	CarlaSetup.EnablePythonBackend = node["EnablePythonBackend"]
 		? parserFlag(node, "EnablePythonBackend") : true;
 
-	// #174: parse ego dynamics ownership + control (mode A/B). EnableEgoSimulink
-	// is the back-compat alias; if EgoDynamicsOwner is unset it derives from it.
-	CarlaSetup.EnableEgoSimulink = node["EnableEgoSimulink"] ? parserFlag(node, "EnableEgoSimulink") : false;
-	if (node["EgoDynamicsOwner"]) {
-		CarlaSetup.EgoDynamicsOwner = parserString(node, "EgoDynamicsOwner");
-	}
-	else {
-		CarlaSetup.EgoDynamicsOwner = CarlaSetup.EnableEgoSimulink ? "Simulink" : "Carla";
-	}
-	CarlaSetup.EgoControl = node["EgoControl"] ? parserString(node, "EgoControl") : "None";
 	if (node["EnableExternalControl"]) {
 		CarlaSetup.EnableExternalControl = parserFlag(node, "EnableExternalControl");
 	}
@@ -693,12 +644,8 @@ int ConfigHelper::getConfig(string configName) {
 	// #305 the two-knob surface. Read AFTER the legacy keys so that when a scenario
 	// declares them they win, and a scenario that does not keeps today's behaviour
 	// byte for byte. See ConfigHelper.h for what the values mean.
-	CarlaSetup.EgoDynamics        = node["EgoDynamics"]        ? parserString(node, "EgoDynamics") : "";
-	CarlaSetup.EgoActuationSource = node["EgoActuationSource"] ? parserString(node, "EgoActuationSource") : "";
-	CarlaSetup.EgoController      = node["EgoController"]      ? parserString(node, "EgoController") : "";
-
-	CarlaSetup.EgoId        = node["EgoId"]        ? parserString(node, "EgoId") : "ego";
-	CarlaSetup.EgoSumoType  = node["EgoSumoType"]  ? parserString(node, "EgoSumoType") : "car";
+	// EgoId / EgoSumoType / EgoDynamics / EgoActuationSource / EgoController moved
+	// to the EgoSetup section at the end of this file (#305).
 	CarlaSetup.EgoBlueprint = node["EgoBlueprint"] ? parserString(node, "EgoBlueprint") : "vehicle.tesla.model3";
 	if (node["EgoSpawnPose"]) {
 		for (std::size_t i = 0; i < node["EgoSpawnPose"].size(); i++)
@@ -858,18 +805,16 @@ int ConfigHelper::getConfig(string configName) {
 	// ===========================================================================
 	// 			READ Ego Setup section (#305)
 	// ===========================================================================
-	// LAST on purpose. This section is the one description of the ego, and it has
-	// to be able to overrule the per-backend keys it replaces -- which are parsed
-	// above, and are still what the rest of the engine reads.
-	//
-	// So the shape is: resolve each value (EgoSetup wins, else the legacy key it
-	// replaces), write it BACK into every legacy field, then derive the internal
-	// representation ONCE. Two config keys can no longer describe two different
-	// egos, because after this block there is only one value in play.
+	// LAST on purpose: this is the one description of the ego, and it resolves the
+	// per-backend keys it replaced. Those keys are still read here as fallbacks;
+	// their struct fields are gone, because two fields holding the same value are
+	// still two things a later change can set apart.
 	{
-		node = config["EgoSetup"];
+		YAML::Node egoNode   = config["EgoSetup"];
+		YAML::Node cmNode    = config["CarMakerSetup"];
+		YAML::Node carlaNode = config["CarlaSetup"];
 
-		// dependency-free ASCII fold, so "carlaTM"/"CarlaTM"/"carlatm" read alike
+		// dependency-free ASCII fold: "carlaTM"/"CarlaTM"/"carlatm" read alike
 		auto lowerAscii = [](const std::string& in) {
 			std::string out = in;
 			for (size_t i = 0; i < out.size(); i++)
@@ -881,62 +826,71 @@ int ConfigHelper::getConfig(string configName) {
 				if (SimulationSetup.VehicleMessageField[i] == f) return true;
 			return false;
 		};
-		// A half-migrated scenario -- EgoSetup.Id saying one thing and
-		// CarlaSetup.EgoId another -- is exactly the disagreement this section
-		// exists to end, so it is reported rather than silently resolved.
-		auto warnConflict = [](const char* newKey, const char* oldKey,
-		                       const std::string& a, const std::string& b) {
-			if (!b.empty() && a != b)
-				printf("WARNING: EgoSetup.%s ('%s') overrides %s ('%s'). "
-				       "Delete the second one.\n", newKey, a.c_str(), oldKey, b.c_str());
+		auto legacy = [&](YAML::Node n, const char* key) -> std::string {
+			return (n && n[key]) ? parserString(n, key) : std::string();
+		};
+		auto resolve = [&](const char* newKey, const char* cmKey, const char* carlaKey,
+		                   std::string& out) -> bool {
+			const std::string fromCm    = legacy(cmNode, cmKey);
+			const std::string fromCarla = legacy(carlaNode, carlaKey);
+			if (egoNode && egoNode[newKey]) {
+				out = parserString(egoNode, newKey);
+				const char* olds[2] = { cmKey, carlaKey };
+				const std::string vals[2] = { fromCm, fromCarla };
+				const char* sects[2] = { "CarMakerSetup", "CarlaSetup" };
+				for (int i = 0; i < 2; i++)
+					if (!vals[i].empty() && vals[i] != out)
+						printf("WARNING: EgoSetup.%s ('%s') overrides %s.%s ('%s'). "
+						       "Delete the second one.\n", newKey, out.c_str(),
+						       sects[i], olds[i], vals[i].c_str());
+				return true;
+			}
+			if (!fromCarla.empty()) { out = fromCarla; return true; }
+			if (!fromCm.empty())    { out = fromCm;    return true; }
+			return false;
 		};
 
 		// ---- Id -------------------------------------------------------------
-		if (node && node["Id"]) {
-			EgoSetup.Id = parserString(node, "Id");
-			warnConflict("Id", "CarlaSetup.EgoId", EgoSetup.Id, CarlaSetup.EgoId);
-			warnConflict("Id", "CarMakerSetup.EgoId", EgoSetup.Id, CarMakerSetup.EgoId);
-			CarlaSetup.EgoId    = EgoSetup.Id;
-			CarMakerSetup.EgoId = EgoSetup.Id;
-		}
-		else {
-			// Not given: adopt whichever backend is actually running. Only the
-			// legacy fields are authoritative here, so nothing changes.
-			EgoSetup.Id = CarlaSetup.EnableCosimulation ? CarlaSetup.EgoId
-			                                            : CarMakerSetup.EgoId;
+		if (!resolve("Id", "EgoId", "EgoId", EgoSetup.Id)) {
+			// Nothing named it: infer from the lone vehicle subscription, which
+			// beats the old per-backend magic defaults (they named vehicles that
+			// did not exist -- FIXS#305).
+			if (SubscriptionVehicleList.vehicleSubscribeId_v.size() == 1) {
+				EgoSetup.Id = SubscriptionVehicleList.vehicleSubscribeId_v.begin()->first;
+			}
+			else if (CarlaSetup.EnableCosimulation) {
+				EgoSetup.Id = "ego";
+			}
+			else if (CarMakerSetup.EnableCosimulation) {
+				// Only a vehicle-simulator run needs an ego id; an 'all'
+				// subscription has nothing to infer from (#176, #214).
+				printf("ERROR: EgoSetup.Id is not defined and cannot be inferred "
+				       "(expected an explicit 'Id' under EgoSetup, or exactly one ego "
+				       "VehicleSubscription, found %zu). Define the ego id in config.yaml.\n",
+				       SubscriptionVehicleList.vehicleSubscribeId_v.size());
+				exit(-1);
+			}
+			else {
+				EgoSetup.Id = "";   // no ego-owning backend in this run
+			}
 		}
 
 		// ---- SumoType --------------------------------------------------------
-		if (node && node["SumoType"]) {
-			EgoSetup.SumoType = parserString(node, "SumoType");
-			CarlaSetup.EgoSumoType = EgoSetup.SumoType;
-			CarMakerSetup.EgoType  = EgoSetup.SumoType;
-		}
-		else {
-			EgoSetup.SumoType = CarlaSetup.EnableCosimulation ? CarlaSetup.EgoSumoType
-			                                                  : CarMakerSetup.EgoType;
-		}
+		if (!resolve("SumoType", "EgoType", "EgoSumoType", EgoSetup.SumoType))
+			EgoSetup.SumoType = CarlaSetup.EnableCosimulation ? "car" : "";
 
 		// ---- KeepRoute -------------------------------------------------------
-		// The CarMaker mirror hardcoded 6 and the Carla mirror read
-		// SumoSetup.EgoKeepRoute. Both now read this, and both still default to 6.
-		if (node && node["KeepRoute"]) {
-			EgoSetup.KeepRoute = parserInteger(node, "KeepRoute");
-			SumoSetup.EgoKeepRoute = EgoSetup.KeepRoute;
-		}
-		else {
-			EgoSetup.KeepRoute = SumoSetup.EgoKeepRoute;
-		}
+		// One value for both owners; CarMaker used to hardcode 6.
+		EgoSetup.KeepRoute =
+			(egoNode && egoNode["KeepRoute"]) ? parserInteger(egoNode, "KeepRoute")
+			: (config["SumoSetup"] && config["SumoSetup"]["EgoKeepRoute"])
+				? parserInteger(config["SumoSetup"], "EgoKeepRoute") : 6;
 
 		// ---- Controller ------------------------------------------------------
-		EgoSetup.Controller = (node && node["Controller"]) ? parserString(node, "Controller")
-		                                                   : CarlaSetup.EgoController;
-		CarlaSetup.EgoController = EgoSetup.Controller;
+		resolve("Controller", "EgoController", "EgoController", EgoSetup.Controller);
 
 		// ---- Dynamics --------------------------------------------------------
-		EgoSetup.Dynamics = (node && node["Dynamics"]) ? parserString(node, "Dynamics")
-		                                               : CarlaSetup.EgoDynamics;
-		CarlaSetup.EgoDynamics = EgoSetup.Dynamics;
+		resolve("Dynamics", "EgoDynamics", "EgoDynamics", EgoSetup.Dynamics);
 		if (!EgoSetup.Dynamics.empty()) {
 			const std::string dyn = lowerAscii(EgoSetup.Dynamics);
 			if (dyn == "traffic") {
@@ -944,15 +898,10 @@ int ConfigHelper::getConfig(string configName) {
 				CarlaSetup.EnableExternalControl = false;
 			}
 			else if (dyn == "virenv" || dyn == "carla") {
-				// 2, not 1, on purpose: "advisory-capable" costs nothing when no
-				// controller is wired in (the advisory read falls back to
-				// EgoTargetSpeed), and it keeps L0 and L2 ONE configuration --
-				// which, in every respect the bridge can see, they are.
+				// Mode 2, not 1: L0 and L2 are ONE configuration here. Both this
+				// and the ownership flag come from this single key so the two
+				// processes cannot disagree about who owns the ego (FIXS#305).
 				CarlaSetup.EgoMode = 2;
-				// This is also what TrafficLayer's external-ego ownership test
-				// reads. Deriving both from one key is the point: the two
-				// processes decide ego ownership together and have no arbiter,
-				// so they must not be able to disagree.
 				CarlaSetup.EnableExternalControl = true;
 			}
 			else if (dyn == "xil") {
@@ -971,14 +920,11 @@ int ConfigHelper::getConfig(string configName) {
 		}
 
 		// ---- ActuationSource -------------------------------------------------
-		EgoSetup.ActuationSource = (node && node["ActuationSource"])
-			? parserString(node, "ActuationSource") : CarlaSetup.EgoActuationSource;
-		CarlaSetup.EgoActuationSource = EgoSetup.ActuationSource;
+		resolve("ActuationSource", "EgoActuationSource", "EgoActuationSource",
+		        EgoSetup.ActuationSource);
 		if (!EgoSetup.ActuationSource.empty()) {
 			const std::string src = lowerAscii(EgoSetup.ActuationSource);
-			// "user" is ONE value; whether a Controller file is named decides
-			// whether that user code runs in-process or on the far side of the
-			// 0.1 s feed. The deprecated aliases name the two halves directly.
+			// "user" is ONE value; the Controller key decides where it runs.
 			const bool userInProcess = (src == "user" && !EgoSetup.Controller.empty())
 			                        || (src == "embedded");
 			const bool userOnTheWire = (src == "user" &&  EgoSetup.Controller.empty())
@@ -1000,10 +946,8 @@ int ConfigHelper::getConfig(string configName) {
 				exit(-1);
 			}
 
-			// A controller can only produce a field that is ON THE WIRE. Without
-			// this the omission is invisible: the client computes pedals, FIXS
-			// strips them, and the ego simply ignores its controller -- which
-			// reads as a controller bug for as long as you care to look for one.
+			// A controller can only produce a field that is on the wire; without
+			// this check the omission is silent (FIXS#305).
 			if (userOnTheWire) {
 				const char* need[] = { "acceleratorPedalDesired", "brakePedalDesired", "steerAngleDesired" };
 				for (int i = 0; i < 3; i++) {

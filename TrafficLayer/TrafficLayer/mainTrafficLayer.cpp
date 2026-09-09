@@ -1217,7 +1217,7 @@ int main(int argc, char* argv[]) {
 					for (auto it : pubSrc) {
 						if (ENABLE_VEH_SIMULATOR) {
 							// if id is ego, and is the first socket (XIL), send it 
-							if (it.second.id.compare(Config_c.CarMakerSetup.EgoId) == 0 && selfServerPortUserInput[iC] != Config_c.CarMakerSetup.CarMakerPort && Config_c.CarMakerSetup.EnableEgoSimulink) {
+							if (it.second.id.compare(Config_c.EgoSetup.Id) == 0 && selfServerPortUserInput[iC] != Config_c.CarMakerSetup.CarMakerPort && Config_c.CarMakerSetup.EnableEgoSimulink) {
 								MsgClient_c.VehDataSend_um[actualClientSock[iC]].push_back(it.second);
 							}
 							// if is the CarMakerPort or only have one socket (both vehicle simualtor and XIL), send it

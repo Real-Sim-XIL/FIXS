@@ -160,6 +160,7 @@ def main(argv=None):
     config = ConfigHelper()
     config.getConfig(args.configPath)
     cs = config.Carla_setup
+    egoCfg = config.Ego_setup          # the ego, once (FIXS#305)
     verbose = cs['EnableVerboseLog']
 
     feed, carlaStep, poseRefresh = resolveCadence(cs)
@@ -173,7 +174,7 @@ def main(argv=None):
     realtimePacing = cs['RealtimePacing']
     enableTlsSync = True
     egoMode = cs['EgoMode']
-    egoId = cs['EgoId']
+    egoId = egoCfg['Id']
 
     # L0 driver selection: native CARLA TM autopilot, the SDK-free EgoDriver
     # fallback module (map-agnostic), or an external wire actuation command.
@@ -183,7 +184,7 @@ def main(argv=None):
     # #325: a user controller in the driver slot. Same position in the loop as
     # EgoDriver, so it inherits the same rate -- CarlaTimeStep, not the feed.
     # That is the whole reason the hook exists; see IEgoController.
-    useEmbedded = egoL0 == 'embedded' or bool(cs.get('EgoController'))
+    useEmbedded = egoL0 == 'embedded' or bool(egoCfg['Controller'])
 
     # WHO CREATES THE EGO -- decided by whether EgoSpawnPose is configured, the
     # same predicate mainVirCarla.cpp:188 uses:
@@ -274,12 +275,12 @@ def main(argv=None):
     egoDriver = EgoDriver()
     embedded = None
     if useEmbedded:
-        spec = cs.get('EgoController')
+        spec = egoCfg['Controller']
         if not spec:
-            raise SystemExit("EgoActuationSource: embedded needs EgoController: "
+            raise SystemExit("EgoSetup.ActuationSource: user needs a Controller: "
                              "<path to a .py defining control(ego, dt)>")
         embedded = loadController(spec, appRoot=os.getcwd())
-        embedded.setup(cs, cs['EgoId'])
+        embedded.setup(cs, egoId)
         print("Ego controller: %s (called every CARLA step, not every feed)"
               % embedded.spec)
     lastAdvisory = cs['EgoTargetSpeed']
@@ -496,7 +497,7 @@ def main(argv=None):
                     if onFeed and core.ENABLE_REALSIM:
                         d = VehData()
                         d.id = egoId
-                        d.type = cs['EgoSumoType']
+                        d.type = egoCfg['SumoType']
                         # L2: report the COMMANDED advisory as speedDesired
                         # (measured speed stays in `speed`) so the DataLogger
                         # captures both and the ego's tracking of the external

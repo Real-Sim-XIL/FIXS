@@ -87,7 +87,7 @@ def _installed_carla_version(carla_mod):
 
 
 def import_carla_agents(explicit_root=None, warn_on_drift=True):
-    """-> (carla, BasicAgent, RoadOption).
+    """-> (carla, BasicAgent, RoadOption, BehaviorAgent).
 
     Uses the VENDORED agents/ next to this file. `carla` itself still comes from
     the installed package, because it is a compiled extension and cannot be
@@ -113,6 +113,7 @@ def import_carla_agents(explicit_root=None, warn_on_drift=True):
     try:
         import carla                                              # noqa: F401
         from agents.navigation.basic_agent import BasicAgent
+        from agents.navigation.behavior_agent import BehaviorAgent
         from agents.navigation.local_planner import RoadOption
     except ImportError as exc:
         raise SystemExit(
@@ -129,7 +130,7 @@ def import_carla_agents(explicit_root=None, warn_on_drift=True):
                   f"[adapter]   The control code and the simulator are different "
                   f"releases. Re-vendor (see VERSION.txt) or expect drift.",
                   file=sys.stderr)
-    return carla, BasicAgent, RoadOption
+    return carla, BasicAgent, RoadOption, BehaviorAgent
 
 
 # ---------------------------------------------------------------------------
@@ -141,16 +142,38 @@ class _Control:
     steer = 0.0
 
 
+class _LaneMarking:
+    def __init__(self, carla_mod):
+        self.lane_change = carla_mod.LaneChange.NONE
+
+
 class Waypoint:
-    """carla.Waypoint is opaque; the agent only ever reads .transform.
+    """A point on the ego's route, standing in for carla.Waypoint.
 
     Takes FIXS coordinates and stores CARLA ones, so callers never do the y-flip.
+
+    The lane-graph attributes below are inert on purpose: this adapter has the
+    ego's route as a polyline and no road network, so there is no neighbouring
+    lane to answer with. BehaviorAgent's lane-change and tailgating paths read
+    them and then do nothing, which is the correct outcome here -- see FIXS#305
+    for why the polyline is the wrong thing to answer road questions with, and
+    what replaces it.
     """
-    __slots__ = ("transform",)
+    __slots__ = ("transform", "is_junction", "lane_id", "road_id",
+                 "left_lane_marking", "right_lane_marking", "lane_width")
 
     def __init__(self, carla_mod, fixs_x, fixs_y):
         self.transform = carla_mod.Transform(
             carla_mod.Location(x=fixs_x, y=-fixs_y, z=0.0))
+        self.is_junction = False
+        self.lane_id = 0
+        self.road_id = 0
+        self.lane_width = 3.5
+        self.left_lane_marking = _LaneMarking(carla_mod)
+        self.right_lane_marking = _LaneMarking(carla_mod)
+
+    def get_left_lane(self):  return None
+    def get_right_lane(self): return None
 
 
 class _ActorList(list):
@@ -166,10 +189,8 @@ class _Map:
         self._carla = carla_mod
 
     def get_waypoint(self, location, *_a, **_k):
-        wp = Waypoint.__new__(Waypoint)
-        wp.transform = self._carla.Transform(
-            self._carla.Location(x=location.x, y=location.y, z=0.0))
-        return wp
+        # location is already CARLA-side; the constructor flips, so pre-flip.
+        return Waypoint(self._carla, location.x, -location.y)
 
     def get_topology(self):
         # BasicAgent.__init__ builds a GlobalRoutePlanner unconditionally
@@ -190,20 +211,64 @@ class _World:
         return _ActorList()
 
 
+class _OtherVehicle:
+    """A detected vehicle, from its FIXS record.
+
+    BasicAgent discards what the detector returns; BehaviorAgent measures it --
+    it subtracts half-extents to turn a centre distance into a gap, and reads
+    the speed to band on time-to-collision. Returning None is an AttributeError
+    on the first detection (FIXS#305).
+    """
+
+    def __init__(self, carla_mod, rec=None, speed_ms=0.0, length=4.5, width=1.8):
+        c = self._carla = carla_mod
+        if rec is not None:
+            speed_ms = float(getattr(rec, "speed", 0.0) or 0.0)
+            length = float(getattr(rec, "length", 0.0) or length)
+            width = float(getattr(rec, "width", 0.0) or width)
+            self.id = getattr(rec, "id", "") or ""
+            yaw = fixs_heading_to_carla_yaw(getattr(rec, "heading", 0.0) or 0.0)
+            x, y = getattr(rec, "positionX", 0.0), -getattr(rec, "positionY", 0.0)
+        else:
+            self.id, yaw, x, y = "", 0.0, 0.0, 0.0
+        self._tf = c.Transform(c.Location(x=x, y=y, z=0.0), c.Rotation(yaw=yaw))
+        r = math.radians(yaw)
+        self._vel = c.Vector3D(x=speed_ms * math.cos(r),
+                               y=speed_ms * math.sin(r), z=0.0)
+        self.bounding_box = _BoundingBox(c, length, width)
+
+    def get_transform(self): return self._tf
+    def get_location(self):  return self._tf.location
+    def get_velocity(self):  return self._vel
+
+
+class _BoundingBox:
+    def __init__(self, carla_mod, length, width):
+        self.extent = carla_mod.Vector3D(x=length / 2.0, y=width / 2.0, z=0.75)
+
+
 class EgoAdapter:
     """Stands in for `world.player`.
 
     Quacks like carla.Vehicle for exactly the calls LocalPlanner and
     VehiclePIDController make -- get_world, get_control, get_transform,
-    get_location, get_velocity. No actor id, no bounding box, no physics
-    control, because the code that wanted those is the two overridden detectors.
+    get_location, get_velocity, get_speed_limit, bounding_box.
+
+    get_speed_limit is the ROAD's limit, never the eco advisory:
+    collision_and_car_avoid_manager searches max(min_proximity_threshold,
+    speed_limit / 3) metres, so an advisory of 5-8 m/s collapses the search to
+    the 10 m floor and the first thing seen is already inside braking distance.
+    The advisory belongs in behavior.max_speed (FIXS#305).
     """
 
-    def __init__(self, carla_mod):
+    def __init__(self, carla_mod, length=4.5, width=1.8):
         self._carla = carla_mod
         self._world = _World(carla_mod)
         self._yaw = 0.0
         self._prev_xy = None
+        self._speed_limit_kmh = 0.0
+        self.id = ""
+        self.bounding_box = _BoundingBox(carla_mod, length, width)
         self.set_state(0.0, 0.0, 0.0, 0.0)
 
     # --- the carla.Vehicle interface ---
@@ -212,6 +277,8 @@ class EgoAdapter:
     def get_transform(self): return self._tf
     def get_location(self):  return self._tf.location
     def get_velocity(self):  return self._vel
+    def get_speed_limit(self):        return self._speed_limit_kmh
+    def set_speed_limit(self, ms):    self._speed_limit_kmh = max(0.0, float(ms)) * 3.6
 
     # --- the FIXS side ---
     def set_state(self, fixs_x, fixs_y, carla_yaw_deg, speed_ms):
@@ -333,7 +400,7 @@ def make_agent_class(BasicAgent):
             if e is not None and getattr(e, "hasPrecedingVehicle", 0):
                 gap = e.precedingVehicleDistance or 0.0
                 if 0.0 < gap < md:
-                    gaps.append(gap)
+                    gaps.append((gap, None))   # SUMO's leader: distance only
 
             swept = self._sweptObstacle(md)
             if swept is not None:
@@ -341,10 +408,22 @@ def make_agent_class(BasicAgent):
 
             if not gaps:
                 return (False, None, -1)
-            return (True, None, min(gaps))
+            gap, rec = min(gaps, key=lambda g: g[0])
+            return (True, self._standIn(rec, gap), gap)
+
+        def _standIn(self, rec, gap):
+            """A vehicle object for the following model to measure."""
+            carla_mod = self._vehicle._carla
+            if rec is not None:
+                return _OtherVehicle(carla_mod, rec)
+            # SUMO's leader gives a distance and no record: place a default body
+            # at that gap ahead, closing at the ego's own speed.
+            v = _OtherVehicle(carla_mod, None,
+                              speed_ms=float(getattr(self.ego_record, "speed", 0.0) or 0.0))
+            return v
 
         def _sweptObstacle(self, maxDistance):
-            """Nearest vehicle whose body intersects the corridor ahead, or None.
+            """(distance, record) for the nearest body in the corridor, or None.
 
             The corridor is the planned path buffered by the ego's half-width --
             the same shape stock builds by offsetting each waypoint left and
@@ -378,6 +457,7 @@ def make_agent_class(BasicAgent):
             corridor = LineString(path).buffer(halfWidth)
 
             nearest = None
+            nearestRec = None
             egoId = (ego.id or "").strip()
             for v in self.fixs_vehicles:
                 if (v.id or "").strip() == egoId:
@@ -387,8 +467,8 @@ def make_agent_class(BasicAgent):
                     continue
                 if corridor.intersects(_bodyPolygon(Polygon, v)):
                     if nearest is None or d < nearest:
-                        nearest = d
-            return nearest
+                        nearest, nearestRec = d, v
+            return None if nearest is None else (nearest, nearestRec)
 
         def _affected_by_traffic_light(self, lights_list=None, max_distance=None):
             e = self.ego_record
@@ -496,8 +576,18 @@ def read_route_points(config_path):
 
 
 def read_ego_id(config_path, default="ego"):
+    """EgoSetup.Id, or the EgoId key it replaced (FIXS#305).
+
+    Falling back to `default` when neither is present is how this silently
+    attached to the wrong vehicle: the default happened to match.
+    """
     import re
     text = open(config_path, encoding="utf-8", errors="replace").read()
+    ego = re.search(r"^EgoSetup:\s*$(.*?)(?=^\S)", text, re.M | re.S)
+    if ego:
+        m = re.search(r"^\s{1,4}Id:\s*[\"']?(\S+?)[\"']?\s*$", ego.group(1), re.M)
+        if m:
+            return m.group(1)
     m = re.search(r"^\s*EgoId:\s*[\"']?(\S+?)[\"']?\s*$", text, re.M)
     return m.group(1) if m else default
 

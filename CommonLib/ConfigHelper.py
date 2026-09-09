@@ -83,7 +83,6 @@ class ConfigHelper:
         # with CarlaSetup.EnablePythonBackend in ConfigHelper.cpp. Default true.
         self.Carla_setup["EnablePythonBackend"] = self.parserFlag(
             carla_node, "EnablePythonBackend", True)
-        self.Carla_setup["EnableEgoSimulink"] = self.parserFlag(carla_node, "EnableEgoSimulink", False)
         self.Carla_setup["CarlaServerIP"] = self.parserString(carla_node, "CarlaServerIP", "127.0.0.1")
         self.Carla_setup["CarlaServerPort"] = self.parserInteger(carla_node, "CarlaServerPort", 420)
         self.Carla_setup["CarlaClientIP"] = self.parserString(carla_node, "CarlaClientIP", "127.0.0.1")
@@ -116,12 +115,6 @@ class ConfigHelper:
         self.Carla_setup["SpectatorHeight"] = self.parserDouble(carla_node, "SpectatorHeight", 50.0)
         self.Carla_setup["SpectatorAlignYaw"] = self.parserFlag(carla_node, "SpectatorAlignYaw", False)
 
-        # #174 ego dynamics ownership + control (mode A/B). EnableEgoSimulink is the
-        # back-compat alias: EgoDynamicsOwner derives from it when unset.
-        self.Carla_setup["EgoDynamicsOwner"] = self.parserString(
-            carla_node, "EgoDynamicsOwner",
-            "Simulink" if self.Carla_setup["EnableEgoSimulink"] else "Carla")
-        self.Carla_setup["EgoControl"] = self.parserString(carla_node, "EgoControl", "None")
 
         # #174 ego driving-mode ladder:
         #   0 = SumoDriver (the traffic sim owns the ego; Carla renders it)
@@ -134,9 +127,6 @@ class ConfigHelper:
         # relative to where the run was launched. Read here rather than left to
         # the bridge's dict lookup, so a scenario that names one and a loader
         # that does not parse it cannot silently disagree.
-        self.Carla_setup["EgoController"] = self.parserString(carla_node, "EgoController", "")
-        self.Carla_setup["EgoId"] = self.parserString(carla_node, "EgoId", "ego")
-        self.Carla_setup["EgoSumoType"] = self.parserString(carla_node, "EgoSumoType", "car")
         self.Carla_setup["EgoBlueprint"] = self.parserString(carla_node, "EgoBlueprint", "vehicle.tesla.model3")
         self.Carla_setup["EgoSpawnPose"] = [float(v) for v in (carla_node.get("EgoSpawnPose") or [])]
         self.Carla_setup["EgoRoutePoints"] = [(float(pt[0]), float(pt[1]))
@@ -161,13 +151,18 @@ class ConfigHelper:
             v = self.parserString(ego_node, name, "")
             return v if v else fallback
 
-        self.Ego_setup["Id"] = _egoKey("Id", self.Carla_setup["EgoId"])
-        self.Ego_setup["SumoType"] = _egoKey("SumoType", self.Carla_setup["EgoSumoType"])
-        self.Ego_setup["Controller"] = _egoKey("Controller", self.Carla_setup["EgoController"])
-        self.Ego_setup["KeepRoute"] = self.parserInteger(ego_node, "KeepRoute", 6)
-        self.Carla_setup["EgoId"] = self.Ego_setup["Id"]
-        self.Carla_setup["EgoSumoType"] = self.Ego_setup["SumoType"]
-        self.Carla_setup["EgoController"] = self.Ego_setup["Controller"]
+        cm_node = config.get("CarMakerSetup", {}) or {}
+        self.Ego_setup["Id"] = _egoKey(
+            "Id", self.parserString(carla_node, "EgoId", "")
+                  or self.parserString(cm_node, "EgoId", "ego"))
+        self.Ego_setup["SumoType"] = _egoKey(
+            "SumoType", self.parserString(carla_node, "EgoSumoType", "")
+                        or self.parserString(cm_node, "EgoType", "car"))
+        self.Ego_setup["Controller"] = _egoKey(
+            "Controller", self.parserString(carla_node, "EgoController", ""))
+        self.Ego_setup["KeepRoute"] = self.parserInteger(
+            ego_node, "KeepRoute",
+            self.parserInteger(config.get("SumoSetup", {}) or {}, "EgoKeepRoute", 6))
 
         # Dynamics -- WHAT COMPUTES THE EGO'S MOTION. EgoMode and EgoL0Driver above
         # are what the bridge reads, and are DERIVED here exactly as the EgoSetup
