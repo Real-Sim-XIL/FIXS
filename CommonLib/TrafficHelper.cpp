@@ -613,7 +613,7 @@ int TrafficHelper::addEgoVehicle(double simTime) {
 
 			// if ego not exist yet, add it
 			if (!vehicleExist) {
-				string typeStr = Config_c->EgoSetup.SumoType;
+				string typeStr = Config_c->EgoSetup.Type;
 
 				// if is empty
 				if (typeStr.size() == 0) {
@@ -883,10 +883,10 @@ int TrafficHelper::sendToSUMO(double simTime, MsgHelper Msg_c) {
 						SUMO_TRACI_NAMESPACE::Vehicle::setPreviousSpeed(idStr, speed);
 					}
 					else {
-						// EgoSetup.KeepRoute for BOTH owners now; CarMaker used to
-						// hardcode 6. See ConfigHelper.h for what the bits cost.
+						// SumoSetup.EgoKeepRoute for BOTH owners now; CarMaker used
+						// to hardcode 6. See ConfigHelper.h for what the bits cost.
 						SUMO_TRACI_NAMESPACE::Vehicle::moveToXY(idStr, "", -1, positionX, positionY, heading,
-							Config_c->EgoSetup.KeepRoute);
+							Config_c->SumoSetup.EgoKeepRoute);
 						externalEgoLastFedXY_[idStr] = std::make_pair(positionX, positionY);
 
 						// OWNER-SPECIFIC. Makes SUMO's getSpeed the ego's ACTUAL speed

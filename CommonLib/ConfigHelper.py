@@ -155,14 +155,11 @@ class ConfigHelper:
         self.Ego_setup["Id"] = _egoKey(
             "Id", self.parserString(carla_node, "EgoId", "")
                   or self.parserString(cm_node, "EgoId", "ego"))
-        self.Ego_setup["SumoType"] = _egoKey(
-            "SumoType", self.parserString(carla_node, "EgoSumoType", "")
-                        or self.parserString(cm_node, "EgoType", "car"))
+        self.Ego_setup["Type"] = _egoKey(
+            "Type", self.parserString(carla_node, "EgoSumoType", "")
+                    or self.parserString(cm_node, "EgoType", "car"))
         self.Ego_setup["Controller"] = _egoKey(
             "Controller", self.parserString(carla_node, "EgoController", ""))
-        self.Ego_setup["KeepRoute"] = self.parserInteger(
-            ego_node, "KeepRoute",
-            self.parserInteger(config.get("SumoSetup", {}) or {}, "EgoKeepRoute", 6))
 
         # Dynamics -- WHAT COMPUTES THE EGO'S MOTION. EgoMode and EgoL0Driver above
         # are what the bridge reads, and are DERIVED here exactly as the EgoSetup

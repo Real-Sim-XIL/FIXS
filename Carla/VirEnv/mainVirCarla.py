@@ -497,7 +497,7 @@ def main(argv=None):
                     if onFeed and core.ENABLE_REALSIM:
                         d = VehData()
                         d.id = egoId
-                        d.type = egoCfg['SumoType']
+                        d.type = egoCfg['Type']
                         # L2: report the COMMANDED advisory as speedDesired
                         # (measured speed stays in `speed`) so the DataLogger
                         # captures both and the ego's tracking of the external

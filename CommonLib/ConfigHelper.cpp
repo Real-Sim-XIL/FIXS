@@ -552,7 +552,12 @@ int ConfigHelper::getConfig(string configName) {
 	}
 	// keepRoute for the externally-driven ego's moveToXY. 6 is what that call
 	// site hardcoded, so an absent key changes nothing. See SumoSetup_t.
-	// EgoKeepRoute is read in the EgoSetup section (#305).
+	if (node["EgoKeepRoute"]) {
+		SumoSetup.EgoKeepRoute = parserInteger(node, "EgoKeepRoute");
+	}
+	else {
+		SumoSetup.EgoKeepRoute = 6;
+	}
 	if (node["EnableAutoLaunch"]) {
 		SumoSetup.EnableAutoLaunch = parserFlag(node, "EnableAutoLaunch");
 	}
@@ -876,16 +881,10 @@ int ConfigHelper::getConfig(string configName) {
 		}
 
 		// ---- SumoType --------------------------------------------------------
-		if (!resolve("SumoType", "EgoType", "EgoSumoType", EgoSetup.SumoType))
-			EgoSetup.SumoType = CarlaSetup.EnableCosimulation ? "car" : "";
+		if (!resolve("Type", "EgoType", "EgoSumoType", EgoSetup.Type))
+			EgoSetup.Type = CarlaSetup.EnableCosimulation ? "car" : "";
 
 		// ---- KeepRoute -------------------------------------------------------
-		// One value for both owners; CarMaker used to hardcode 6.
-		EgoSetup.KeepRoute =
-			(egoNode && egoNode["KeepRoute"]) ? parserInteger(egoNode, "KeepRoute")
-			: (config["SumoSetup"] && config["SumoSetup"]["EgoKeepRoute"])
-				? parserInteger(config["SumoSetup"], "EgoKeepRoute") : 6;
-
 		// ---- Controller ------------------------------------------------------
 		resolve("Controller", "EgoController", "EgoController", EgoSetup.Controller);
 

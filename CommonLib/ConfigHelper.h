@@ -145,7 +145,9 @@ struct XilSetup_t {
 struct EgoSetup_t {
 
 	std::string Id;         // FIXS id of the ego
-	std::string SumoType;   // traffic-simulator vType, when the ego must be injected
+	std::string Type;       // vehicle type the TRAFFIC simulator knows the ego by,
+	                        // used when it has to be injected. Not the virtual
+	                        // environment's model -- that is CarlaSetup.EgoBlueprint.
 
 	// WHAT COMPUTES THE EGO'S MOTION.
 	//   traffic : the traffic simulator does
@@ -166,12 +168,6 @@ struct EgoSetup_t {
 	std::string ActuationSource;
 
 	std::string Controller;   // user control law (.py); Python backend only
-
-	// keepRoute bitmask for the mirror's moveToXY, for every owner. Really a
-	// choice of failure mode: bit 0 pins the ego to its own route and makes SUMO
-	// raise; bit 1 places it exactly and lets it leave the network silently.
-	// https://sumo.dlr.de/docs/TraCI/Change_Vehicle_State.html#move_to_xy
-	int KeepRoute;
 
 };
 
@@ -324,7 +320,12 @@ struct SumoSetup_t {
 	// 1000 preserves the previously hard-coded behaviour.
 	double PrecedingVehicleLookahead;
 
-	// EgoKeepRoute moved to EgoSetup.KeepRoute (#305).
+	// keepRoute bitmask for the moveToXY that mirrors an externally-driven ego,
+	// for EVERY owner now -- the CarMaker call site used to hardcode 6 (#305).
+	// A choice of failure mode: bit 0 pins the ego to its own route and makes
+	// SUMO raise; bit 1 places it exactly and lets it leave the network silently.
+	// https://sumo.dlr.de/docs/TraCI/Change_Vehicle_State.html#move_to_xy
+	int EgoKeepRoute;
 
 	// Auto-launch SUMO configuration
 	bool EnableAutoLaunch;

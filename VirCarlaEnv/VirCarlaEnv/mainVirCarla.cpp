@@ -582,7 +582,7 @@ int main(int argc, const char* argv[]) {
                 if (backend.readEgoState(egoId, es)) {
             if (onFeed && core.ENABLE_REALSIM) {
                         VehFullData_t d;
-                        d.id = egoId; d.type = config.EgoSetup.SumoType;
+                        d.id = egoId; d.type = config.EgoSetup.Type;
                         // L2: report the COMMANDED advisory as speedDesired (measured
                         // speed stays in `speed`) so the DataLogger captures both and
                         // the ego's tracking of the external target is verifiable.
