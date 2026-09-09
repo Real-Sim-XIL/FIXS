@@ -617,7 +617,7 @@ int main(int argc, char* argv[]) {
 
 	ENABLE_VEH_SIMULATOR = Config_c.CarMakerSetup.EnableCosimulation;
 	ENABLE_CARLA = Config_c.CarlaSetup.EnableCosimulation;
-	ENABLE_CARLA_EXTERNAL_CONTROL = Config_c.CarlaSetup.EnableExternalControl;
+	ENABLE_CARLA_EXTERNAL_CONTROL = (Config_c.EgoSetup.Dynamics == "virenv");
 	if (ENABLE_VERBOSE) {
 		//FILE* f = fopen(MasterLogName.c_str(), "a");
 		//fprintf(f, "\n============================================");

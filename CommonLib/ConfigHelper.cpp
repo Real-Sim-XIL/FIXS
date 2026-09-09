@@ -612,12 +612,6 @@ int ConfigHelper::getConfig(string configName) {
 	CarlaSetup.EnablePythonBackend = node["EnablePythonBackend"]
 		? parserFlag(node, "EnablePythonBackend") : true;
 
-	if (node["EnableExternalControl"]) {
-		CarlaSetup.EnableExternalControl = parserFlag(node, "EnableExternalControl");
-	}
-	else {
-		CarlaSetup.EnableExternalControl = false;
-	}
 	if (node["UseVehicleTypeAsBlueprint"]) {
 		CarlaSetup.UseVehicleTypeAsBlueprint = parserFlag(node, "UseVehicleTypeAsBlueprint");
 	}
@@ -641,14 +635,9 @@ int ConfigHelper::getConfig(string configName) {
 	// Real-time frame pacing (spread sub-ticks evenly). Default OFF (XIL-safe).
 	CarlaSetup.RealtimePacing = node["RealtimePacing"] ? parserFlag(node, "RealtimePacing") : false;
 
-	// #174 ego driving-mode ladder (0=SumoDriver 1=CarlaDriver/L0 2=Advisory/L2 3=Control/L4)
-	CarlaSetup.EgoMode      = node["EgoMode"]      ? parserInteger(node, "EgoMode") : 0;
-	// L0 driver: native Carla TM by default; "Pursuit" selects the fallback module.
-	CarlaSetup.EgoL0Driver  = node["EgoL0Driver"]  ? parserString(node, "EgoL0Driver") : "TM";
-
-	// #305 the two-knob surface. Read AFTER the legacy keys so that when a scenario
-	// declares them they win, and a scenario that does not keeps today's behaviour
-	// byte for byte. See ConfigHelper.h for what the values mean.
+	// EgoMode / EgoL0Driver / EnableExternalControl: read in the EgoSetup section
+	// at the end of this file, as the v0.9.0 spelling of Dynamics and
+	// ActuationSource (#305).
 	// EgoId / EgoSumoType / EgoDynamics / EgoActuationSource / EgoController moved
 	// to the EgoSetup section at the end of this file (#305).
 	CarlaSetup.EgoBlueprint = node["EgoBlueprint"] ? parserString(node, "EgoBlueprint") : "vehicle.tesla.model3";
@@ -724,28 +713,8 @@ int ConfigHelper::getConfig(string configName) {
 		CarlaSetup.TrafficRefreshRate = parserDouble(node, "TrafficRefreshRate");
 	}
 	else {
-		// 0 == every Carla tick. This key is the pose RE-APPLY cadence, and absent it
-		// should not impose one: mainVirCarla resolves 0 to CarlaTimeStep, and
-		// Carla/run_cosim.py already tells the user "the default is every CARLA tick".
-		//
-		// The old default was 0.1 -- a leftover from before #219, when this key WAS
-		// the feed period. It silently pinned traffic to 10 Hz no matter how fine the
-		// world step: with CarlaTimeStep 0.025 the bridge printed "interpolated 4x"
-		// and then re-applied poses once per feed, so the interpolator was evaluated
-		// once per interval and every vehicle held a stale pose for 3 of every 4
-		// ticks, jumping a whole feed of travel on the 4th -- 4x the ticks for the
-		// motion of a 1x run. Measured on mlk_eco_driving: the world advanced on 540
-		// of 2160 rendered frames (25%), the gap between advances exactly 4 frames,
-		// 539 times out of 539.
-		//
-		// Not only a visual matter. A physics-driven ego (EgoMode >= 1) runs its
-		// collision checks, sensors and traffic-manager decisions against neighbours
-		// that stand still for 75 ms and then teleport 0.29 m. CarMakerSetup's
-		// counterpart above defaults to 0.001 -- its own solver step -- which is the
-		// same intent expressed for a 1 kHz host.
-		//
-		// Set this key explicitly only to re-apply LESS often than the tick, as a
-		// cost knob on a heavy scene. See #261.
+		// 0 == every Carla tick. This is the pose RE-APPLY cadence, not the feed
+		// period; absent, mainVirCarla resolves it to CarlaTimeStep (#261).
 		CarlaSetup.TrafficRefreshRate = 0.0;
 	}
 
@@ -889,19 +858,23 @@ int ConfigHelper::getConfig(string configName) {
 		resolve("Controller", "EgoController", "EgoController", EgoSetup.Controller);
 
 		// ---- Dynamics --------------------------------------------------------
-		resolve("Dynamics", "EgoDynamics", "EgoDynamics", EgoSetup.Dynamics);
-		if (!EgoSetup.Dynamics.empty()) {
-			const std::string dyn = lowerAscii(EgoSetup.Dynamics);
-			if (dyn == "traffic") {
-				CarlaSetup.EgoMode = 0;
-				CarlaSetup.EnableExternalControl = false;
-			}
-			else if (dyn == "virenv" || dyn == "carla") {
-				// Mode 2, not 1: L0 and L2 are ONE configuration here. Both this
-				// and the ownership flag come from this single key so the two
-				// processes cannot disagree about who owns the ego (FIXS#305).
-				CarlaSetup.EgoMode = 2;
-				CarlaSetup.EnableExternalControl = true;
+		// v0.9.0 said this with EgoMode AND EnableExternalControl, two keys that
+		// could disagree -- which is the bug EgoSetup replaced.
+		if (egoNode && egoNode["Dynamics"]) {
+			EgoSetup.Dynamics = lowerAscii(parserString(egoNode, "Dynamics"));
+		}
+		else if (carlaNode && (carlaNode["EnableExternalControl"] || carlaNode["EgoMode"])) {
+			const bool ext = carlaNode["EnableExternalControl"]
+			                 && parserFlag(carlaNode, "EnableExternalControl");
+			const int mode = carlaNode["EgoMode"] ? parserInteger(carlaNode, "EgoMode") : 0;
+			EgoSetup.Dynamics = (ext && mode >= 1) ? "virenv" : "traffic";
+		}
+		{
+			const std::string dyn = EgoSetup.Dynamics;
+			if (dyn.empty() || dyn == "traffic" || dyn == "virenv") {
+				// nothing to derive: L0 and L2 are ONE configuration, and the
+				// level is topology (is an advisory client wired in upstream),
+				// not a config value.
 			}
 			else if (dyn == "xil") {
 				printf("ERROR: EgoSetup.Dynamics: 'xil' names the case where an external\n"
@@ -911,39 +884,33 @@ int ConfigHelper::getConfig(string configName) {
 				exit(-1);
 			}
 			else {
-				printf("ERROR: EgoSetup.Dynamics must be one of traffic|virenv|xil "
-				       "(carla = deprecated alias for virenv), got '%s'\n",
+				printf("ERROR: EgoSetup.Dynamics must be one of traffic|virenv|xil, got '%s'\n",
 				       EgoSetup.Dynamics.c_str());
 				exit(-1);
 			}
 		}
 
 		// ---- ActuationSource -------------------------------------------------
-		resolve("ActuationSource", "EgoActuationSource", "EgoActuationSource",
-		        EgoSetup.ActuationSource);
+		// v0.9.0's EgoL0Driver named the driver AND where it runs.
+		if (egoNode && egoNode["ActuationSource"]) {
+			EgoSetup.ActuationSource = lowerAscii(parserString(egoNode, "ActuationSource"));
+		}
+		else {
+			const std::string l0 = lowerAscii(legacy(carlaNode, "EgoL0Driver"));
+			if      (l0 == "tm")                            EgoSetup.ActuationSource = "simulator";
+			else if (l0 == "pursuit" || l0 == "fallback"
+			         || l0 == "egodriver")                  EgoSetup.ActuationSource = "fixs";
+			else if (l0 == "actuation" || l0 == "embedded") EgoSetup.ActuationSource = "user";
+		}
 		if (!EgoSetup.ActuationSource.empty()) {
-			const std::string src = lowerAscii(EgoSetup.ActuationSource);
+			const std::string src = EgoSetup.ActuationSource;
+			if (src != "simulator" && src != "fixs" && src != "user") {
+				printf("ERROR: EgoSetup.ActuationSource must be one of simulator|fixs|user, "
+				       "got '%s'\n", EgoSetup.ActuationSource.c_str());
+				exit(-1);
+			}
 			// "user" is ONE value; the Controller key decides where it runs.
-			const bool userInProcess = (src == "user" && !EgoSetup.Controller.empty())
-			                        || (src == "embedded");
-			const bool userOnTheWire = (src == "user" &&  EgoSetup.Controller.empty())
-			                        || (src == "external");
-
-			if      (src == "simulator" || src == "carlatm")  CarlaSetup.EgoL0Driver = "TM";
-			else if (src == "fixs"      || src == "internal") CarlaSetup.EgoL0Driver = "Pursuit";
-			else if (userInProcess)                           CarlaSetup.EgoL0Driver = "Embedded";
-			else if (userOnTheWire)                           CarlaSetup.EgoL0Driver = "Actuation";
-			else {
-				printf("ERROR: EgoSetup.ActuationSource must be one of simulator|fixs|user "
-				       "(carlaTM|internal|external|embedded = deprecated aliases), got '%s'\n",
-				       EgoSetup.ActuationSource.c_str());
-				exit(-1);
-			}
-
-			if (src == "embedded" && EgoSetup.Controller.empty()) {
-				printf("ERROR: EgoSetup.ActuationSource: 'embedded' needs a Controller file.\n");
-				exit(-1);
-			}
+			const bool userOnTheWire = (src == "user" && EgoSetup.Controller.empty());
 
 			// A controller can only produce a field that is on the wire; without
 			// this check the omission is silent (FIXS#305).

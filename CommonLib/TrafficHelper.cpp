@@ -1825,26 +1825,10 @@ void TrafficHelper::parserSumoSubscription(libsumo::TraCIResults VehDataSubscrib
 	CurVehData.hasPrecedingVehicle = 0;
 	CurVehData.precedingVehicleSpeed = -1.0;
 	if (NEED_PRECEDING_VEH) {
-		// The leader rides in this vehicle's own subscription (subscribeLeader,
-		// issued on entry), so the common path costs no round-trip at all.
-		//
-		// Unpacking needs care. libtraci has no VAR_LEADER case in its compound
-		// reader, so it falls through to a generic rule: a two-element compound of
-		// (string, double) is wrapped in a TraCIRoadPosition, edgeID = the string,
-		// pos = the double. For a leader that is exactly (id, gap) - a misleading
-		// type name carrying the right data. Verified against getLeader over 464371
-		// samples on SUMO 1.22: 0 id mismatches, max gap error 0.0. Identical on
-		// 1.23 and 1.27.1.
-		//
-		// That mapping is an implementation detail, not a documented contract
-		// (eclipse-sumo/sumo#15962 is about giving these values proper handling), so
-		// a cast that does not land falls back to asking rather than silently
-		// reporting "no leader" - which would quietly degrade car-following.
-		// NOT "does this vehicle have a leader" -- "did we get the subscribed
-		// value". A vehicle with no leader HAS the value: SUMO sends ("", -1),
-		// which lands in the branch below and costs no round-trip. Measured:
-		// VAR_LEADER present for 464371 of 464371 vehicles, id fallbacks 0/step
-		// while ~30 of 161 vehicles per step have no leader.
+		// The leader rides in this vehicle's own subscription (subscribeLeader), so
+		// the common path costs no round-trip. Unpacking needs care: libtraci has no
+		// VAR_LEADER case, so a (string, double) compound falls through to a generic
+		// rule and arrives as TraCIRoadPosition{edgeID = id, pos = gap}.
 		bool gotSubscribedLeader = false;
 		auto leaderIt = VehDataSubscribeTraciResults.find(libsumo::VAR_LEADER);
 		if (leaderIt != VehDataSubscribeTraciResults.end() && leaderIt->second) {
@@ -1911,45 +1895,15 @@ void TrafficHelper::parserSumoSubscription(libsumo::TraCIResults VehDataSubscrib
 		// seed once per vehicle (or when the route changed): one getNextTLS walk
 		// captures every TLS ahead of this vehicle for the rest of its route.
 		auto cacheIt = VehicleId2Tls_um.find(vehId);
-		// #86 diagnostic: did THIS tick re-seed the cache? Recorded by the opt-in
-		// route log below, because "the route changed" and "the next signal
-		// vanished" are the two halves of the question and only their coincidence
-		// distinguishes a replaced route from a passed last signal.
-		// An externally-driven ego reseeds EVERY tick. The cache is a #177 cost
-		// optimisation: seed the signals-ahead list once, then locate the nearest by
-		// arithmetic (cumDist - odo) instead of a TraCI call per vehicle per step.
-		// That arithmetic assumes the odometer advances monotonically with distance
-		// travelled along the route -- true for a driven vehicle, false for one
-		// placed by moveToXY.
-		//
-		// Measured on mlk_eco_driving, closed loop: the ego's odometer FREEZES for
-		// several ticks at a junction and then REGRESSES (-17.2 m at t=29175.6),
-		// while the Carla ego is on the road 0.02 m off the lane centreline moving
-		// at 4.5 m/s. cumDist is seeded once and never revisited, so one regression
-		// biases every later distance by that amount for good -- median error
-		// +21.7 m, worst -176 m -- and the list then names a signal the ego has
-		// already passed. That is the whole t.id != nt[0].id divergence: it starts
-		// on the exact tick the odometer freezes (1706 of 1710 mismatches follow it)
-		// and it is NOT caused by lane changes -- L0's ego changes lane five times,
-		// the head correctly follows (1->2), and it never diverges once in 5089
-		// ticks.
-		//
-		// Reseeding per tick makes cumDist = t.dist + odo evaluated NOW, so
-		// cumDist - odo collapses to t.dist -- SUMO's own live answer -- and the id,
-		// head and distance all come from one consistent reading. Costs one
-		// getNextTLS per tick for ONE vehicle; the #177 saving across the other ~180
-		// is untouched.
+		// An externally-driven ego reseeds EVERY tick. The cache is a #177 cost fix:
+		// seed the signals-ahead list once, then locate the nearest by arithmetic
+		// (cumDist - odo). That assumes the odometer only advances with distance
+		// travelled -- false for a moveToXY-placed vehicle, whose odometer freezes
+		// and regresses. Costs one getNextTLS per tick for ONE vehicle; the #177
+		// saving across the other ~180 is untouched. Measurements in FIXS#305.
 		const bool tlsCacheReseeded =
 			(cacheIt == VehicleId2Tls_um.end() || cacheIt->second.routeId != routeId
 			 || externallyDriven);
-		// #86 diagnostic scratch, filled by the head reconstruction below and read by
-		// the opt-in route log. 0 = no head resolved, 1 = fast path (topology table),
-		// 2 = slow path (raw getNextTLS).
-		int         egoHeadPath    = 0;
-		int         egoRawTlsCount = -1;
-		std::string egoRawTlsId;
-		int         egoRawTlsIndex = -1;
-		double      egoRawTlsDist  = -1.0;
 		if (tlsCacheReseeded) {
 			// The route changed, this is the first sight of the vehicle, or the
 			// vehicle is externally driven and reseeds every tick (see above).
@@ -1959,25 +1913,10 @@ void TrafficHelper::parserSumoSubscription(libsumo::TraCIResults VehDataSubscrib
 			if (cacheIt != VehicleId2Tls_um.end()) {
 				vector<string> newEdges = SUMO_TRACI_NAMESPACE::Vehicle::getRoute(vehId);
 
-				// GUARD: a route REPLACED BY THE MIRROR -- which is not the same
-				// event as a route change. Changing a vehicle's route is a normal
-				// thing for an application to do: route guidance is a CAV function,
-				// and a rerouting device is the scenario's own business. Raising on
-				// "the routeId is different" would mean the first controller that
-				// reroutes its ego teaches everyone to ignore this.
-				//
-				// What is not normal is SUMO replacing the route because moveToXY
-				// could not keep the fed pose on it, and that has a signature: per
-				// SUMO's semantics the replacement "consists of that edge only"
-				// (see SumoSetup.EgoKeepRoute). A single-edge route is what no
-				// deliberate reroute produces, and it also predicts the damage --
-				// one edge holds at most one signal, so a controller planning on
-				// this vehicle is about to lose its stop bar.
-				//
-				// Ordinary looping cannot reach here at all: <route repeat="n"> is
-				// expanded when the scenario loads, so a vehicle laps a 70-edge
-				// corridor 21 times under ONE routeId holding 1470 edges (measured
-				// on the MLK arterial scenario).
+				// GUARD: a route REPLACED BY THE MIRROR, which is not the same event
+				// as a route change -- rerouting is a normal CAV function. SUMO's
+				// replacement consists of that one edge only, which no deliberate
+				// reroute produces. See FIXS#305.
 				if (externallyDriven && newEdges.size() <= 1) {
 					fixs::RS_XIL_GUARD("ego_sumo_route_replaced", 1.0, 0.0);
 				}
@@ -2026,52 +1965,19 @@ void TrafficHelper::parserSumoSubscription(libsumo::TraCIResults VehDataSubscrib
 					}
 				}
 				if (headIdx < 0) {
-					// Fallback: the vehicle is mid-junction on an internal lane, or the
-					// signal is several edges ahead so its incoming lane is a best-lane
-					// projection rather than the current lane. Ask getNextTLS.
-					//
-					// MATCH ON THE SIGNAL ID. This used to take nt[0].tlIndex outright,
-					// which is only correct while getNextTLS's first entry happens to be
-					// the same signal the cached list resolved to -- and those two views
-					// diverge whenever the odometer bookkeeping this cache is indexed by
-					// drifts from SUMO's live position, which is exactly what an
-					// externally-driven (moveToXY) ego does. It then stapled one light's
-					// head onto a different light.
-					//
-					// Measured on mlk_eco_driving L2 before this fix: the fallback runs
-					// on 84.8% of ticks (not "rare"), getNextTLS's first entry was a
-					// DIFFERENT signal than the cached one on 2249 of 5511 of them, and
-					// the head was reported as e.g. 202605864 head 9 when the 9 belonged
-					// to 202587081 81 m away. Head indices that the application then
-					// rejected: 1669 of those 2249 (74.2%), against 0 of 3262 where the
-					// two agreed. A SUMO-driven ego (L0) never diverges, so it never saw
-					// this -- 0 rejections in 6502 ticks.
-					//
-					// No match means SUMO does not consider t.id upcoming any more; the
-					// seeded index is a better answer than another signal's head.
+					// Fallback: mid-junction on an internal lane, or the signal is
+					// several edges ahead. Ask getNextTLS -- and MATCH ON THE SIGNAL ID.
+					// Taking nt[0].tlIndex outright staples one light's head onto
+					// another whenever this cache's odometer bookkeeping has drifted
+					// from SUMO's live position, which is what a moveToXY ego does.
+					// No match means SUMO no longer considers t.id upcoming; the seeded
+					// index beats another signal's head. Measurements in FIXS#305.
 					vector<libsumo::TraCINextTLSData> nt =
 						SUMO_TRACI_NAMESPACE::Vehicle::getNextTLS(vehId);
 					headIdx = t.index;
 					for (const libsumo::TraCINextTLSData& cand : nt) {
 						if (cand.id == t.id) { headIdx = cand.tlIndex; break; }
 					}
-					// #86 diagnostic: which path answered, and what SUMO ITSELF said.
-					// The topology table is keyed on controlled-link fromLane, i.e.
-					// APPROACH lanes, so a vehicle on an internal junction lane can
-					// never match it and always lands here -- in L0 and L2 alike. So
-					// when the two runs disagree about the head mid-junction, the
-					// disagreement is in getNextTLS's own answer, not in our table.
-					// Record it raw so that is checkable rather than inferred.
-					egoHeadPath = 2;
-					egoRawTlsCount = (int)nt.size();
-					if (!nt.empty()) {
-						egoRawTlsId = nt[0].id;
-						egoRawTlsIndex = nt[0].tlIndex;
-						egoRawTlsDist = nt[0].dist;
-					}
-				}
-				else {
-					egoHeadPath = 1;
 				}
 				CurVehData.signalLightHeadId = headIdx;
 
@@ -2089,61 +1995,8 @@ void TrafficHelper::parserSumoSubscription(libsumo::TraCIResults VehDataSubscrib
 			}
 		}
 
-		// ---- #86 opt-in: what SUMO says this vehicle's ROUTE and NEXT SIGNAL are ----
-		// Set RS_EGO_ROUTE_LOG=<path> to record one row per exchange for the id in
-		// RS_EGO_ROUTE_ID (default "ego"). Off by default and costs nothing then.
-		//
-		// This exists because "the ego lost its next signal" has two candidate
-		// causes that look identical downstream -- the route was replaced (so there
-		// is nothing ahead to find) versus the cached list is fine but the odometer
-		// arithmetic no longer resolves -- and no existing output distinguishes
-		// them. routeId + edge count + route index + odometer + cache size, side by
-		// side with the resulting signalLightId, separates them on the first run:
-		// a replaced route shows nRouteEdges collapse and reseeded=1 on the same
-		// tick the signal goes empty; an odometer problem shows the cache still
-		// populated with the signal empty and reseeded=0.
-		if (const char* erl = std::getenv("RS_EGO_ROUTE_LOG")) {
-			const char* wantEnv = std::getenv("RS_EGO_ROUTE_ID");
-			const std::string wantId = wantEnv ? wantEnv : "ego";
-			if (vehId == wantId) {
-				static FILE* f = nullptr;
-				if (!f) {
-					f = fopen(erl, "w");
-					if (f) fprintf(f, "simTime,vehId,routeId,nRouteEdges,routeIndex,laneId,"
-					                  "odo,reseeded,nCachedTls,signalLightId,signalLightHeadId,"
-					                  "signalLightDistance,headPath,outEdge,curEdgeAtIdx,"
-					                  "rawTlsCount,rawTlsId,rawTlsIndex,rawTlsDist\n");
-				}
-				if (f) {
-					const std::vector<std::string>& re = VehicleId2EdgeList_um[vehId];
-					int ridxLog = -1;
-					std::string laneLog;
-					auto riIt = VehDataSubscribeTraciResults.find(libsumo::VAR_ROUTE_INDEX);
-					if (riIt != VehDataSubscribeTraciResults.end())
-						ridxLog = static_pointer_cast<libsumo::TraCIInt>(riIt->second)->value;
-					auto liIt = VehDataSubscribeTraciResults.find(libsumo::VAR_LANE_ID);
-					if (liIt != VehDataSubscribeTraciResults.end())
-						laneLog = static_pointer_cast<libsumo::TraCIString>(liIt->second)->value;
-					// the two inputs the fast path keys on, so a miss is attributable:
-					// outEdge is what it looked FOR, curEdgeAtIdx is whether the index
-					// even points at the edge the vehicle is on.
-					const std::string outEdgeLog =
-						(ridxLog >= 0 && ridxLog + 1 < (int)re.size()) ? re[ridxLog + 1] : "";
-					const std::string curEdgeAtIdxLog =
-						(ridxLog >= 0 && ridxLog < (int)re.size()) ? re[ridxLog] : "";
-					fprintf(f, "%.3f,%s,%s,%zu,%d,%s,%.3f,%d,%zu,%s,%d,%.3f,%d,%s,%s,%d,%s,%d,%.3f\n",
-					        SUMO_TRACI_NAMESPACE::Simulation::getTime(), vehId.c_str(),
-					        routeId.c_str(), re.size(), ridxLog, laneLog.c_str(), odo,
-					        tlsCacheReseeded ? 1 : 0,
-					        (cacheIt != VehicleId2Tls_um.end()) ? cacheIt->second.list.size() : (size_t)0,
-					        CurVehData.signalLightId.c_str(), CurVehData.signalLightHeadId,
-					        CurVehData.signalLightDistance,
-					        egoHeadPath, outEdgeLog.c_str(), curEdgeAtIdxLog.c_str(),
-					        egoRawTlsCount, egoRawTlsId.c_str(), egoRawTlsIndex, egoRawTlsDist);
-					fflush(f);
-				}
-			}
-		}
+		// (An opt-in RS_EGO_ROUTE_LOG probe lived here while the next-signal loss
+		// was being diagnosed. Removed once the cause was found -- see FIXS#305.)
 
 		// NOTE: "the ego had a next signal and now has none" is deliberately NOT
 		// guarded here. signalLightId only goes empty when no cached entry is still

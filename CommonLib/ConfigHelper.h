@@ -63,41 +63,15 @@ struct SimulationSetup_t {
 
 	int TrafficSimulatorPort;
 
-	// Warm-up (#86). While the warm-up is running the FIXS boundary is CLOSED:
-	// the traffic simulator advances, but no message reaches any client and no
-	// client is even accepted yet, so CarMaker/Carla start-up overlaps the
-	// warm-up instead of queueing ahead of it.
-	//
-	//   WarmUpUntilEgoEntry - end the warm-up when the first subscribed ego is in
-	//                         the network. The controller owns the entry time by
-	//                         inserting the vehicle; no time is duplicated here.
-	//   WarmUpTime          - end the warm-up at this ABSOLUTE simulation time.
-	//                         Runs as ONE batch step, so nothing is observed in
-	//                         between - which is why the two are exclusive.
-	//
-	// Both unset: no warm-up (sync from the first step). Both set: ego entry wins
-	// and getConfig warns, because a batch step cannot also watch for an ego.
+	// Warm-up (#86): advance the traffic simulator with the FIXS boundary CLOSED,
+	// so no client sees the fill-in traffic being built. See #86 for the cost
+	// model and why WarmUpServePorts is not optional.
 	bool WarmUpUntilEgoEntry;
 
 	double WarmUpTime;
 
-	// Client ports that must be SERVED THROUGH the warm-up instead of joining
-	// when it ends. Empty (the default) = the original behaviour: the boundary is
-	// closed to everyone.
-	//
-	// This has to be declared because it cannot be derived. Whether a client can
-	// skip the warm-up is a property of ITS OWN state, and nothing FIXS can see
-	// distinguishes the two kinds: a renderer and a signal-aware controller are
-	// both just a subscription with a port. A controller that learns the signal
-	// timing by watching it change (any actuated network -- SUMO's NEMA logics
-	// expose no phase countdown at all) arrives blind if the boundary was closed
-	// to it, and then plans the first approach on a nominal guess. A renderer or
-	// an XIL box loses nothing by joining late, which is the whole point of the
-	// warm-up. Only the scenario author knows which is which.
-	//
-	// A served client is accepted BEFORE the warm-up starts (so TrafficLayer
-	// blocks for it, as it did before warm-ups existed); everyone else is
-	// accepted when the warm-up ends.
+	// Client ports SERVED THROUGH the warm-up rather than joining when it ends --
+	// a virtual environment needs its map loaded before the ego arrives. #86.
 	std::vector<int> WarmUpServePorts;
 
 	std::string TrafficLayerIP;
@@ -138,10 +112,9 @@ struct XilSetup_t {
 // The ego, described once, for every backend (ORNL-Real-Sim/FIXS#305).
 //
 // CarMaker, an XIL plant and Carla are the same situation from the traffic
-// simulator's side: a vehicle SUMO holds but does not drive. This is the one
-// place that says which vehicle that is and who drives it. The per-backend keys
-// it replaces are still PARSED as fallbacks (see the EgoSetup section in
-// ConfigHelper.cpp) but no longer exist as fields.
+// simulator's side: a vehicle SUMO holds but does not drive. The per-backend
+// keys this replaces are still parsed as fallbacks; they no longer exist as
+// fields, because two fields holding one value can be set apart later.
 struct EgoSetup_t {
 
 	std::string Id;         // FIXS id of the ego
@@ -154,7 +127,7 @@ struct EgoSetup_t {
 	//   virenv  : the virtual environment's physics does (Carla PhysX today);
 	//             named for the role, not the backend
 	//   xil     : an external plant does
-	// "carla" is a deprecated alias for "virenv".
+	// Stored CANONICAL (lower case), so consumers compare strings.
 	std::string Dynamics;
 
 	// WHO PRODUCES THE PEDALS AND STEER.
@@ -164,7 +137,7 @@ struct EgoSetup_t {
 	//               per environment step; leave it unset and the pedals come off
 	//               the FIXS record at the 0.1 s feed, which is NOT equivalent
 	//               (see FIXS#305: the feed carries the advisory in `speed`).
-	// Deprecated aliases: carlaTM|internal|external|embedded.
+	// Stored CANONICAL.
 	std::string ActuationSource;
 
 	std::string Controller;   // user control law (.py); Python backend only
@@ -200,8 +173,6 @@ struct CarlaSetup_t {
 	// so a typo cannot silently select the wrong engine. Mirrored in
 	// ConfigHelper.py; parsed here for schema parity. Default true.
 	bool EnablePythonBackend;
-
-	bool EnableExternalControl;
 
 	bool UseVehicleTypeAsBlueprint;
 
@@ -241,51 +212,9 @@ struct CarlaSetup_t {
 
 	std::vector<std::string> InterestedIds;
 
-	// #174 ego driving-mode ladder (integer -- modular, GUI-mappable):
-	//   0 = SumoDriver  : SUMO drives the ego; Carla teleports it (default, today)
-	//   1 = CarlaDriver : L0 -- Carla TM drives the ego (physics ON + autopilot);
-	//                     its state is read back and injected into SUMO each feed
-	//   2 = Advisory    : L2 -- as 1, plus external desired-speed advisory
-	//                     through FIXS (TM keeps steering)          [reserved]
-	//   3 = Control     : L4 -- external throttle/brake/steer through FIXS
-	//                     (full PhysX dynamics, external steers)    [reserved]
-	int EgoMode;
-	// Which L0 driver actuates the ego when EgoMode >= 1:
-	//   "TM"      -> native Carla Traffic Manager autopilot (needs a routable map)
-	//   "Pursuit" -> the SDK-free EgoDriver module (map-agnostic fallback)
-	std::string EgoL0Driver;
-
-	// #305 THE CONFIG SURFACE. EgoMode and EgoL0Driver above stay as the internal
-	// representation; these two keys are what a scenario writes, and when present
-	// they derive EgoMode, EgoL0Driver AND EnableExternalControl together -- so the
-	// three can no longer contradict one another, which is exactly what they did.
-	//
-	// They answer two genuinely independent questions:
-	//
-	//   EgoDynamics -- WHAT COMPUTES THE EGO'S MOTION
-	//     "traffic" : the traffic simulator does; Carla teleports the ego in
-	//     "carla"   : Carla PhysX does
-	//     "xil"     : an XIL plant does; Carla teleports the ego in  [not implemented]
-	//
-	//   EgoActuationSource -- WHO PRODUCES THE PEDALS/STEER IT RUNS ON
-	//     "carlaTM"  : Carla's Traffic Manager, in-process
-	//     "internal" : the built-in EgoDriver module (pure pursuit on EgoRoutePoints)
-	//     "external" : taken off the ego's FIXS record, i.e. from a controller client
-	//     "embedded" : a user controller named by EgoController, called in-process
-	//                  once per Carla step (Python backend only; see FIXS#325)
-	//
-	// "external" and "embedded" are the same controller in two places, and the
-	// difference is not stylistic. An external client is served at the 0.1 s feed,
-	// so it sees the ego record as the traffic simulator left it -- including
-	// `speed`, which under L2 carries the eco advisory rather than the measured
-	// speed. A controller closing a speed loop there reads back its own setpoint,
-	// its error is ~0 by construction, and it never corrects. Embedded, the record
-	// is refreshed from the backend before every call, so the loop closes on the
-	// plant.
-	//
-	// L0 vs L2 is deliberately NOT a value here. Both are "carla" plus a driver;
-	// they differ only in whether a controller is wired in upstream on a lower
-	// port. That is topology, and the config has no business claiming to know it.
+	// EgoMode / EgoL0Driver / EnableExternalControl deleted: a second encoding of
+	// EgoSetup.Dynamics + ActuationSource + Controller. Their KEYS are still read
+	// (they shipped in v0.9.0); nothing derives a mode any more (#305).
 	std::string EgoBlueprint;          // Carla blueprint for the ego actor
 	std::vector<double> EgoSpawnPose;  // [x, y, z, headingDeg] FIXS frame (mode >= 1)
 	int TrafficManagerPort;            // Carla TM port (client-side instance)
