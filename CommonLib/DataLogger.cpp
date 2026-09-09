@@ -67,6 +67,12 @@ std::string DataLogger::cell(const std::string& f, const VehFullData_t& v) {
     if (f == "type")          return v.type;
     if (f == "vehicleClass")  return v.vehicleClass;
     if (f == "linkId")        return v.linkId;
+    // The actuation channel. Logging these is how a run separates "was the
+    // vehicle told to move?" from "did it move?" -- indistinguishable in a
+    // position/speed trace, and with completely different causes.
+    if (f == "acceleratorPedalDesired") return num(v.acceleratorPedalDesired);
+    if (f == "brakePedalDesired")       return num(v.brakePedalDesired);
+    if (f == "steerAngleDesired")       return num(v.steerAngleDesired);
     return "";                // unknown field -> empty cell (safe)
 }
 

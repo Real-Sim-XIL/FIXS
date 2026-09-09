@@ -43,6 +43,13 @@ public:
         double throttleBias  = 0.15;
         double throttleMax   = 0.75;
         double brakeGain     = 0.30;  // per (m/s) speed excess
+        // Integral gain on the speed deficit (throttle per m/s per second). The
+        // proportional terms above are a TRACKING law and cannot start a stopped
+        // car when the requested speed is small; this winds the throttle up until
+        // the vehicle responds, wherever its torque knee is, and unwinds again
+        // once it tracks. 3.0 takes a persistent 0.15 m/s deficit from 0.19 to
+        // full throttle in about a second.
+        double throttleIntegral = 3.0;
         std::size_t searchWindow = 40;// nearest-point local window (points)
     };
 
@@ -50,12 +57,13 @@ public:
     // closed=true wraps the path endlessly (loop scenarios).
     void setRoute(const std::vector<std::pair<double, double>>& pts, bool closed);
     bool hasRoute() const { return route_.size() >= 2; }
-    void reset() { cursor_ = 0; }
+    void reset() { cursor_ = 0; integral_ = 0.0; }
 
     // One control step. (x, y) and headingRad are the ego pose in the route
-    // frame; speed & targetSpeed in m/s. Advances the internal path cursor.
+    // frame; speed & targetSpeed in m/s; dtSec is the interval this command will
+    // be held for (the integral term's step). Advances the internal path cursor.
     DriveCommand computeControl(double x, double y, double headingRad,
-                                double speed, double targetSpeed);
+                                double speed, double targetSpeed, double dtSec = 0.05);
 
     const Params& params() const { return p_; }
     Params&       params()       { return p_; }
@@ -65,6 +73,7 @@ private:
     std::vector<std::pair<double, double>> route_;   // densified planar path
     bool        closed_ = true;
     std::size_t cursor_ = 0;                          // current nearest index
+    double      integral_ = 0.0;                      // wound-up speed deficit (m/s * s)
     Params      p_;
 };
 

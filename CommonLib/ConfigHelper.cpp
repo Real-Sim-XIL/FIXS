@@ -485,41 +485,7 @@ int ConfigHelper::getConfig(string configName) {
 		CarMakerSetup.TrafficRefreshRate = 0.001;
 		//printf("\nCarMaker Port not specified! Will use 7331 as default!\n");
 	}	
-	if (node["EgoId"]) {
-		CarMakerSetup.EgoId = parserString(node, "EgoId");
-	}
-	else {
-		// Derive the ego id from the lone subscription if there is exactly one;
-		// otherwise the config is ambiguous about which vehicle is the ego. Do
-		// NOT silently fabricate a magic default (the old "egoCm" / Carla "ego"
-		// defaults differed per backend and bred cross-backend id mismatches).
-		// Fail loudly so a missing/typo'd ego is caught at parse time.
-		if (SubscriptionVehicleList.vehicleSubscribeId_v.size() == 1) {
-			CarMakerSetup.EgoId = SubscriptionVehicleList.vehicleSubscribeId_v.begin()->first;
-		}
-		else if (CarMakerSetup.EnableCosimulation) {
-			// Only a CarMaker run actually needs an ego id. This block is parsed
-			// unconditionally, so without this gate a SUMO<->Carla config (no
-			// CarMakerSetup section at all) aborted here - and an 'all' vehicle
-			// subscription (#176) populates subscribeAllVehicle, not
-			// vehicleSubscribeId_v, so there is nothing to infer from. See #214.
-			printf("ERROR: CarMakerSetup.EgoId is not defined and cannot be inferred "
-			       "(expected an explicit 'EgoId' or exactly one ego VehicleSubscription, "
-			       "found %zu). Define the ego id in config.yaml.\n",
-			       SubscriptionVehicleList.vehicleSubscribeId_v.size());
-			exit(-1);
-		}
-		else {
-			CarMakerSetup.EgoId = "";   // no CarMaker in this run; nothing to infer
-		}
-	}
-	if (node["EgoType"]) {
-		CarMakerSetup.EgoType = parserString(node, "EgoType");
-	}
-	else {
-		CarMakerSetup.EgoType = "";
-		//printf("\nCarMaker IP not specified! Will use localhost 127.0.0.1 as default!\n");
-	}
+	// EgoId / EgoType moved to the EgoSetup section at the end of this file (#305).
 
 	if (node["SynchronizeTrafficSignal"]) {
 		CarMakerSetup.SynchronizeTrafficSignal = parserFlag(node, "SynchronizeTrafficSignal");
@@ -584,6 +550,14 @@ int ConfigHelper::getConfig(string configName) {
 	else {
 		SumoSetup.PrecedingVehicleLookahead = 1000.0;
 	}
+	// keepRoute for the externally-driven ego's moveToXY. 6 is what that call
+	// site hardcoded, so an absent key changes nothing. See SumoSetup_t.
+	if (node["EgoKeepRoute"]) {
+		SumoSetup.EgoKeepRoute = parserInteger(node, "EgoKeepRoute");
+	}
+	else {
+		SumoSetup.EgoKeepRoute = 6;
+	}
 	if (node["EnableAutoLaunch"]) {
 		SumoSetup.EnableAutoLaunch = parserFlag(node, "EnableAutoLaunch");
 	}
@@ -638,22 +612,6 @@ int ConfigHelper::getConfig(string configName) {
 	CarlaSetup.EnablePythonBackend = node["EnablePythonBackend"]
 		? parserFlag(node, "EnablePythonBackend") : true;
 
-	// #174: parse ego dynamics ownership + control (mode A/B). EnableEgoSimulink
-	// is the back-compat alias; if EgoDynamicsOwner is unset it derives from it.
-	CarlaSetup.EnableEgoSimulink = node["EnableEgoSimulink"] ? parserFlag(node, "EnableEgoSimulink") : false;
-	if (node["EgoDynamicsOwner"]) {
-		CarlaSetup.EgoDynamicsOwner = parserString(node, "EgoDynamicsOwner");
-	}
-	else {
-		CarlaSetup.EgoDynamicsOwner = CarlaSetup.EnableEgoSimulink ? "Simulink" : "Carla";
-	}
-	CarlaSetup.EgoControl = node["EgoControl"] ? parserString(node, "EgoControl") : "None";
-	if (node["EnableExternalControl"]) {
-		CarlaSetup.EnableExternalControl = parserFlag(node, "EnableExternalControl");
-	}
-	else {
-		CarlaSetup.EnableExternalControl = false;
-	}
 	if (node["UseVehicleTypeAsBlueprint"]) {
 		CarlaSetup.UseVehicleTypeAsBlueprint = parserFlag(node, "UseVehicleTypeAsBlueprint");
 	}
@@ -677,12 +635,11 @@ int ConfigHelper::getConfig(string configName) {
 	// Real-time frame pacing (spread sub-ticks evenly). Default OFF (XIL-safe).
 	CarlaSetup.RealtimePacing = node["RealtimePacing"] ? parserFlag(node, "RealtimePacing") : false;
 
-	// #174 ego driving-mode ladder (0=SumoDriver 1=CarlaDriver/L0 2=Advisory/L2 3=Control/L4)
-	CarlaSetup.EgoMode      = node["EgoMode"]      ? parserInteger(node, "EgoMode") : 0;
-	// L0 driver: native Carla TM by default; "Pursuit" selects the fallback module.
-	CarlaSetup.EgoL0Driver  = node["EgoL0Driver"]  ? parserString(node, "EgoL0Driver") : "TM";
-	CarlaSetup.EgoId        = node["EgoId"]        ? parserString(node, "EgoId") : "ego";
-	CarlaSetup.EgoSumoType  = node["EgoSumoType"]  ? parserString(node, "EgoSumoType") : "car";
+	// EgoMode / EgoL0Driver / EnableExternalControl: read in the EgoSetup section
+	// at the end of this file, as the v0.9.0 spelling of Dynamics and
+	// ActuationSource (#305).
+	// EgoId / EgoSumoType / EgoDynamics / EgoActuationSource / EgoController moved
+	// to the EgoSetup section at the end of this file (#305).
 	CarlaSetup.EgoBlueprint = node["EgoBlueprint"] ? parserString(node, "EgoBlueprint") : "vehicle.tesla.model3";
 	if (node["EgoSpawnPose"]) {
 		for (std::size_t i = 0; i < node["EgoSpawnPose"].size(); i++)
@@ -756,28 +713,8 @@ int ConfigHelper::getConfig(string configName) {
 		CarlaSetup.TrafficRefreshRate = parserDouble(node, "TrafficRefreshRate");
 	}
 	else {
-		// 0 == every Carla tick. This key is the pose RE-APPLY cadence, and absent it
-		// should not impose one: mainVirCarla resolves 0 to CarlaTimeStep, and
-		// Carla/run_cosim.py already tells the user "the default is every CARLA tick".
-		//
-		// The old default was 0.1 -- a leftover from before #219, when this key WAS
-		// the feed period. It silently pinned traffic to 10 Hz no matter how fine the
-		// world step: with CarlaTimeStep 0.025 the bridge printed "interpolated 4x"
-		// and then re-applied poses once per feed, so the interpolator was evaluated
-		// once per interval and every vehicle held a stale pose for 3 of every 4
-		// ticks, jumping a whole feed of travel on the 4th -- 4x the ticks for the
-		// motion of a 1x run. Measured on mlk_eco_driving: the world advanced on 540
-		// of 2160 rendered frames (25%), the gap between advances exactly 4 frames,
-		// 539 times out of 539.
-		//
-		// Not only a visual matter. A physics-driven ego (EgoMode >= 1) runs its
-		// collision checks, sensors and traffic-manager decisions against neighbours
-		// that stand still for 75 ms and then teleport 0.29 m. CarMakerSetup's
-		// counterpart above defaults to 0.001 -- its own solver step -- which is the
-		// same intent expressed for a 1 kHz host.
-		//
-		// Set this key explicitly only to re-apply LESS often than the tick, as a
-		// cost knob on a heavy scene. See #261.
+		// 0 == every Carla tick. This is the pose RE-APPLY cadence, not the feed
+		// period; absent, mainVirCarla resolves it to CarlaTimeStep (#261).
 		CarlaSetup.TrafficRefreshRate = 0.0;
 	}
 
@@ -837,6 +774,155 @@ int ConfigHelper::getConfig(string configName) {
 		if (node["DataLogPath"])   DataLogSetup.DataLogPath   = parserString(node, "DataLogPath");
 		if (node["DataLogWho"])    parserStringVector(node, "DataLogWho", DataLogSetup.DataLogWho);
 		if (node["DataLogFields"]) parserStringVector(node, "DataLogFields", DataLogSetup.DataLogFields);
+	}
+
+	// ===========================================================================
+	// 			READ Ego Setup section (#305)
+	// ===========================================================================
+	// LAST on purpose: it resolves the per-backend keys it replaced, which are
+	// still read here as fallbacks. See #305.
+	{
+		YAML::Node egoNode   = config["EgoSetup"];
+		YAML::Node cmNode    = config["CarMakerSetup"];
+		YAML::Node carlaNode = config["CarlaSetup"];
+
+		// dependency-free ASCII fold: "carlaTM"/"CarlaTM"/"carlatm" read alike
+		auto lowerAscii = [](const std::string& in) {
+			std::string out = in;
+			for (size_t i = 0; i < out.size(); i++)
+				if (out[i] >= 'A' && out[i] <= 'Z') out[i] = (char)(out[i] - 'A' + 'a');
+			return out;
+		};
+		auto hasMsgField = [&](const char* f) {
+			for (size_t i = 0; i < SimulationSetup.VehicleMessageField.size(); i++)
+				if (SimulationSetup.VehicleMessageField[i] == f) return true;
+			return false;
+		};
+		auto legacy = [&](YAML::Node n, const char* key) -> std::string {
+			return (n && n[key]) ? parserString(n, key) : std::string();
+		};
+		auto resolve = [&](const char* newKey, const char* cmKey, const char* carlaKey,
+		                   std::string& out) -> bool {
+			const std::string fromCm    = legacy(cmNode, cmKey);
+			const std::string fromCarla = legacy(carlaNode, carlaKey);
+			if (egoNode && egoNode[newKey]) {
+				out = parserString(egoNode, newKey);
+				const char* olds[2] = { cmKey, carlaKey };
+				const std::string vals[2] = { fromCm, fromCarla };
+				const char* sects[2] = { "CarMakerSetup", "CarlaSetup" };
+				for (int i = 0; i < 2; i++)
+					if (!vals[i].empty() && vals[i] != out)
+						printf("WARNING: EgoSetup.%s ('%s') overrides %s.%s ('%s'). "
+						       "Delete the second one.\n", newKey, out.c_str(),
+						       sects[i], olds[i], vals[i].c_str());
+				return true;
+			}
+			if (!fromCarla.empty()) { out = fromCarla; return true; }
+			if (!fromCm.empty())    { out = fromCm;    return true; }
+			return false;
+		};
+
+		// ---- Id -------------------------------------------------------------
+		if (!resolve("Id", "EgoId", "EgoId", EgoSetup.Id)) {
+			// Nothing named it: infer from the lone vehicle subscription, which
+			// beats the old per-backend defaults (#305).
+			if (SubscriptionVehicleList.vehicleSubscribeId_v.size() == 1) {
+				EgoSetup.Id = SubscriptionVehicleList.vehicleSubscribeId_v.begin()->first;
+			}
+			else if (CarlaSetup.EnableCosimulation) {
+				EgoSetup.Id = "ego";
+			}
+			else if (CarMakerSetup.EnableCosimulation) {
+				// Only a vehicle-simulator run needs an ego id; an 'all'
+				// subscription has nothing to infer from (#176, #214).
+				printf("ERROR: EgoSetup.Id is not defined and cannot be inferred "
+				       "(expected an explicit 'Id' under EgoSetup, or exactly one ego "
+				       "VehicleSubscription, found %zu). Define the ego id in config.yaml.\n",
+				       SubscriptionVehicleList.vehicleSubscribeId_v.size());
+				exit(-1);
+			}
+			else {
+				EgoSetup.Id = "";   // no ego-owning backend in this run
+			}
+		}
+
+		// ---- SumoType --------------------------------------------------------
+		if (!resolve("Type", "EgoType", "EgoSumoType", EgoSetup.Type))
+			EgoSetup.Type = CarlaSetup.EnableCosimulation ? "car" : "";
+
+		// ---- KeepRoute -------------------------------------------------------
+		// ---- Controller ------------------------------------------------------
+		resolve("Controller", "EgoController", "EgoController", EgoSetup.Controller);
+
+		// ---- Dynamics --------------------------------------------------------
+		// v0.9.0 said this with EgoMode AND EnableExternalControl, two keys that
+		// could disagree -- which is the bug EgoSetup replaced.
+		if (egoNode && egoNode["Dynamics"]) {
+			EgoSetup.Dynamics = lowerAscii(parserString(egoNode, "Dynamics"));
+		}
+		else if (carlaNode && (carlaNode["EnableExternalControl"] || carlaNode["EgoMode"])) {
+			const bool ext = carlaNode["EnableExternalControl"]
+			                 && parserFlag(carlaNode, "EnableExternalControl");
+			const int mode = carlaNode["EgoMode"] ? parserInteger(carlaNode, "EgoMode") : 0;
+			EgoSetup.Dynamics = (ext && mode >= 1) ? "virenv" : "traffic";
+		}
+		{
+			const std::string dyn = EgoSetup.Dynamics;
+			if (dyn.empty() || dyn == "traffic" || dyn == "virenv") {
+				// nothing to derive: L0 and L2 are ONE configuration, and the
+				// level is topology (is an advisory client wired in upstream),
+				// not a config value.
+			}
+			else if (dyn == "xil") {
+				printf("ERROR: EgoSetup.Dynamics: 'xil' names the case where an external\n"
+				       "       plant owns the ego. That case exists and works, but it is\n"
+				       "       switched on by CarMakerSetup.EnableCosimulation today, not\n"
+				       "       by this key. Leave Dynamics unset for a CarMaker/XIL run.\n");
+				exit(-1);
+			}
+			else {
+				printf("ERROR: EgoSetup.Dynamics must be one of traffic|virenv|xil, got '%s'\n",
+				       EgoSetup.Dynamics.c_str());
+				exit(-1);
+			}
+		}
+
+		// ---- ActuationSource -------------------------------------------------
+		// v0.9.0's EgoL0Driver named the driver AND where it runs.
+		if (egoNode && egoNode["ActuationSource"]) {
+			EgoSetup.ActuationSource = lowerAscii(parserString(egoNode, "ActuationSource"));
+		}
+		else {
+			const std::string l0 = lowerAscii(legacy(carlaNode, "EgoL0Driver"));
+			if      (l0 == "tm")                            EgoSetup.ActuationSource = "simulator";
+			else if (l0 == "pursuit" || l0 == "fallback"
+			         || l0 == "egodriver")                  EgoSetup.ActuationSource = "fixs";
+			else if (l0 == "actuation" || l0 == "embedded") EgoSetup.ActuationSource = "user";
+		}
+		if (!EgoSetup.ActuationSource.empty()) {
+			const std::string src = EgoSetup.ActuationSource;
+			if (src != "simulator" && src != "fixs" && src != "user") {
+				printf("ERROR: EgoSetup.ActuationSource must be one of simulator|fixs|user, "
+				       "got '%s'\n", EgoSetup.ActuationSource.c_str());
+				exit(-1);
+			}
+			// "user" is ONE value; the Controller key decides where it runs.
+			const bool userOnTheWire = (src == "user" && EgoSetup.Controller.empty());
+
+			// A controller can only produce a field that is on the wire; without
+			// this check the omission is silent (FIXS#305).
+			if (userOnTheWire) {
+				const char* need[] = { "acceleratorPedalDesired", "brakePedalDesired", "steerAngleDesired" };
+				for (int i = 0; i < 3; i++) {
+					if (!hasMsgField(need[i])) {
+						printf("ERROR: EgoSetup.ActuationSource: user control over the feed needs\n"
+						       "       '%s' in VehicleMessageField; without it the controller's\n"
+						       "       command is stripped before it reaches the ego.\n", need[i]);
+						exit(-1);
+					}
+				}
+			}
+		}
 	}
 
 	return 0;

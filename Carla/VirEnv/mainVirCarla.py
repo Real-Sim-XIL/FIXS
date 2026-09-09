@@ -125,7 +125,7 @@ def applySyncSettings(world, carlaStep, verbose):
     """Force BOTH synchronous mode and the tick delta.
 
     The world-load script may have set sync with a different delta, and a physics
-    ego (EgoMode >= 1) steps PhysX and the traffic manager by
+    ego (virenv dynamics) steps PhysX and the traffic manager by
     ``fixed_delta_seconds`` -- it must equal the bridge's carlaStep, or the ego's
     dynamics run on a different clock from the traffic it is driving through.
     """
@@ -160,33 +160,39 @@ def main(argv=None):
     config = ConfigHelper()
     config.getConfig(args.configPath)
     cs = config.Carla_setup
+    egoCfg = config.Ego_setup          # the ego, once (FIXS#305)
     verbose = cs['EnableVerboseLog']
 
     feed, carlaStep, poseRefresh = resolveCadence(cs)
 
     simEndTime = config.simulation_setup['SimulationEndTime']
-    enableExternalControl = cs['EnableExternalControl']
     centeredViewId = cs['CenteredViewId']
     spectatorFollow = cs['EnableSpectatorFollow'] and bool(centeredViewId)
     spectatorHeight = cs['SpectatorHeight']
     spectatorAlignYaw = cs['SpectatorAlignYaw']
     realtimePacing = cs['RealtimePacing']
     enableTlsSync = True
-    egoMode = cs['EgoMode']
-    egoId = cs['EgoId']
+    egoId = egoCfg['Id']
 
-    # L0 driver selection: native CARLA TM autopilot, the SDK-free EgoDriver
-    # fallback module (map-agnostic), or an external wire actuation command.
-    egoL0 = (cs['EgoL0Driver'] or '').lower()
-    useFallbackDriver = egoL0 in ('pursuit', 'fallback', 'egodriver')
-    useWireActuation = egoL0 == 'actuation'
-    # #325: a user controller in the driver slot. Same position in the loop as
-    # EgoDriver, so it inherits the same rate -- CarlaTimeStep, not the feed.
-    # That is the whole reason the hook exists; see IEgoController.
-    useEmbedded = egoL0 == 'embedded' or bool(cs.get('EgoController'))
+    # The ego, from the one place that describes it. Canonical values, so these
+    # are string compares and nothing re-derives a mode (FIXS#305).
+    virEnvOwnsEgo = egoCfg['Dynamics'] == 'virenv'
+    useFixsDriver = egoCfg['ActuationSource'] == 'fixs'
+    # "user" is one value; the Controller key decides where it runs. In-process
+    # inherits the CARLA step rate and reads the plant, not the feed (#305).
+    useEmbedded = egoCfg['ActuationSource'] == 'user' and bool(egoCfg['Controller'])
+    useWireActuation = egoCfg['ActuationSource'] == 'user' and not egoCfg['Controller']
 
-    if egoMode >= 1 and len(cs['EgoSpawnPose']) < 4:
-        raise SystemExit('EgoMode %d needs EgoSpawnPose: [x, y, z, headingDeg]' % egoMode)
+    # WHO CREATES THE EGO -- decided by whether EgoSpawnPose is configured, the
+    # same predicate mainVirCarla.cpp:188 uses:
+    #   given  -- Carla creates it before the loop, and TrafficLayer injects the
+    #             result into the traffic simulator on a single-edge dummy route
+    #   absent -- the traffic simulator creates it, on its own route with its own
+    #             depart time, and we spawn a physics actor at the pose it reports
+    #             the first tick its id arrives
+    # The deferred direction is what keeps the ego's next traffic signal: a
+    # single-edge dummy route has none.
+    deferEgoSpawn = virEnvOwnsEgo and len(cs['EgoSpawnPose']) < 4
 
     interestedIds = set(cs['InterestedIds'] or [])
 
@@ -211,7 +217,7 @@ def main(argv=None):
     # EgoMode 0: Carla renders every vehicle including the traffic-sim-driven ego.
     # EgoMode >= 1: Carla OWNS the ego -- the core must never spawn or teleport the
     # traffic simulator's echo of it, which is the injected shadow of this actor.
-    core.egoId_ = egoId if egoMode >= 1 else ''
+    core.egoId_ = egoId if virEnvOwnsEgo else ''
     core.egoType_ = ''
     core.trafficLayerIP_ = cs['CarlaClientIP']
     core.vehDataPort_ = cs['CarlaClientPort']
@@ -233,51 +239,45 @@ def main(argv=None):
         backend.freezeAndMatchTrafficLights()
 
     # Does this run's reply to TrafficLayer ever carry records? Only a bridge
-    # that REPORTS state does: the mode-A ego readback (EgoMode >= 1) or the
-    # interested-id readback (EnableExternalControl). A render-only run answers
-    # with a bare header, which carries no information beyond "this subscriber is
-    # done" -- and that answer does not depend on the tick, so it can be given
-    # before the tick instead of after it.
-    #
-    # That is worth 34 ms/tick, and it is the whole of the measured gap against
-    # VirCarlaEnv. TrafficLayer advances only once every subscriber has replied,
-    # so replying after world.tick() puts this bridge's CARLA work INSIDE
-    # TrafficLayer's cycle: SUMO and the controller wait out the render. Replying
-    # first lets them run while CARLA renders. Measured on MLK, 2001 exchanges,
-    # one CARLA session, alternating with the C++ bridge:
-    #
-    #   reply after the tick    fixs recv 85.07   total 119.66   ( 8.4 ex/s)
-    #   reply before the tick   fixs recv 52.02   total  86.94   (11.5 ex/s)
-    #   VirCarlaEnv.exe         fixs recv 52.03   total  86.14   (11.6 ex/s)
-    #
-    # Every other phase already matched to within a millisecond, so this was the
-    # entire difference -- and the C++ gets it by accident, from the unpaired
-    # reply at simTime 0 that leaves it permanently one exchange ahead (#329).
-    # Here it is a stated condition instead: reply early ONLY when the reply is
-    # empty, so a bridge that reports state still reports THIS tick's state and
-    # never the previous one.
-    replyCarriesNothing = (egoMode < 1) and not enableExternalControl
+    # that REPORTS state does. When it does not, answer BEFORE the CARLA tick so
+    # SUMO and the controller are not held behind the render (#329).
+    replyCarriesNothing = not virEnvOwnsEgo
     if replyCarriesNothing:
-        print("Reply carries no records (EgoMode 0, no external control): "
+        print("Reply carries no records (the traffic simulator owns the ego): "
               "answering TrafficLayer before the CARLA tick, so SUMO and the "
               "controller are not held behind the render.")
 
     egoDriver = EgoDriver()
     embedded = None
     if useEmbedded:
-        spec = cs.get('EgoController')
+        spec = egoCfg['Controller']
         if not spec:
-            raise SystemExit("EgoActuationSource: embedded needs EgoController: "
+            raise SystemExit("EgoSetup.ActuationSource: user needs a Controller: "
                              "<path to a .py defining control(ego, dt)>")
         embedded = loadController(spec, appRoot=os.getcwd())
-        embedded.setup(cs, cs['EgoId'])
+        embedded.setup(cs, egoId)
         print("Ego controller: %s (called every CARLA step, not every feed)"
               % embedded.spec)
     lastAdvisory = cs['EgoTargetSpeed']
 
     try:
-        _setUpEgo(cs, backend, egoDriver, world, egoMode,
-                  useFallbackDriver, useWireActuation)
+        # Checked here rather than inside the bring-up, so a missing route fails
+        # at start-up and not 400 ticks in when a deferred ego finally arrives.
+        if virEnvOwnsEgo and useFixsDriver and not cs['EgoRoutePoints']:
+            raise SystemExit('ActuationSource fixs needs EgoRoutePoints')
+
+        egoIsUp = False
+        haveTick = False       # has a feed actually been received yet
+        if virEnvOwnsEgo and not deferEgoSpawn:
+            sp = Pose(x=cs['EgoSpawnPose'][0], y=cs['EgoSpawnPose'][1],
+                      z=cs['EgoSpawnPose'][2], headingDeg=cs['EgoSpawnPose'][3])
+            if not _bringUpEgo(cs, backend, egoDriver, world, virEnvOwnsEgo,
+                               useFixsDriver, useWireActuation, useEmbedded, sp, True):
+                return -1
+            egoIsUp = True
+        elif deferEgoSpawn:
+            print("No EgoSpawnPose -- waiting for '%s' to enter the traffic "
+                  "simulator, then taking it over." % egoId)
 
         dataLog = _openDataLog(config)
         logWanted = _logWantedPredicate(config)
@@ -288,23 +288,8 @@ def main(argv=None):
         wallStart = time.monotonic()
         loopStart = time.monotonic()   # rate summary at the end
         feedCount = 0
-        # Per-phase tic-toc. "The Python bridge is slower" and "the Python
-        # bridge waits longer for everyone else" look identical in a tick
-        # total and have opposite fixes, so the tick is split into the parts
-        # that can each be acted on separately. Summed and reported at
-        # teardown; a monotonic() pair per phase is ~100 ns against a tick of
-        # tens of milliseconds.
-        # Per-tick period, kept so the SPREAD is reportable and not just the mean.
-        # A mean says how fast the run goes; the spread says whether a viewer sees
-        # smooth motion, and those are different questions.
-        #
-        # Collected only once the exchange is flowing (feedCount > 2). That is not
-        # tidying: the tick that first calls recv spans the wait from connecting to
-        # the first exchange, which on a warm-up scenario is the whole fast-forward
-        # -- measured at 82.6 s of a 229 s run. Left in, it drags the mean from 48.9
-        # to 76.4 ms and puts an sd of 1506 ms on a distribution whose p95 is 63.
-        # The "ms/tick" on the summary line above is still loop-elapsed over ticks
-        # and so still carries it; read the steady-state line instead.
+        # Per-phase tic-toc: separates "this bridge is slower" from "this bridge
+        # waits longer for everyone else", which look identical in a tick total.
         tickMs = []
         tickT0 = time.monotonic()
         phase = {k: 0.0 for k in
@@ -321,6 +306,24 @@ def main(argv=None):
             if rc < 0:
                 print('co-sim recv/step ended: %s' % (err or '?'), file=sys.stderr)
                 break
+
+            # ---- deferred ego: the traffic simulator inserted it, take it over --
+            # Spawn at the pose it just reported, read out of the FIXS record
+            # rather than off a Carla actor, so it does not wait on the pose
+            # batch. Everything downstream already tolerates a missing ego.
+            if deferEgoSpawn and not egoIsUp:
+                rec = core.Msg_c.VehDataRecv_um.get(egoId)
+                if rec is not None:
+                    sp = Pose(x=rec.positionX, y=rec.positionY, z=rec.positionZ,
+                              headingDeg=rec.heading)
+                    print("Ego '%s' entered at t=%.2f (%.2f, %.2f, %.2f, %.1f deg)"
+                          " -- spawning the physics ego."
+                          % (egoId, simTime, sp.x, sp.y, sp.z, sp.headingDeg))
+                    if not _bringUpEgo(cs, backend, egoDriver, world, virEnvOwnsEgo,
+                                       useFixsDriver, useWireActuation,
+                                       useEmbedded, sp, False):
+                        break
+                    egoIsUp = True
             # #266/#267: the batch is NOT flushed here. It is flushed just before
             # world.tick(), AFTER the spectator has been queued into it, so the
             # camera and the vehicles it follows are applied by ONE acknowledged
@@ -340,6 +343,7 @@ def main(argv=None):
             # not symmetric here, and neither should be made to match the other
             # until that is explained. The bisect is on the #325 thread, finding A.
             onFeed = simTime > 1e-5 and onFeedBoundary(simTime, 1e-6)
+            haveTick = haveTick or onFeed
 
             if replyCarriesNothing and onFeed and core.ENABLE_REALSIM:
                 _t0 = time.monotonic()
@@ -354,7 +358,7 @@ def main(argv=None):
             # Set the driver target BEFORE it runs this tick. applyEgoControl routes
             # it to native TM (set_desired_speed) or the EgoDriver fallback; it
             # persists across sub-steps until the next feed refreshes it.
-            if egoMode >= 2 and not useWireActuation and onFeed:
+            if virEnvOwnsEgo and not useWireActuation and onFeed:
                 adv = core.Msg_c.VehDataRecv_um.get(egoId)
                 if adv is not None and adv.speedDesired > 0.0:
                     lastAdvisory = adv.speedDesired
@@ -372,13 +376,15 @@ def main(argv=None):
                         cmd.steerAngleDesired / kMaxSteerRad)   # rad -> normalised
 
             # the fallback module drives per-tick; native TM drives inside world.tick
-            if egoMode >= 1 and useFallbackDriver:
-                _driveEgoFallback(backend, egoDriver, cs['EgoTargetSpeed'], lastAdvisory,
-                                  egoMode)
+            if virEnvOwnsEgo and useFixsDriver:
+                _stepEgoDriver(backend, egoDriver, cs['EgoTargetSpeed'], lastAdvisory)
             # #325 embedded controller: same slot, same per-step rate. The
             # step itself lives in CommonLib so this file stays a faithful peer
             # of mainVirCarla.cpp, which has no such hook.
-            if egoMode >= 1 and embedded is not None:
+            # Both needed: nothing to control before the ego exists, and
+            # fixs.vehicle.get RAISES rather than answering empty with no tick
+            # received -- and the core skips the recv at simTime 0.
+            if virEnvOwnsEgo and embedded is not None and egoIsUp and haveTick:
                 from CommonLib import fixs as _fixs
                 runController(backend, embedded, _fixs.vehicle.get(egoId),
                               carlaStep, onFeed, kMaxSteerRad)
@@ -392,23 +398,10 @@ def main(argv=None):
                                          tf.rotation.yaw))
 
             # ---- PRE-tick: spectator follow (#254) ---------------------------
-            # The camera has to be placed BEFORE the tick that renders the frame.
-            # Placed after world.tick() and read off the actor, the frame is
-            # rendered with the NEW vehicle pose and the PREVIOUS camera pose, so
-            # the followed vehicle sits one frame off centre. That offset is one
-            # step of travel, which scales with speed -- so it is not a constant
-            # nudge you stop noticing, it breathes with every acceleration, and an
-            # eco-driving ego (whose whole job is to vary speed) slides back and
-            # forth in frame for the entire run.
-            #
-            # The pose comes from what the core just QUEUED for this tick
-            # (lastAppliedPose) rather than from reading the actor back, because
-            # that is the pose this tick is about to render.
-            #
-            # Mirrored (teleported) vehicles only. A physics-driven ego has no
-            # pre-tick answer -- its pose is PRODUCED by the tick -- so it keeps the
-            # post-tick snap below and keeps its lag.
-            if (spectatorFollow and not (egoMode >= 1 and centeredViewId == egoId)
+            # The camera is placed BEFORE the tick that renders the frame, or it
+            # trails by one step. Mirrored vehicles only -- a physics ego has no
+            # pre-tick pose, so it keeps the post-tick snap below.
+            if (spectatorFollow and not (virEnvOwnsEgo and centeredViewId == egoId)
                     and centeredViewId in interestedIds):
                 h = core.mappedVehicles().get(centeredViewId)
                 if h is not None:
@@ -435,19 +428,19 @@ def main(argv=None):
 
             _t0 = time.monotonic()
             # ---- POST-tick L0+: the Carla-driven ego -> FIXS -----------------
-            if egoMode >= 1:
+            if virEnvOwnsEgo:
                 es = EgoState()
                 if backend.readEgoState(egoId, es):
                     if onFeed and core.ENABLE_REALSIM:
                         d = VehData()
                         d.id = egoId
-                        d.type = cs['EgoSumoType']
+                        d.type = egoCfg['Type']
                         # L2: report the COMMANDED advisory as speedDesired
                         # (measured speed stays in `speed`) so the DataLogger
                         # captures both and the ego's tracking of the external
                         # target is verifiable.
                         d.speed = es.speed
-                        d.speedDesired = lastAdvisory if egoMode >= 2 else es.speed
+                        d.speedDesired = lastAdvisory
                         d.positionX, d.positionY, d.positionZ = es.x, es.y, es.z
                         d.heading = es.heading
                         d.grade = es.grade
@@ -461,10 +454,9 @@ def main(argv=None):
                         if dataLog.isOpen():
                             fromSumo = core.Msg_c.VehDataRecv_um.get(egoId)
                             if fromSumo is not None:
-                                import copy
-                                dsumo = copy.copy(fromSumo)
-                                dsumo.id = 'ego_sumo'
-                                dataLog.logVehicle(simTime, dsumo)
+                                # Records refuse assignment ('id' is measured
+                                # data), so the relabel goes through the logger.
+                                dataLog.logVehicle(simTime, fromSumo, idOverride='ego_sumo')
                     if spectatorFollow and egoId == centeredViewId and backend.egoActor():
                         spectator.set_transform(_spectatorTransform(
                             backend.egoActor().get_transform(),
@@ -475,7 +467,7 @@ def main(argv=None):
             # the PRE-tick block above (#254).
             mapped = core.mappedVehicles()
             for iid in interestedIds:
-                if egoMode >= 1 and iid == egoId:
+                if virEnvOwnsEgo and iid == egoId:
                     continue                    # ego handled above (never mapped)
                 h = mapped.get(iid)
                 if h is None:
@@ -483,7 +475,7 @@ def main(argv=None):
                 actor = backend.actorOf(h)
                 if actor is None:
                     continue
-                if enableExternalControl and onFeed:
+                if virEnvOwnsEgo and onFeed:
                     cTf = actor.get_transform()
                     ext = actor.bounding_box.extent
                     vel = actor.get_velocity()
@@ -520,22 +512,7 @@ def main(argv=None):
             simTime = stepCount * carlaStep   # step counter avoids fp drift
 
             # Realtime pacing (viz): sleep so each sub-tick lands at its wall-clock
-            # sim time -> the sub-ticks spread evenly instead of bursting, so a
-            # follow-cam renders smooth. Never over-throttles: if we fell behind,
-            # the sleep is skipped and the reference resyncs. OFF for XIL, where the
-            # real-time component already paces the loop.
-            # RealtimePacing does NOT deliver 10 Hz on this corridor and the cause
-            # is not established. Measured, MLK, 3001 exchanges: paced 8.1 ex/s
-            # (123 ms/tick) against a 100 ms target, while the same build unpaced
-            # reaches 11.3 ex/s (89 ms/tick). Two hypotheses were tested and are
-            # WRONG: Windows sleep granularity (measured 0.5 ms over-sleep, not
-            # 15.6), and pacing debt accumulating behind the 250 ms resync
-            # threshold (resyncing after one tick instead changed nothing: 7.9
-            # ex/s). Making the bridge 10% faster also changed nothing, so it is
-            # not the bridge throughput either. See the #325 thread (finding B). Until it is understood,
-            # --fast (pacing off) is the smoother way to watch this scenario, and
-            # this stays identical to mainVirCarla.cpp rather than diverging on an
-            # unproven theory.
+            # sim time, spreading them evenly instead of bursting. Off by default.
             _t0 = time.monotonic()
             if realtimePacing:
                 target = wallStart + simTime
@@ -578,7 +555,7 @@ def main(argv=None):
             dataLog.close()
         if poseLog is not None:
             poseLog.close()
-        if egoMode >= 1:
+        if virEnvOwnsEgo:
             backend.destroyEgo()
     finally:
         core.shutdown()
@@ -589,53 +566,74 @@ def main(argv=None):
     return 0
 
 
-def _setUpEgo(cs, backend, egoDriver, world, egoMode, useFallbackDriver, useWireActuation):
-    """L0+ (EgoMode >= 1): spawn the ego and wire whichever driver owns it.
+def _bringUpEgo(cs, backend, egoDriver, world, virEnvOwnsEgo, useFixsDriver,
+                useWireActuation, useEmbedded, sp, settleOutOfBand):
+    """Spawn the ego at `sp` and wire whichever driver owns it. -> bool
+
+    Peer of the ``bringUpEgo`` lambda in mainVirCarla.cpp:282, and callable from
+    the same two places: before the loop at a configured EgoSpawnPose, or from
+    inside it at the pose the traffic simulator just reported.
 
     Order matters and mirrors the proven sequence: spawn + physics first, THEN the
     traffic manager, sync and autopilot. TM must be synchronous in a synchronous
     world; ``world.tick()`` then drives its synchronous tick automatically.
-    """
-    if egoMode < 1:
-        return
-    sp = Pose(x=cs['EgoSpawnPose'][0], y=cs['EgoSpawnPose'][1],
-              z=cs['EgoSpawnPose'][2], headingDeg=cs['EgoSpawnPose'][3])
-    if backend.spawnEgo(cs['EgoBlueprint'], sp, cs['TrafficManagerPort']) == kNoHandle:
-        raise SystemExit('EgoMode %d: ego spawn failed' % egoMode)
 
-    if useFallbackDriver:
-        if not cs['EgoRoutePoints']:
-            raise SystemExit('EgoMode %d (Pursuit) needs EgoRoutePoints' % egoMode)
+    ``settleOutOfBand`` is the difference between those two call sites. Before the
+    loop the extra ticks settle the ego onto its tyres and pay TM's one-time map
+    build up front. Inside the loop they must NOT happen: an out-of-band tick
+    there advances Carla past the feed and desyncs every mirrored vehicle. A
+    deferred ego therefore settles inside the co-sim ticks instead.
+    """
+    if backend.spawnEgo(cs['EgoBlueprint'], sp, cs['TrafficManagerPort']) == kNoHandle:
+        print('ego spawn failed', file=sys.stderr)
+        return False
+
+    if useFixsDriver:
         # The only Carla-specific step is the frame conversion (FIXS -> Carla is a
         # Y flip); the module then owns densification and the pursuit control law.
         egoDriver.setRoute([(x, -y) for x, y in cs['EgoRoutePoints']], True)
         print('L0 ego route: %d waypoints -> %d path points (EgoDriver fallback module)'
               % (len(cs['EgoRoutePoints']), egoDriver.routeSize()))
 
-    # settle the spawned ego onto its tires before wiring the driver / the loop
-    for _ in range(10):
-        world.tick()
+    if settleOutOfBand:
+        for _ in range(10):
+            world.tick()
 
     if useWireActuation:
-        print('EgoMode %d (Actuation): ego driven by external FIXS actuation command '
-              '(no TM, no route).' % egoMode)
-    elif not useFallbackDriver:
+        print('ActuationSource user (over the feed): ego driven by the wire '
+              'actuation command (no TM, no route).')
+    elif useEmbedded:
+        # The controller in the driver slot owns the ego. Autopilot here would
+        # fight it: TM would steer to its own plan while the controller's pedals
+        # are applied on top, and the ego would track neither.
+        print('ActuationSource user (in-process): ego driven by the Controller, '
+              'called every Carla step (no TM, no route).')
+    elif not useFixsDriver:
         backend.enableEgoTM(cs['TrafficManagerPort'], cs['EgoTargetSpeed'])
         # TM builds its InMemoryMap on the FIRST tick after autopilot, which can
         # take 15-30 s on a generated map. Absorb that ONE-TIME cost HERE, before
         # the co-sim loop couples with TrafficLayer, so the loop's tight tick never
         # stalls past its timeout and drops the connection.
-        print('Pre-building TM InMemoryMap (one-time, may take ~30 s)...')
-        for _ in range(5):
-            world.tick()
-        print('TM InMemoryMap ready; entering co-sim loop.')
+        if settleOutOfBand:
+            print('Pre-building TM InMemoryMap (one-time, may take ~30 s)...')
+            for _ in range(5):
+                world.tick()
+            print('TM InMemoryMap ready; entering co-sim loop.')
+        else:
+            print('WARNING: TM autopilot on a deferred ego -- its one-time '
+                  'InMemoryMap build happens now, inside the co-sim loop. '
+                  'Configure EgoSpawnPose to pay it up front.', file=sys.stderr)
 
-    if egoMode >= 2:
+    if virEnvOwnsEgo:
         print('L2: external speed advisory via FIXS (ego.speedDesired) -- driver: %s'
-              % ('EgoDriver' if useFallbackDriver else 'TM'))
+              % ('EgoDriver (in-bridge pure pursuit)' if useFixsDriver
+                 else 'external (pedals over FIXS)' if useWireActuation
+                 else 'EgoController, in-process per Carla step' if useEmbedded
+                 else 'TM (Carla Traffic Manager)'))
+    return True
 
 
-def _driveEgoFallback(backend, egoDriver, targetSpeed, lastAdvisory, egoMode):
+def _stepEgoDriver(backend, egoDriver, targetSpeed, lastAdvisory):
     """Per-tick fallback driver: pose -> EgoDriver -> apply through full PhysX.
 
     Peer of ``CarlaBackend::driveEgoFallback``, kept in the driver here because the
@@ -650,7 +648,7 @@ def _driveEgoFallback(backend, egoDriver, targetSpeed, lastAdvisory, egoMode):
     v = math.sqrt(vel.x * vel.x + vel.y * vel.y)
     yawRad = tf.rotation.yaw * math.pi / 180.0
     # L2: an external advisory supersedes the static cruise target.
-    tgt = lastAdvisory if egoMode >= 2 else targetSpeed
+    tgt = lastAdvisory if lastAdvisory else targetSpeed
     dc = egoDriver.computeControl(tf.location.x, tf.location.y, yawRad, v, tgt)
     ego.apply_control(carla.VehicleControl(throttle=float(dc.throttle),
                                            brake=float(dc.brake),
@@ -661,7 +659,7 @@ def _openDataLog(config):
     """Generic FIXS data logging (config: DataLogSetup).
 
     Records the vehicle-data records this bridge reports to FIXS, in the
-    SUMO/VISSIM wire convention. Same code path for every EgoL0Driver, so the CSVs
+    SUMO/VISSIM wire convention. Same code path for every ActuationSource, so the CSVs
     are directly comparable -- and, because it is the same DataLogger the C++ side
     writes, comparable across bridges too.
     """

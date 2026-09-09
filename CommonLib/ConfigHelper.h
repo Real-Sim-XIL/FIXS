@@ -63,41 +63,12 @@ struct SimulationSetup_t {
 
 	int TrafficSimulatorPort;
 
-	// Warm-up (#86). While the warm-up is running the FIXS boundary is CLOSED:
-	// the traffic simulator advances, but no message reaches any client and no
-	// client is even accepted yet, so CarMaker/Carla start-up overlaps the
-	// warm-up instead of queueing ahead of it.
-	//
-	//   WarmUpUntilEgoEntry - end the warm-up when the first subscribed ego is in
-	//                         the network. The controller owns the entry time by
-	//                         inserting the vehicle; no time is duplicated here.
-	//   WarmUpTime          - end the warm-up at this ABSOLUTE simulation time.
-	//                         Runs as ONE batch step, so nothing is observed in
-	//                         between - which is why the two are exclusive.
-	//
-	// Both unset: no warm-up (sync from the first step). Both set: ego entry wins
-	// and getConfig warns, because a batch step cannot also watch for an ego.
+	// Warm-up (#86): advance the traffic simulator with the FIXS boundary CLOSED.
 	bool WarmUpUntilEgoEntry;
 
 	double WarmUpTime;
 
-	// Client ports that must be SERVED THROUGH the warm-up instead of joining
-	// when it ends. Empty (the default) = the original behaviour: the boundary is
-	// closed to everyone.
-	//
-	// This has to be declared because it cannot be derived. Whether a client can
-	// skip the warm-up is a property of ITS OWN state, and nothing FIXS can see
-	// distinguishes the two kinds: a renderer and a signal-aware controller are
-	// both just a subscription with a port. A controller that learns the signal
-	// timing by watching it change (any actuated network -- SUMO's NEMA logics
-	// expose no phase countdown at all) arrives blind if the boundary was closed
-	// to it, and then plans the first approach on a nominal guess. A renderer or
-	// an XIL box loses nothing by joining late, which is the whole point of the
-	// warm-up. Only the scenario author knows which is which.
-	//
-	// A served client is accepted BEFORE the warm-up starts (so TrafficLayer
-	// blocks for it, as it did before warm-ups existed); everyone else is
-	// accepted when the warm-up ends.
+	// Client ports served THROUGH the warm-up rather than joining at its end (#86).
 	std::vector<int> WarmUpServePorts;
 
 	std::string TrafficLayerIP;
@@ -135,6 +106,29 @@ struct XilSetup_t {
 };
 
 
+// The ego, described once, for every backend. See ORNL-Real-Sim/FIXS#305 for why,
+// and for the per-backend keys this replaces (still parsed as fallbacks).
+struct EgoSetup_t {
+
+	std::string Id;         // FIXS id of the ego
+	std::string Type;       // vehicle type the TRAFFIC simulator knows it by
+	                        // (the rendered model is CarlaSetup.EgoBlueprint)
+
+	// What computes the ego's motion. Canonical, lower case.
+	//   traffic | virenv (the virtual environment's physics) | xil
+	std::string Dynamics;
+
+	// Who produces the pedals and steer. Canonical, lower case.
+	//   simulator (Carla TM, IPGDriver) | fixs (EgoDriver) | user
+	// "user" runs in-process when Controller names a file, else off the FIXS
+	// record at the feed -- not equivalent; see #305.
+	std::string ActuationSource;
+
+	std::string Controller;   // user control law (.py); Python backend only
+
+};
+
+
 struct CarMakerSetup_t {
 	bool EnableCosimulation;
 
@@ -145,10 +139,6 @@ struct CarMakerSetup_t {
 	int CarMakerPort;
 
 	double TrafficRefreshRate;
-
-	std::string EgoId;
-
-	std::string EgoType;
 
 	bool SynchronizeTrafficSignal;
 
@@ -167,8 +157,6 @@ struct CarlaSetup_t {
 	// so a typo cannot silently select the wrong engine. Mirrored in
 	// ConfigHelper.py; parsed here for schema parity. Default true.
 	bool EnablePythonBackend;
-
-	bool EnableExternalControl;
 
 	bool UseVehicleTypeAsBlueprint;
 
@@ -208,31 +196,6 @@ struct CarlaSetup_t {
 
 	std::vector<std::string> InterestedIds;
 
-	// #174 ego dynamics ownership + control (per-ego mode, config-driven).
-	//  EgoDynamicsOwner: "Carla" (PhysX, mode A -- bridge reads ego back) |
-	//                    "Simulink" (external owns ego, mode B -- teleport in).
-	//  EgoControl:       "TM_Advisory" (L2 TM set_desired_speed) | "External"
-	//                    (CAV client) | "None".
-	//  EnableEgoSimulink: back-compat alias; true => EgoDynamicsOwner = "Simulink".
-	std::string EgoDynamicsOwner;
-	std::string EgoControl;
-	bool        EnableEgoSimulink;
-
-	// #174 ego driving-mode ladder (integer -- modular, GUI-mappable):
-	//   0 = SumoDriver  : SUMO drives the ego; Carla teleports it (default, today)
-	//   1 = CarlaDriver : L0 -- Carla TM drives the ego (physics ON + autopilot);
-	//                     its state is read back and injected into SUMO each feed
-	//   2 = Advisory    : L2 -- as 1, plus external desired-speed advisory
-	//                     through FIXS (TM keeps steering)          [reserved]
-	//   3 = Control     : L4 -- external throttle/brake/steer through FIXS
-	//                     (full PhysX dynamics, external steers)    [reserved]
-	int EgoMode;
-	// Which L0 driver actuates the ego when EgoMode >= 1:
-	//   "TM"      -> native Carla Traffic Manager autopilot (needs a routable map)
-	//   "Pursuit" -> the SDK-free EgoDriver module (map-agnostic fallback)
-	std::string EgoL0Driver;
-	std::string EgoId;                 // FIXS id of the Carla-driven ego (mode >= 1)
-	std::string EgoSumoType;           // SUMO vType used when TL injects the ego
 	std::string EgoBlueprint;          // Carla blueprint for the ego actor
 	std::vector<double> EgoSpawnPose;  // [x, y, z, headingDeg] FIXS frame (mode >= 1)
 	int TrafficManagerPort;            // Carla TM port (client-side instance)
@@ -266,6 +229,10 @@ struct SumoSetup_t {
 	// too long and it may react to one that turns off before it matters. Default
 	// 1000 preserves the previously hard-coded behaviour.
 	double PrecedingVehicleLookahead;
+
+	// keepRoute bitmask for the mirror's moveToXY, for every ego owner (#305).
+	// https://sumo.dlr.de/docs/TraCI/Change_Vehicle_State.html#move_to_xy
+	int EgoKeepRoute;
 
 	// Auto-launch SUMO configuration
 	bool EnableAutoLaunch;
@@ -397,6 +364,7 @@ public:
 	SimulationSetup_t SimulationSetup;
 	ApplicationSetup_t ApplicationSetup;
 	XilSetup_t XilSetup;
+	EgoSetup_t EgoSetup;
 	CarMakerSetup_t CarMakerSetup;
 	SumoSetup_t SumoSetup;
 	CarlaSetup_t CarlaSetup;

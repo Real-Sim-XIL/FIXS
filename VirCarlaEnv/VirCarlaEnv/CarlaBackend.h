@@ -87,7 +87,14 @@ public:
     // applied here so the module stays frame-neutral.
     void setEgoRoute(const std::vector<std::pair<double, double>>& fixsPts,
                      int repeat, int tmPort);
-    void driveEgoFallback(double targetSpeed);   // per-tick: EgoDriver -> ApplyControl
+    void stepEgoDriver(double targetSpeed);   // per-tick: EgoDriver -> ApplyControl
+
+    // What stepEgoDriver last applied, and the speed it was chasing. "The ego
+    // did not move" is the same symptom whether the driver commanded nothing,
+    // commanded the wrong thing, or commanded correctly into a vehicle that could
+    // not act on it -- these separate the three.
+    const DriveCommand& lastEgoCommand() const { return lastEgoCmd_; }
+    double              lastEgoTarget()  const { return lastEgoTarget_; }
 
     // #174 unified EgoDriver: apply an ACTUATION command supplied by an external FIXS
     // client (EgoDriver client for L0/L2, a real controller for L4). throttle/brake in
@@ -97,7 +104,7 @@ public:
     // L2 (EgoMode >= 2): advise the active L0 driver of an EXTERNAL desired speed
     // (m/s), overriding the static EgoTargetSpeed until changed. Native TM path ->
     // tm.SetDesiredSpeed; EgoDriver fallback -> the per-tick target used by
-    // driveEgoFallback. No-op if no ego is owned. This is the actuation seam; the
+    // stepEgoDriver. No-op if no ego is owned. This is the actuation seam; the
     // advisory SOURCE (wire field / external client) is the caller's concern.
     void applyEgoControl(const std::string& egoId, double desiredSpeed) override;
 
@@ -138,6 +145,8 @@ private:
     int    tmPort_ = 0;                                                    // TM instance port (set by enableEgoTM)
     bool   egoUsesTM_ = false;                                            // true: native TM drives the ego; false: EgoDriver
     double egoDesiredOverride_ = -1.0;                                    // L2 advisory target (m/s); <0 = none (use static)
+    DriveCommand lastEgoCmd_;                                             // last actuation the fallback driver applied
+    double       lastEgoTarget_ = -1.0;                                   // ... and the target speed it was chasing
     std::vector<carla::rpc::Command> batch_;                               // ApplyTransform commands this tick
     std::unordered_map<VehHandle, carla::SharedPtr<carla::client::Vehicle>> actors_;
     std::unordered_map<VehHandle, carla::geom::Transform> lastApplied_;   // A/B instrumentation

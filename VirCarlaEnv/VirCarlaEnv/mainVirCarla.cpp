@@ -12,6 +12,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <algorithm>
 #include <unordered_set>
 #include <cmath>
 #include <chrono>
@@ -109,31 +110,36 @@ int main(int argc, const char* argv[]) {
         return -1;
     }
     const uint32_t simEndTime = config.SimulationSetup.SimulationEndTime;
-    const bool   enableExternalControl = cs.EnableExternalControl;
     const std::string centeredViewId   = cs.CenteredViewId;
     const bool   spectatorFollow  = cs.EnableSpectatorFollow && !cs.CenteredViewId.empty();
     const float  spectatorHeight  = (float)cs.SpectatorHeight;
     const bool   spectatorAlignYaw = cs.SpectatorAlignYaw;
     const bool   realtimePacing = cs.RealtimePacing;
     const bool   enableTlsSync = true;
-    // #174 ego-mode ladder: 0=SumoDriver(teleport) 1=CarlaDriver(L0) 2=Advisory(L2) 3=Control(L4)
-    const int    egoMode = cs.EgoMode;
-    // L0 driver selection: native Carla TM autopilot vs the SDK-free EgoDriver
-    // fallback module (map-agnostic). Default is TM (see ConfigHelper).
-    const bool   useFallbackDriver = (cs.EgoL0Driver == "Pursuit" || cs.EgoL0Driver == "pursuit"
-                                      || cs.EgoL0Driver == "Fallback" || cs.EgoL0Driver == "EgoDriver");
-    // #174 unified EgoDriver: the driver is an EXTERNAL FIXS client that streams an
-    // ACTUATION command on the ego's record (acceleratorPedalDesired/brakePedalDesired
-    // /steerAngleDesired). Carla owns no in-process driver here -- it just applies the
-    // wire command via ApplyControl. Same path serves L0/L2 (EgoDriver client) and L4
-    // (a real external controller). No TM, no route needed on the Carla side.
-    const bool   useWireActuation = (cs.EgoL0Driver == "Actuation" || cs.EgoL0Driver == "actuation");
+    // The ego, from the one place that describes it (#305). Canonical values, so
+    // these are string compares and nothing re-derives a mode.
+    const bool   virEnvOwnsEgo     = (config.EgoSetup.Dynamics == "virenv");
+    const bool   useFixsDriver = (config.EgoSetup.ActuationSource == "fixs");
+    // "user" over the FEED. With a Controller file it runs in-process instead,
+    // which only the Python backend can load.
+    const bool   useWireActuation  = (config.EgoSetup.ActuationSource == "user"
+                                      && config.EgoSetup.Controller.empty());
     const double kMaxSteerRad = 0.7;   // must match the client's DriveCommand steer scaling
-    const std::string egoId = cs.EgoId;
-    if (egoMode >= 1 && cs.EgoSpawnPose.size() < 4) {
-        std::cerr << "EgoMode " << egoMode << " needs EgoSpawnPose: [x, y, z, headingDeg]\n";
-        return -1;
+    const std::string egoId = config.EgoSetup.Id;
+
+    // DOES THIS BRIDGE OWN THE EGO? Same predicate TrafficLayer uses -- both
+    // derive from EgoSetup.Dynamics, so they cannot disagree (#305).
+    const bool carlaOwnsEgo = virEnvOwnsEgo
+        && (std::find(cs.InterestedIds.begin(), cs.InterestedIds.end(), egoId)
+            != cs.InterestedIds.end());
+    if (virEnvOwnsEgo && !carlaOwnsEgo) {
+        std::cout << "Dynamics: virenv is inactive -- the ego id is not in "
+                     "InterestedIds, so the traffic simulator keeps the ego and this "
+                     "bridge mirrors it (L0 control run).\n";
     }
+    // WHO CREATES THE EGO -- decided by whether EgoSpawnPose is configured.
+    // Absent, the traffic simulator inserts it on its own route (#305).
+    const bool deferEgoSpawn = (carlaOwnsEgo && cs.EgoSpawnPose.size() < 4);
 
     std::unordered_set<std::string> interestedIds(cs.InterestedIds.begin(), cs.InterestedIds.end());
 
@@ -187,7 +193,7 @@ int main(int argc, const char* argv[]) {
         // EgoMode 0: Carla renders every vehicle incl. the SUMO-driven ego ("").
         // EgoMode >=1: Carla OWNS the ego -- the core must never spawn/teleport the
         // SUMO echo of it (SUMO's copy is the injected shadow of this Carla actor).
-        core.egoId_                    = (egoMode >= 1) ? egoId : "";
+        core.egoId_                    = carlaOwnsEgo ? egoId : "";
         core.egoType_                  = "";
         core.trafficLayerIP_           = cs.CarlaClientIP;
         core.vehDataPort_              = cs.CarlaClientPort;
@@ -210,51 +216,71 @@ int main(int argc, const char* argv[]) {
         }
         if (enableTlsSync) backend.freezeAndMatchTrafficLights();
 
-        // ---- L0+ (EgoMode >= 1): Carla drives the ego ----------------------
-        // Order matters (matches the proven Python sequence): spawn + physics
-        // first, THEN create the TM + sync + autopilot. TM must be synchronous in
-        // a synchronous world; world.Tick() then drives TM's SynchronousTick
-        // automatically (in-process TM instance).
-        if (egoMode >= 1) {
-            virenv::Pose sp;
-            sp.x = cs.EgoSpawnPose[0]; sp.y = cs.EgoSpawnPose[1];
-            sp.z = cs.EgoSpawnPose[2]; sp.headingDeg = cs.EgoSpawnPose[3];
+        // Spawn the ego and wire its driver, before the loop or inside it.
+        // settleOutOfBand: only the pre-loop caller may tick the world to settle
+        // the car -- an extra Tick() inside the loop desyncs everything (#305).
+        bool egoIsUp = false;
+        int  egoTraceLeft = 50;   // feeds of handover trace (5 s at the 0.1 s feed)
+        auto bringUpEgo = [&](const virenv::Pose& sp, bool settleOutOfBand) -> bool {
             if (backend.spawnEgo(cs.EgoBlueprint, sp, cs.TrafficManagerPort) == virenv::kNoHandle) {
-                std::cerr << "EgoMode " << egoMode << ": ego spawn failed\n";
-                return -1;
+                std::cerr << "ego spawn failed\n";
+                return false;
             }
-            // Two L0 drivers (config EgoL0Driver):
+            // Two in-Carla drivers (EgoSetup.ActuationSource):
             //  - native Carla TM autopilot (default): server-side, needs a
             //    routable map (the simple_loop junction-id fix makes it routable);
             //  - EgoDriver fallback module: map-agnostic pure pursuit on
             //    EgoRoutePoints, through full PhysX -- needs the route.
-            if (useFallbackDriver) {
-                if (cs.EgoRoutePoints.empty()) {
-                    std::cerr << "EgoMode " << egoMode << " (Pursuit) needs EgoRoutePoints\n";
-                    return -1;
-                }
+            if (useFixsDriver)
                 backend.setEgoRoute(cs.EgoRoutePoints, cs.EgoRouteRepeat, cs.TrafficManagerPort);
-            }
-            // settle the spawned ego onto its tires before wiring the driver / loop
-            for (int i = 0; i < 10; i++) world.Tick(30s);
+            if (settleOutOfBand)
+                for (int i = 0; i < 10; i++) world.Tick(30s);
             if (useWireActuation) {
                 // No in-Carla driver: the ego stays physics-on and MANUAL (no autopilot),
                 // driven each feed by the external EgoDriver client's wire actuation.
-                std::cout << "EgoMode " << egoMode << " (Actuation): ego driven by external "
-                          << "FIXS actuation command (no TM, no route).\n";
+                std::cout << "ActuationSource user (over the feed): ego driven by the "
+                          << "wire actuation command (no TM, no route).\n";
             }
             // native TM must be enabled AFTER spawn + physics settle (proven order)
-            if (!useFallbackDriver && !useWireActuation) {
+            if (!useFixsDriver && !useWireActuation) {
                 backend.enableEgoTM(cs.TrafficManagerPort, cs.EgoTargetSpeed);
                 // TM builds its InMemoryMap on the FIRST tick after autopilot -- can
                 // take 15-30 s on a generated map. Absorb that ONE-TIME cost HERE
                 // (generous timeout, before the co-sim loop couples with TL/SUMO), so
                 // the loop's tight world.Tick() never stalls past its timeout and
                 // drops the TrafficLayer/SUMO connection.
-                std::cout << "Pre-building TM InMemoryMap (one-time, may take ~30 s)...\n";
-                for (int i = 0; i < 5; i++) world.Tick(120s);
-                std::cout << "TM InMemoryMap ready; entering co-sim loop.\n";
+                if (settleOutOfBand) {
+                    std::cout << "Pre-building TM InMemoryMap (one-time, may take ~30 s)...\n";
+                    for (int i = 0; i < 5; i++) world.Tick(120s);
+                    std::cout << "TM InMemoryMap ready; entering co-sim loop.\n";
+                }
+                else {
+                    // Deferred + TM: that one-time build now lands inside the loop and
+                    // can stall the feed. Configure EgoSpawnPose to pay it up front.
+                    std::cout << "WARNING: TM autopilot on a deferred ego -- its one-time "
+                              << "InMemoryMap build happens now, inside the co-sim loop.\n";
+                }
             }
+            egoIsUp = true;
+            return true;
+        };
+
+        // ---- Carla drives the ego ------------------------------------------
+        // Order matters: spawn + physics first, THEN TM + sync + autopilot. TM
+        // must be synchronous in a synchronous world.
+        if (carlaOwnsEgo && useFixsDriver && cs.EgoRoutePoints.empty()) {
+            std::cerr << "ActuationSource fixs needs EgoRoutePoints\n";
+            return -1;
+        }
+        if (carlaOwnsEgo && !deferEgoSpawn) {
+            virenv::Pose sp;
+            sp.x = cs.EgoSpawnPose[0]; sp.y = cs.EgoSpawnPose[1];
+            sp.z = cs.EgoSpawnPose[2]; sp.headingDeg = cs.EgoSpawnPose[3];
+            if (!bringUpEgo(sp, /*settleOutOfBand=*/true)) return -1;
+        }
+        else if (deferEgoSpawn) {
+            std::cout << "No EgoSpawnPose -- waiting for '" << egoId
+                      << "' to enter the traffic simulator, then taking it over.\n";
         }
 
         // ---- L2 (EgoMode >= 2): artificial external speed-advisory controller ----
@@ -266,9 +292,13 @@ int main(int argc, const char* argv[]) {
         // over FIXS -- read off the ego's received record (ego.speedDesired), which an
         // advisory client (e.g. py_ego_speed_advisor.py) feeds through TrafficLayer's
         // sequential-client path. No controller attached -> falls back to EgoTargetSpeed.
-        if (egoMode >= 2)
+        if (carlaOwnsEgo)
+            // Name all three drivers, not two: this is the only line telling the
+            // operator which one they got.
             std::cout << "L2: external speed advisory via FIXS (ego.speedDesired) -- driver: "
-                      << (useFallbackDriver ? "EgoDriver" : "TM") << "\n";
+                      << (useFixsDriver ? "EgoDriver (in-bridge pure pursuit)"
+                          : useWireActuation ? "external (pedals over FIXS)"
+                          : "TM (Carla Traffic Manager)") << "\n";
         double lastAdvisory = cs.EgoTargetSpeed;   // most-recent commanded desired speed (for the driver/log)
 
         const int sock0 = 0;
@@ -319,6 +349,7 @@ int main(int argc, const char* argv[]) {
                     std::cerr << "co-sim recv/step ended: " << (err ? err : "?") << "\n";
                 break;
             }
+
             phRecv += core.lastRecvSeconds;
             phOrch += _el(_t0) - core.lastRecvSeconds;
                                                    // Python bridge reports it
@@ -328,11 +359,36 @@ int main(int argc, const char* argv[]) {
             // and cannot land in different ticks. Nothing between here and there
             // reads back a Carla transform: the ego-control calls drive TM / pedals,
             // and the pose log reads lastAppliedPose, our own copy.
+            //
+            // The deferred ego spawn below is safe under that rule for the same
+            // reason: it reads the pose out of the FIXS record it just received,
+            // not off a Carla actor, so it does not depend on the batch having
+            // been applied yet.
+
+            // ---- deferred ego: the traffic simulator inserted it, take it over ----
+            // Spawn at the pose it just reported, so the two are one from the first
+            // tick. Everything downstream already tolerates a missing ego.
+            if (deferEgoSpawn && !egoIsUp) {
+                auto itNew = core.Msg_c.VehDataRecv_um.find(egoId);
+                if (itNew != core.Msg_c.VehDataRecv_um.end()) {
+                    virenv::Pose sp;
+                    sp.x = itNew->second.positionX;
+                    sp.y = itNew->second.positionY;
+                    sp.z = itNew->second.positionZ;
+                    sp.headingDeg = itNew->second.heading;
+                    std::cout << "Ego '" << egoId << "' entered at t=" << simTime
+                              << " (" << sp.x << ", " << sp.y << ", " << sp.z
+                              << ", " << sp.headingDeg << " deg) -- spawning the physics ego.\n";
+                    if (!bringUpEgo(sp, /*settleOutOfBand=*/false)) break;
+                }
+            }
+
+
             // ---- L2: apply the external speed advisory at each 0.1s FIXS feed ----
             // Set the driver target BEFORE it runs this tick. applyEgoControl routes
             // it to native TM (SetDesiredSpeed) or the EgoDriver fallback (override);
             // it persists across sub-steps until the next feed refreshes it.
-            if (egoMode >= 2 && !useWireActuation) {
+            if (carlaOwnsEgo && !useWireActuation) {
                 const bool onFeedNow = fixs::onFeedBoundary(simTime, 1e-6);
                 if (onFeedNow) {
                     // the external controller's advisory rides on the ego's received
@@ -355,11 +411,14 @@ int main(int argc, const char* argv[]) {
                         const VehFullData_t& cmd = itAct->second;
                         backend.applyEgoActuation(cmd.acceleratorPedalDesired, cmd.brakePedalDesired,
                                                   cmd.steerAngleDesired / kMaxSteerRad);  // rad -> normalized
+                        // The advisory rides on the SAME record; track it here too or
+                        // the datalog reports EgoTargetSpeed forever (#305).
+                        if (cmd.speedDesired > 0.0f) lastAdvisory = cmd.speedDesired;
                     }
                 }
             }
             // fallback module drives per-tick; native TM drives inside world.Tick()
-            if (egoMode >= 1 && useFallbackDriver) backend.driveEgoFallback(cs.EgoTargetSpeed);
+            if (carlaOwnsEgo && useFixsDriver) backend.stepEgoDriver(cs.EgoTargetSpeed);
             if (poseLog.is_open()) {       // A/B: log the applied Carla pose per SUMO id
                 for (const auto& kv : core.mappedVehicles()) {
                     const carla::geom::Transform* tf = backend.lastAppliedPose(kv.second);
@@ -369,24 +428,10 @@ int main(int argc, const char* argv[]) {
             }
 
             // ---- PRE-tick: spectator follow (#254) --------------------------
-            // The camera has to be placed BEFORE the tick that renders the frame.
-            // This used to sit after world.Tick(), reading the pose back off the
-            // actor: the frame was then rendered with the NEW vehicle pose and the
-            // PREVIOUS camera pose, so the followed vehicle sat one frame off
-            // centre. The offset is one step of travel, which scales with speed --
-            // so it is not a constant nudge you stop noticing, it breathes with
-            // every acceleration, and an eco-driving ego (whose whole job is to
-            // vary speed) slides back and forth in frame for the entire run.
-            //
-            // The pose is taken from what the core just QUEUED for this tick
-            // (lastAppliedPose) rather than read back from the actor, because that
-            // is the pose this Tick is about to render -- available here, and only
-            // knowable after the fact anywhere later.
-            //
-            // Mirrored (teleported) vehicles only. A physics-driven ego
-            // (EgoMode >= 1) has no pre-tick answer: its pose is produced BY the
-            // tick, so it keeps the post-tick snap below and keeps its lag.
-            if (spectatorFollow && !(egoMode >= 1 && centeredViewId == egoId)
+            // The camera is placed BEFORE the tick that renders the frame, or it
+            // trails by one step. Mirrored vehicles only -- a physics ego has no
+            // pre-tick pose, so it keeps the post-tick snap below.
+            if (spectatorFollow && !(carlaOwnsEgo && centeredViewId == egoId)
                 && interestedIds.count(centeredViewId)) {
                 const auto& mappedPre = core.mappedVehicles();
                 auto cit = mappedPre.find(centeredViewId);
@@ -394,37 +439,29 @@ int main(int argc, const char* argv[]) {
                     if (const carla::geom::Transform* tf = backend.lastAppliedPose(cit->second)) {
                         carla::geom::Location loc = tf->location; loc.z += spectatorHeight;
                         const float yaw = spectatorAlignYaw ? (tf->rotation.yaw - 90.f) : -90.f;
+
+                        // Into the SAME batch as the vehicles: a standalone
+                        // SetTransform RPC can land in a different tick from the
+                        // poses it is meant to be centred on.
+
                         backend.queueTransform(spectator->GetId(),
                             carla::geom::Transform(loc, carla::geom::Rotation(-90.f, yaw, 0.f)));
                     }
                 }
             }
 
+            // One atomic apply per tick, acknowledged before we tick.
+
             _t0 = _clk();
             backend.flushBatch();   // one acknowledged apply: vehicles + camera
             phFlush += _el(_t0);
             _t0 = _clk();
+
             world.Tick(10s);               // advance Carla one sub-step (10s: TM sync work rides on the tick)
             phTick += _el(_t0);
 
-            // #325 (finding A): this MUST stay the boundary alone -- do NOT add a
-            // `simTime > 1e-5` term to pair it with the recv, however wrong the
-            // unpaired reply at simTime 0 looks. VirEnvCore::runStep does not recv
-            // there, so that first send has no matching receive; but MEASURED, the
-            // C++ path needs it. Bisected on mlk_eco_driving, 50 s window, same
-            // stack and map, only this line differing:
-            //     stock                              96092 poses, ran to t=50.1
-            //     with simTime > 1e-5 added           3344 poses, died at t=1.7
-            //     that reverted, z fix kept          96094 poses, ran to t=50.1
-            // TrafficLayer then reports "send() failed mid-message / ERROR: send to
-            // client fails" and shuts the run down, i.e. it stopped being drained.
-            // So the leading message is load-bearing on this path.
-            //
-            // The Python bridge does NOT need it (Carla/VirEnv/mainVirCarla.py runs
-            // the same port for all 6501 exchanges with the pairing strict, twice
-            // over), so the two transports are not symmetric here and the mechanism
-            // is not yet established (see the #325 thread, finding A). Worth understanding
-            // before the mode-A ego readback is trusted: an off-by-one is 1.4 m at 14 m/s.
+            // #325 (finding A): the feed boundary alone. Pairing it with the recv
+            // silently drops the advisory on the ticks the recv does not land.
             const bool onFeed = fixs::onFeedBoundary(simTime, 1e-6);
 
             // SUMO<->CARLA elevation audit, once per exchange. Here rather than inside
@@ -434,33 +471,64 @@ int main(int argc, const char* argv[]) {
 
             _t0 = _clk();
             // ---- POST-tick L0+: the Carla-driven ego -> FIXS (TL injects into SUMO)
-            if (egoMode >= 1) {
+            if (carlaOwnsEgo) {
                 virenv::EgoState es;
                 if (backend.readEgoState(egoId, es)) {
             if (onFeed && core.ENABLE_REALSIM) {
                         VehFullData_t d;
-                        d.id = egoId; d.type = cs.EgoSumoType;
+                        d.id = egoId; d.type = config.EgoSetup.Type;
                         // L2: report the COMMANDED advisory as speedDesired (measured
                         // speed stays in `speed`) so the DataLogger captures both and
                         // the ego's tracking of the external target is verifiable.
                         d.speed = (float)es.speed;
-                        d.speedDesired = (egoMode >= 2) ? (float)lastAdvisory : (float)es.speed;
+                        d.speedDesired = (float)lastAdvisory;
                         d.positionX = (float)es.x; d.positionY = (float)es.y; d.positionZ = (float)es.z;
                         d.heading = (float)es.heading; d.grade = (float)es.grade;
-                        core.Msg_c.VehDataSend_um[core.Sock_c.serverSock[sock0]].push_back(d);
-                        if (dataLog.isOpen() && logWanted(d.id)) dataLog.logVehicle(simTime, d);
-                        // Also log the SUMO-VIEW ego (what SUMO reports back this feed) on the
-                        // SAME clock as the Carla view, so a plot compares them directly. It's
-                        // the ego ~2 ticks stale (Carla is a step ahead + SUMO getPosition is
-                        // n-1); logged as id "ego_sumo".
-                        if (dataLog.isOpen()) {
-                            auto itSumo = core.Msg_c.VehDataRecv_um.find(egoId);
-                            if (itSumo != core.Msg_c.VehDataRecv_um.end()) {
-                                VehFullData_t dsumo = itSumo->second;
-                                dsumo.id = "ego_sumo";
-                                dataLog.logVehicle(simTime, dsumo);
-                            }
+                        // What the ego was COMMANDED this tick, whoever produced it:
+                        // applyEgoActuation records too, so this is not "what the
+                        // in-bridge driver decided". Free on the wire -- a field is
+                        // only serialised if the config lists it.
+                        {
+                            const auto& cmd = backend.lastEgoCommand();
+                            d.acceleratorPedalDesired = (float)cmd.throttle;
+                            d.brakePedalDesired       = (float)cmd.brake;
+                            d.steerAngleDesired       = (float)(cmd.steer * kMaxSteerRad);
                         }
+                        // Report the ego to FIXS only when something is going to
+                        // INJECT it. With EnableExternalControl false there is no
+                        // carlaOwnsId path in TrafficLayer, so this record falls
+                        // through to the ordinary application-layer branch and is
+                        // applied as a plain setSpeed on the traffic simulator's
+                        // ego -- from the highest-numbered client, so it also beats
+                        // the controller that is supposed to be driving it. That
+                        // turns "own an ego in Carla, but do not feed it back"
+                        // into "silently drive the traffic simulator's ego from
+                        // Carla", which is the opposite of what the flag says.
+                        // Still logged either way: the ego's state is worth
+                        // recording whether or not anyone is consuming it.
+                        if (virEnvOwnsEgo)
+                            core.Msg_c.VehDataSend_um[core.Sock_c.serverSock[sock0]].push_back(d);
+                        if (dataLog.isOpen() && logWanted(d.id)) dataLog.logVehicle(simTime, d);
+                        // Handover trace: the first 5 s after the ego becomes ours, one
+                        // line per feed. "The ego just sits there" is always one of
+                        // these three: no advisory, not tracking it, or a frozen pose.
+                        if (onFeed && egoTraceLeft > 0) {
+                            --egoTraceLeft;
+                            const auto& cmd = backend.lastEgoCommand();
+                            std::cout << "[ego] t=" << simTime
+                                      << " advisory=" << lastAdvisory << " m/s"
+                                      << " measured=" << es.speed << " m/s"
+                                      << " thr=" << cmd.throttle << " brk=" << cmd.brake
+                                      << " steer=" << cmd.steer
+                                      // A mirrored TWIN of the ego would be teleported
+                                      // through the physics ego every tick and knock it
+                                      // about; the core is supposed to skip the ego's
+                                      // SUMO echo entirely, so this must stay 0.
+                                      << " mirroredTwin=" << core.mappedVehicles().count(egoId)
+                                      << " pos=(" << es.x << ", " << es.y << ", " << es.z << ")\n";
+                        }
+                        // (the SUMO-view row is logged once per feed below, for BOTH
+                        // modes -- see the "ego_sumo" block after the readback loop)
                     }
                     if (spectatorFollow && egoId == centeredViewId && backend.egoActor()) {
                         carla::geom::Transform eTf = backend.egoActor()->GetTransform();
@@ -476,24 +544,43 @@ int main(int argc, const char* argv[]) {
             // the PRE-tick block above (#254).
             const auto& mapped = core.mappedVehicles();
             for (const std::string& iid : interestedIds) {
-                if (egoMode >= 1 && iid == egoId) continue;   // ego handled above (never mapped)
+                if (carlaOwnsEgo && iid == egoId) continue;   // ego handled above (never mapped)
                 auto mit = mapped.find(iid);
                 if (mit == mapped.end()) continue;
                 carla::SharedPtr<carla::client::Vehicle> actor = backend.actorOf(mit->second);
                 if (!actor) continue;
                 carla::geom::Transform cTf = actor->GetTransform();
 
-                if (enableExternalControl && onFeed) {
+                // OBSERVING is not COUPLING: the record is built and LOGGED every
+                // feed; only the push back into FIXS is gated on ego ownership.
+                // In a control run this loop is the only thing that sees the ego,
+                // and logging it is how the mirror gets verified (#305).
+                if (onFeed) {
                     carla::geom::Vector3D ext = actor->GetBoundingBox().extent;
                     carla::geom::Vector3D vel = actor->GetVelocity();
                     carla::geom::Transform sTf = BridgeHelper::map_transfrom_Carla_to_Sumo(cTf, ext);
                     VehFullData_t d;
                     d.id = iid; d.type = "ego";
+                    d.speed = (float)std::sqrt(vel.x * vel.x + vel.y * vel.y);
                     d.speedDesired = (float)std::sqrt(vel.x * vel.x + vel.y * vel.y);
                     d.positionX = sTf.location.x; d.positionY = sTf.location.y; d.positionZ = sTf.location.z;
                     d.heading = sTf.rotation.yaw; d.grade = (float)(sTf.rotation.pitch * M_PI / 180.0);
-                    core.Msg_c.VehDataSend_um[core.Sock_c.serverSock[sock0]].push_back(d);
+                    if (virEnvOwnsEgo)
+                        core.Msg_c.VehDataSend_um[core.Sock_c.serverSock[sock0]].push_back(d);
                     if (dataLog.isOpen() && logWanted(d.id)) dataLog.logVehicle(simTime, d);
+                }
+            }
+
+            // ---- the SUMO-VIEW ego, once per feed, in BOTH modes ----------------
+            // What SUMO reports back this feed, on the same clock as the Carla row
+            // above, logged as "ego_sumo" so the two are directly comparable. In a
+            // synchronous co-sim they should agree; a gap is the mirror drifting.
+            if (onFeed && dataLog.isOpen()) {
+                auto itSumo = core.Msg_c.VehDataRecv_um.find(egoId);
+                if (itSumo != core.Msg_c.VehDataRecv_um.end()) {
+                    VehFullData_t dsumo = itSumo->second;
+                    dsumo.id = "ego_sumo";
+                    if (logWanted(dsumo.id)) dataLog.logVehicle(simTime, dsumo);
                 }
             }
 
@@ -558,7 +645,7 @@ int main(int argc, const char* argv[]) {
                         100.0 * (el - acct) / el);
         }
         if (dataLog.isOpen()) { std::cout << "DataLogger closed: " << dataLog.path() << "\n"; dataLog.close(); }
-        if (egoMode >= 1) backend.destroyEgo();
+        if (carlaOwnsEgo) backend.destroyEgo();
         settings = world.GetSettings();
         if (settings.synchronous_mode) {
             settings.synchronous_mode = false;

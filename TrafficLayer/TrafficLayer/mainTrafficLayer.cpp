@@ -617,7 +617,7 @@ int main(int argc, char* argv[]) {
 
 	ENABLE_VEH_SIMULATOR = Config_c.CarMakerSetup.EnableCosimulation;
 	ENABLE_CARLA = Config_c.CarlaSetup.EnableCosimulation;
-	ENABLE_CARLA_EXTERNAL_CONTROL = Config_c.CarlaSetup.EnableExternalControl;
+	ENABLE_CARLA_EXTERNAL_CONTROL = (Config_c.EgoSetup.Dynamics == "virenv");
 	if (ENABLE_VERBOSE) {
 		//FILE* f = fopen(MasterLogName.c_str(), "a");
 		//fprintf(f, "\n============================================");
@@ -1217,7 +1217,7 @@ int main(int argc, char* argv[]) {
 					for (auto it : pubSrc) {
 						if (ENABLE_VEH_SIMULATOR) {
 							// if id is ego, and is the first socket (XIL), send it 
-							if (it.second.id.compare(Config_c.CarMakerSetup.EgoId) == 0 && selfServerPortUserInput[iC] != Config_c.CarMakerSetup.CarMakerPort && Config_c.CarMakerSetup.EnableEgoSimulink) {
+							if (it.second.id.compare(Config_c.EgoSetup.Id) == 0 && selfServerPortUserInput[iC] != Config_c.CarMakerSetup.CarMakerPort && Config_c.CarMakerSetup.EnableEgoSimulink) {
 								MsgClient_c.VehDataSend_um[actualClientSock[iC]].push_back(it.second);
 							}
 							// if is the CarMakerPort or only have one socket (both vehicle simualtor and XIL), send it

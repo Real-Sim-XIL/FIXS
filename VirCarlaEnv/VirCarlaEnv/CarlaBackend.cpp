@@ -175,28 +175,9 @@ void CarlaBackend::auditZAlignment() {
 }
 
 void CarlaBackend::flushBatch() {
-    // ApplyBatchSync, not ApplyBatch. ApplyBatch is AsyncCall -- it hands the
-    // commands to the socket and returns without waiting for the server to apply
-    // them. The very next thing the loop does is world.Tick(), so the bridge was
-    // racing its own message: when the tick won, the frame rendered every mirrored
-    // vehicle at its PREVIOUS pose while the spectator -- placed from the pose we
-    // just commanded -- had already moved on. Measured on mlk_eco_driving at
-    // CarlaTimeStep 0.1: the ego actor was one full step (0.290 m) behind the
-    // camera on 29% of ticks, and its per-tick motion alternated 0.000 / 0.582 m
-    // instead of a steady 0.291. That is the followed vehicle visibly shuddering
-    // back and forth against a smooth camera.
-    //
-    // The rate tracks how often a batch is in flight when the tick fires:
-    //   tick 0.025, refresh 0.1  (batch every 4th tick)   0.5% of frames
-    //   tick 0.025, refresh 0.025 (batch every tick)      9.0%
-    //   tick 0.1,   refresh 0.1   (batch every tick)     29.0%
-    //
-    // Sync keeps the batching win that matters -- one RPC for ~180 vehicles
-    // instead of 180 -- and gives up only the round-trip. The server-side work is
-    // not extra: those transforms have to be applied before the tick regardless.
-    // It also feeds the interested-id readback below, which reports the actor's
-    // transform back to FIXS: a stale actor there is not a cosmetic problem, it
-    // sends a pose one step old and a differenced velocity of 0 then 2x.
+    // ApplyBatchSync, not ApplyBatch: ApplyBatch returns before the server has
+    // applied the commands, and the very next thing the loop does is Tick(), so
+    // the bridge raced its own message and rendered vehicles a step behind.
     if (client_) client_->ApplyBatchSync(batch_, false);
     batch_.clear();
 }
@@ -306,7 +287,7 @@ void CarlaBackend::setEgoRoute(const std::vector<std::pair<double, double>>& fix
               << egoDriver_.routeSize() << " path points (EgoDriver fallback module)\n";
 }
 
-void CarlaBackend::driveEgoFallback(double targetSpeed) {
+void CarlaBackend::stepEgoDriver(double targetSpeed) {
     // Per-tick fallback driver: read the ego pose in the Carla frame, ask the
     // module for a neutral DriveCommand, apply it through full PhysX dynamics.
     if (!egoActor_ || !egoDriver_.hasRoute()) return;
@@ -325,24 +306,37 @@ void CarlaBackend::driveEgoFallback(double targetSpeed) {
     c.brake    = (float)dc.brake;
     c.steer    = (float)dc.steer;
     egoActor_->ApplyControl(c);
+
+    // Remember what was applied, and the target it was chasing. Without this the
+    // only observable is "the ego did not move" -- which is the same symptom for
+    // a driver commanding nothing, a driver commanding the wrong thing, and a
+    // vehicle that cannot act on what it was told. Reported on the ego's own
+    // record so it lands in whatever log is already collecting it.
+    lastEgoCmd_ = dc;
+    lastEgoTarget_ = tgt;
 }
 
 void CarlaBackend::applyEgoActuation(double throttle, double brake, double steerNorm) {
     // #174 unified EgoDriver apply-path: the actuation comes from an external FIXS
     // client (EgoDriver client / L4 controller) via the ego's wire record; Carla just
-    // realizes it on the physics ego. Same VehicleControl seam as driveEgoFallback.
+    // realizes it on the physics ego. Same VehicleControl seam as stepEgoDriver.
     if (!egoActor_) return;
     carla::rpc::VehicleControl c;
     c.throttle = (float)std::max(0.0, std::min(1.0, throttle));
     c.brake    = (float)std::max(0.0, std::min(1.0, brake));
     c.steer    = (float)std::max(-1.0, std::min(1.0, steerNorm));
     egoActor_->ApplyControl(c);
+    // Record what was APPLIED. The datalog asks the backend what the ego was
+    // commanded this tick; who produced the command is not its business.
+    lastEgoCmd_.throttle = c.throttle;
+    lastEgoCmd_.brake    = c.brake;
+    lastEgoCmd_.steer    = c.steer;
 }
 
 void CarlaBackend::applyEgoControl(const std::string& /*egoId*/, double desiredSpeed) {
     // L2 actuation seam: route an EXTERNAL desired-speed advisory to whichever L0
     // driver owns the ego. Native TM -> SetDesiredSpeed (km/h) on the ego's TM
-    // instance; EgoDriver fallback -> stash the target for the next driveEgoFallback
+    // instance; EgoDriver fallback -> stash the target for the next stepEgoDriver
     // tick. No ego -> nothing to advise.
     if (!egoActor_) return;
     egoDesiredOverride_ = desiredSpeed;

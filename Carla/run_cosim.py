@@ -2619,9 +2619,51 @@ def _peek_any_endpoint():
         path = rec.get("config")
         if path and os.path.isfile(path):
             return read_carla_endpoint(path)
-    except Exception:
+    # BaseException, not Exception. read_carla_endpoint sys.exit()s when PyYAML is
+    # missing -- correctly, for a caller that needs the config, since substituting
+    # defaults there invents settings and drives real decisions with them. But
+    # THIS caller does not need it: it is a best-effort peek that promises
+    # (None, None) when it cannot read. SystemExit derives from BaseException, so
+    # `except Exception` let it through and a helper that is allowed to fail took
+    # the whole process down.
+    #
+    # It broke the bootstrap contract: run_cosim.bat starts under any python on
+    # PATH and re-execs under the configured one, so the bootstrap is meant to
+    # need nothing beyond the stdlib. --doctor reaches here BEFORE that re-exec,
+    # so `run_cosim.bat --doctor` died on a machine whose PATH python has no
+    # PyYAML -- while the configured interpreter had it all along.
+    except BaseException:
         pass
     return None, None
+
+
+def _peek_scenario(args, maps_root):
+    """(config yaml, net xml) for --doctor's Scenario tier, or None.
+
+    Same source of truth as a real run: --profile when given, else the saved
+    'last' setup. So `run_cosim --doctor` with no arguments checks the scenario
+    you would actually launch, and `--doctor --profile <name>` targets another.
+
+    Returns None rather than guessing when nothing is selected; doctor reports
+    that as skipped, which is the point -- a scenario check that quietly does not
+    run is how a route the ego could not drive survived a whole day of runs.
+    """
+    try:
+        doc = run_profile.load_doc()
+        name = getattr(args, "profile", None) or doc.get("last")
+        rec = (doc.get("setups") or {}).get(name) or {}
+        config_path = rec.get("config")
+        if not config_path or not os.path.isfile(config_path):
+            return None
+        net = None
+        map_dir = os.path.join(maps_root, rec.get("map") or "", "sumo")
+        if os.path.isdir(map_dir):
+            nets = sorted(f for f in os.listdir(map_dir) if f.endswith(".net.xml"))
+            if nets:
+                net = os.path.join(map_dir, nets[0])
+        return (config_path, net)
+    except Exception:
+        return None
 
 
 def print_fingerprint(cfg, host, port):
@@ -3490,11 +3532,12 @@ def main():
             return print_fingerprint(cfg, host, port)
         import doctor
         import peer
-        return doctor.run(cfg, env, FIXS_ROOT,
-                          os.path.join(os.path.dirname(env.CONFIG_PATH), "maps"),
+        maps_root = os.path.join(os.path.dirname(env.CONFIG_PATH), "maps")
+        return doctor.run(cfg, env, FIXS_ROOT, maps_root,
                           host, port, _fixs_version(),
                           peer_port=args.peer_port or peer.peer_port(port),
                           who_has_port=_who_has_port,
+                          scenario=_peek_scenario(args, maps_root),
                           **_doctor_role(doctor, cfg, args))
 
     # --purge-map answers a question about this machine's disk and stops. Sits with
