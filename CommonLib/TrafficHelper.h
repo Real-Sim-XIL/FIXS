@@ -50,6 +50,20 @@ public:
 
 	int addEgoVehicle(double simTime);
 	int addEgoVehicleFromXY(double simTime, std::string vehicleId, std::string vehicleType, double positionX, double positionY);
+
+	// #305 Which layer owns this vehicle's motion, if the traffic simulator does
+	// not? CarMaker/XIL and the virtual environment (Carla) are the SAME situation
+	// from SUMO's side -- a vehicle it holds but does not drive, whose position is
+	// written in from outside every tick. They were two branches only because two
+	// config sections named the id. One test now answers it for both, and one body
+	// in sendToSUMO mirrors whatever it returns.
+	//
+	// The order inside matters: when the CarMakerSetup section is absent,
+	// CarMakerSetup.EgoId is inferred from the lone subscription and can equal the
+	// Carla ego id. VirEnv ownership is the more specific condition (it also needs
+	// EnableExternalControl and the id in InterestedIds), so it wins.
+	enum class ExternalEgoOwner { None, VehSimulator, VirEnv };
+	ExternalEgoOwner externalEgoOwnerOf(const std::string& vehId) const;
 	bool isWarmUpEgoInNetwork(double* simTime);
 
 	int getSimulationTime(double* simTime);
@@ -144,12 +158,13 @@ public:
 
 	bool ENABLE_CARLA = false;
 	bool ENABLE_CARLA_EXTERNAL_CONTROL = false;
-	// Carla external-control ids already added to the traffic simulator (add ONCE,
-	// then wait for insertion; see the Carla inject branch in sendToSUMO).
-	std::set<std::string> carlaInjectedIds_;
-	// #174: last (x,y) fed to moveToXY per Carla-owned id -- lets the off-map guard
-	// compare SUMO's placement (getPosition, n-1) to what we asked for last tick.
-	std::unordered_map<std::string, std::pair<double, double>> carlaLastFed_;
+	// Externally-driven ego ids already added to the traffic simulator (add ONCE,
+	// then wait for insertion; see the mirror block in sendToSUMO).
+	std::set<std::string> externalEgoInjected_;
+	// #174: last (x,y) fed to moveToXY per externally-driven ego -- lets the
+	// off-map guard compare SUMO's placement (getPosition, n-1) to what we asked
+	// for last tick.
+	std::unordered_map<std::string, std::pair<double, double>> externalEgoLastFedXY_;
 
 	// #177: skip per-vehicle TraCI getters whose output is never sent. Derived
 	// once from VehicleMessageField_set in connectionSetup -- getNextTLS is only

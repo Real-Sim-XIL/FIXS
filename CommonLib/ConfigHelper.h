@@ -135,7 +135,95 @@ struct XilSetup_t {
 };
 
 
+// ===========================================================================
+// #305 THE EGO, DESCRIBED ONCE.
+//
+// A vehicle whose motion something outside the traffic simulator computes is
+// the SAME situation whether that something is CarMaker, an XIL plant or Carla:
+// SUMO holds a vehicle it did not create, and whose position is written in from
+// outside on every tick. It was nevertheless described twice --
+// CarMakerSetup.EgoId and CarlaSetup.EgoId, two inject functions, two branches
+// in TrafficHelper::sendToSUMO, a keepRoute hardcoded on one side and
+// configurable on the other -- and nothing stopped the two descriptions
+// disagreeing about which vehicle the ego even is.
+//
+// This section is that description, once, for every backend.
+//
+// Every key is OPTIONAL and falls back to the per-backend key it replaces, so
+// scenarios written before it parse and behave exactly as they did.
+struct EgoSetup_t {
+
+	// FIXS id of the ego. Replaces CarMakerSetup.EgoId and CarlaSetup.EgoId --
+	// which are still populated from it, so nothing downstream had to change.
+	std::string Id;
+
+	// Traffic-simulator vType used when the ego has to be injected. Replaces
+	// CarMakerSetup.EgoType and CarlaSetup.EgoSumoType.
+	std::string SumoType;
+
+	//   Dynamics -- WHAT COMPUTES THE EGO'S MOTION
+	//     "traffic" : the traffic simulator does; the virtual environment just
+	//                 renders it (default, and what every non-ego vehicle does)
+	//     "virenv"  : the virtual environment's own physics does -- Carla PhysX
+	//                 today. Deliberately NOT named after a backend: a CarMaker
+	//                 vehicle model occupies exactly this slot.
+	//     "xil"     : an external plant does (Simulink, hardware in the loop)
+	//
+	//   "carla" is accepted as a deprecated alias for "virenv".
+	std::string Dynamics;
+
+	//   ActuationSource -- WHO PRODUCES THE PEDALS AND STEER IT RUNS ON
+	//     "simulator" : the driver the vehicle/environment simulator brought
+	//                   with it -- Carla's Traffic Manager, CarMaker's IPGDriver
+	//     "fixs"      : the driver FIXS ships (EgoDriver: pure pursuit over
+	//                   EgoRoutePoints, map-agnostic)
+	//     "user"      : a control law you wrote
+	//
+	//   WHERE your code runs is not a fourth value, because it is not a fourth
+	//   kind of driver. Name a Controller file and it is loaded and called
+	//   in-process, once per environment step. Leave it unset and the pedals are
+	//   read off the ego's FIXS record instead, i.e. produced by a client process
+	//   served at the 0.1 s feed.
+	//
+	//   That difference is not stylistic. On the feed path the record is the one
+	//   the traffic simulator left, and `speed` there carries the L2 advisory
+	//   rather than the measured speed -- so a controller closing a speed loop
+	//   reads back its own setpoint, its error is ~0 by construction, and it
+	//   never corrects. In-process the record is refreshed from the backend
+	//   before every call, so the loop closes on the plant.
+	//
+	//   Deprecated aliases, kept parsing: "carlaTM" -> simulator,
+	//   "internal" -> fixs, "external" -> user without a Controller,
+	//   "embedded" -> user with one.
+	std::string ActuationSource;
+
+	// Python file implementing the user control law, loaded in-process when
+	// ActuationSource is "user". Replaces CarlaSetup.EgoController. Parsed here
+	// for schema parity; only the Python backend acts on it (FIXS#325).
+	std::string Controller;
+
+	// keepRoute bitmask for the moveToXY that mirrors the externally-driven ego
+	// back into the traffic simulator. Replaces SumoSetup.EgoKeepRoute, and
+	// replaces the 6 the CarMaker call site hardcoded -- so both owners are
+	// configurable, and both default to that same 6.
+	//
+	// It is really a choice of FAILURE MODE once the traffic simulator no longer
+	// drives the ego:
+	//   bit 0 (1) map only onto the vehicle's OWN route; SUMO raises if it
+	//             cannot -> the ego cannot silently lose its route, and with it
+	//             the next-signal lookup a signal-aware controller plans on
+	//   bit 1 (2) place at the exact position, off the network if need be
+	//             -> off-road driving is possible; degradation is silent
+	//   bit 2 (4) ignore lane permissions
+	// https://sumo.dlr.de/docs/TraCI/Change_Vehicle_State.html#move_to_xy
+	int KeepRoute;
+
+};
+
 struct CarMakerSetup_t {
+	// NOTE: EgoId/EgoType below are DEPRECATED as config keys -- write
+	// EgoSetup.Id / EgoSetup.SumoType, which fill these and the Carla side from
+	// one value (#305). Still read everywhere.
 	bool EnableCosimulation;
 
 	bool EnableEgoSimulink;
@@ -265,8 +353,11 @@ struct CarlaSetup_t {
 	// port. That is topology, and the config has no business claiming to know it.
 	std::string EgoDynamics;
 	std::string EgoActuationSource;
+	std::string EgoController;         // user control law file (Python backend)
 
-	std::string EgoId;                 // FIXS id of the Carla-driven ego (mode >= 1)
+	// DEPRECATED as a config key -- write EgoSetup.Id instead, which fills this
+	// and CarMakerSetup.EgoId from one value (#305). Still read everywhere.
+	std::string EgoId;                 // FIXS id of the externally-driven ego (mode >= 1)
 	std::string EgoSumoType;           // SUMO vType used when TL injects the ego
 	std::string EgoBlueprint;          // Carla blueprint for the ego actor
 	std::vector<double> EgoSpawnPose;  // [x, y, z, headingDeg] FIXS frame (mode >= 1)
@@ -447,6 +538,7 @@ public:
 	SimulationSetup_t SimulationSetup;
 	ApplicationSetup_t ApplicationSetup;
 	XilSetup_t XilSetup;
+	EgoSetup_t EgoSetup;
 	CarMakerSetup_t CarMakerSetup;
 	SumoSetup_t SumoSetup;
 	CarlaSetup_t CarlaSetup;

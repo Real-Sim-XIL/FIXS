@@ -695,78 +695,7 @@ int ConfigHelper::getConfig(string configName) {
 	// byte for byte. See ConfigHelper.h for what the values mean.
 	CarlaSetup.EgoDynamics        = node["EgoDynamics"]        ? parserString(node, "EgoDynamics") : "";
 	CarlaSetup.EgoActuationSource = node["EgoActuationSource"] ? parserString(node, "EgoActuationSource") : "";
-	{
-		// dependency-free ASCII fold, so "carlaTM"/"CarlaTM"/"carlatm" all read alike
-		auto lowerAscii = [](const std::string& s) {
-			std::string out = s;
-			for (size_t i = 0; i < out.size(); i++)
-				if (out[i] >= 'A' && out[i] <= 'Z') out[i] = (char)(out[i] - 'A' + 'a');
-			return out;
-		};
-		auto hasMsgField = [&](const char* f) {
-			for (size_t i = 0; i < SimulationSetup.VehicleMessageField.size(); i++)
-				if (SimulationSetup.VehicleMessageField[i] == f) return true;
-			return false;
-		};
-
-		if (!CarlaSetup.EgoDynamics.empty()) {
-			const std::string dyn = lowerAscii(CarlaSetup.EgoDynamics);
-			if (dyn == "traffic") {
-				CarlaSetup.EgoMode = 0;
-				CarlaSetup.EnableExternalControl = false;
-			}
-			else if (dyn == "carla") {
-				// 2, not 1, on purpose: "advisory-capable" costs nothing when no
-				// controller is wired in (the advisory read falls back to
-				// EgoTargetSpeed), and it keeps L0 and L2 ONE configuration --
-				// which, in every respect the bridge can see, they are.
-				CarlaSetup.EgoMode = 2;
-				// This is also what TrafficLayer's carlaOwnsId reads. Deriving both
-				// from one key is the point: the two processes decide ego ownership
-				// together and have no arbiter, so they must not be able to disagree.
-				CarlaSetup.EnableExternalControl = true;
-			}
-			else if (dyn == "xil") {
-				printf("ERROR: EgoDynamics: 'xil' is a declared value but is not implemented yet.\n"
-				       "       Use 'traffic' or 'carla'.\n");
-				exit(-1);
-			}
-			else {
-				printf("ERROR: EgoDynamics must be one of traffic|carla|xil, got '%s'\n",
-				       CarlaSetup.EgoDynamics.c_str());
-				exit(-1);
-			}
-		}
-
-		if (!CarlaSetup.EgoActuationSource.empty()) {
-			const std::string src = lowerAscii(CarlaSetup.EgoActuationSource);
-			if      (src == "carlatm")  CarlaSetup.EgoL0Driver = "TM";
-			else if (src == "internal") CarlaSetup.EgoL0Driver = "Pursuit";
-			else if (src == "external") CarlaSetup.EgoL0Driver = "Actuation";
-			else if (src == "embedded") CarlaSetup.EgoL0Driver = "Embedded";
-			else {
-				printf("ERROR: EgoActuationSource must be one of carlaTM|internal|external|embedded, got '%s'\n",
-				       CarlaSetup.EgoActuationSource.c_str());
-				exit(-1);
-			}
-
-			// A controller can only produce a field that is ON THE WIRE. Without
-			// this the omission is invisible: the client computes pedals, FIXS
-			// strips them, and the ego simply ignores its controller -- which reads
-			// as a controller bug for as long as you care to look for one.
-			if (src == "external") {
-				const char* need[] = { "acceleratorPedalDesired", "brakePedalDesired", "steerAngleDesired" };
-				for (int i = 0; i < 3; i++) {
-					if (!hasMsgField(need[i])) {
-						printf("ERROR: EgoActuationSource: external needs '%s' in VehicleMessageField;\n"
-						       "       without it the controller's command is stripped before it "
-						       "reaches the ego.\n", need[i]);
-						exit(-1);
-					}
-				}
-			}
-		}
-	}
+	CarlaSetup.EgoController      = node["EgoController"]      ? parserString(node, "EgoController") : "";
 
 	CarlaSetup.EgoId        = node["EgoId"]        ? parserString(node, "EgoId") : "ego";
 	CarlaSetup.EgoSumoType  = node["EgoSumoType"]  ? parserString(node, "EgoSumoType") : "car";
@@ -924,6 +853,169 @@ int ConfigHelper::getConfig(string configName) {
 		if (node["DataLogPath"])   DataLogSetup.DataLogPath   = parserString(node, "DataLogPath");
 		if (node["DataLogWho"])    parserStringVector(node, "DataLogWho", DataLogSetup.DataLogWho);
 		if (node["DataLogFields"]) parserStringVector(node, "DataLogFields", DataLogSetup.DataLogFields);
+	}
+
+	// ===========================================================================
+	// 			READ Ego Setup section (#305)
+	// ===========================================================================
+	// LAST on purpose. This section is the one description of the ego, and it has
+	// to be able to overrule the per-backend keys it replaces -- which are parsed
+	// above, and are still what the rest of the engine reads.
+	//
+	// So the shape is: resolve each value (EgoSetup wins, else the legacy key it
+	// replaces), write it BACK into every legacy field, then derive the internal
+	// representation ONCE. Two config keys can no longer describe two different
+	// egos, because after this block there is only one value in play.
+	{
+		node = config["EgoSetup"];
+
+		// dependency-free ASCII fold, so "carlaTM"/"CarlaTM"/"carlatm" read alike
+		auto lowerAscii = [](const std::string& in) {
+			std::string out = in;
+			for (size_t i = 0; i < out.size(); i++)
+				if (out[i] >= 'A' && out[i] <= 'Z') out[i] = (char)(out[i] - 'A' + 'a');
+			return out;
+		};
+		auto hasMsgField = [&](const char* f) {
+			for (size_t i = 0; i < SimulationSetup.VehicleMessageField.size(); i++)
+				if (SimulationSetup.VehicleMessageField[i] == f) return true;
+			return false;
+		};
+		// A half-migrated scenario -- EgoSetup.Id saying one thing and
+		// CarlaSetup.EgoId another -- is exactly the disagreement this section
+		// exists to end, so it is reported rather than silently resolved.
+		auto warnConflict = [](const char* newKey, const char* oldKey,
+		                       const std::string& a, const std::string& b) {
+			if (!b.empty() && a != b)
+				printf("WARNING: EgoSetup.%s ('%s') overrides %s ('%s'). "
+				       "Delete the second one.\n", newKey, a.c_str(), oldKey, b.c_str());
+		};
+
+		// ---- Id -------------------------------------------------------------
+		if (node && node["Id"]) {
+			EgoSetup.Id = parserString(node, "Id");
+			warnConflict("Id", "CarlaSetup.EgoId", EgoSetup.Id, CarlaSetup.EgoId);
+			warnConflict("Id", "CarMakerSetup.EgoId", EgoSetup.Id, CarMakerSetup.EgoId);
+			CarlaSetup.EgoId    = EgoSetup.Id;
+			CarMakerSetup.EgoId = EgoSetup.Id;
+		}
+		else {
+			// Not given: adopt whichever backend is actually running. Only the
+			// legacy fields are authoritative here, so nothing changes.
+			EgoSetup.Id = CarlaSetup.EnableCosimulation ? CarlaSetup.EgoId
+			                                            : CarMakerSetup.EgoId;
+		}
+
+		// ---- SumoType --------------------------------------------------------
+		if (node && node["SumoType"]) {
+			EgoSetup.SumoType = parserString(node, "SumoType");
+			CarlaSetup.EgoSumoType = EgoSetup.SumoType;
+			CarMakerSetup.EgoType  = EgoSetup.SumoType;
+		}
+		else {
+			EgoSetup.SumoType = CarlaSetup.EnableCosimulation ? CarlaSetup.EgoSumoType
+			                                                  : CarMakerSetup.EgoType;
+		}
+
+		// ---- KeepRoute -------------------------------------------------------
+		// The CarMaker mirror hardcoded 6 and the Carla mirror read
+		// SumoSetup.EgoKeepRoute. Both now read this, and both still default to 6.
+		if (node && node["KeepRoute"]) {
+			EgoSetup.KeepRoute = parserInteger(node, "KeepRoute");
+			SumoSetup.EgoKeepRoute = EgoSetup.KeepRoute;
+		}
+		else {
+			EgoSetup.KeepRoute = SumoSetup.EgoKeepRoute;
+		}
+
+		// ---- Controller ------------------------------------------------------
+		EgoSetup.Controller = (node && node["Controller"]) ? parserString(node, "Controller")
+		                                                   : CarlaSetup.EgoController;
+		CarlaSetup.EgoController = EgoSetup.Controller;
+
+		// ---- Dynamics --------------------------------------------------------
+		EgoSetup.Dynamics = (node && node["Dynamics"]) ? parserString(node, "Dynamics")
+		                                               : CarlaSetup.EgoDynamics;
+		CarlaSetup.EgoDynamics = EgoSetup.Dynamics;
+		if (!EgoSetup.Dynamics.empty()) {
+			const std::string dyn = lowerAscii(EgoSetup.Dynamics);
+			if (dyn == "traffic") {
+				CarlaSetup.EgoMode = 0;
+				CarlaSetup.EnableExternalControl = false;
+			}
+			else if (dyn == "virenv" || dyn == "carla") {
+				// 2, not 1, on purpose: "advisory-capable" costs nothing when no
+				// controller is wired in (the advisory read falls back to
+				// EgoTargetSpeed), and it keeps L0 and L2 ONE configuration --
+				// which, in every respect the bridge can see, they are.
+				CarlaSetup.EgoMode = 2;
+				// This is also what TrafficLayer's external-ego ownership test
+				// reads. Deriving both from one key is the point: the two
+				// processes decide ego ownership together and have no arbiter,
+				// so they must not be able to disagree.
+				CarlaSetup.EnableExternalControl = true;
+			}
+			else if (dyn == "xil") {
+				printf("ERROR: EgoSetup.Dynamics: 'xil' names the case where an external\n"
+				       "       plant owns the ego. That case exists and works, but it is\n"
+				       "       switched on by CarMakerSetup.EnableCosimulation today, not\n"
+				       "       by this key. Leave Dynamics unset for a CarMaker/XIL run.\n");
+				exit(-1);
+			}
+			else {
+				printf("ERROR: EgoSetup.Dynamics must be one of traffic|virenv|xil "
+				       "(carla = deprecated alias for virenv), got '%s'\n",
+				       EgoSetup.Dynamics.c_str());
+				exit(-1);
+			}
+		}
+
+		// ---- ActuationSource -------------------------------------------------
+		EgoSetup.ActuationSource = (node && node["ActuationSource"])
+			? parserString(node, "ActuationSource") : CarlaSetup.EgoActuationSource;
+		CarlaSetup.EgoActuationSource = EgoSetup.ActuationSource;
+		if (!EgoSetup.ActuationSource.empty()) {
+			const std::string src = lowerAscii(EgoSetup.ActuationSource);
+			// "user" is ONE value; whether a Controller file is named decides
+			// whether that user code runs in-process or on the far side of the
+			// 0.1 s feed. The deprecated aliases name the two halves directly.
+			const bool userInProcess = (src == "user" && !EgoSetup.Controller.empty())
+			                        || (src == "embedded");
+			const bool userOnTheWire = (src == "user" &&  EgoSetup.Controller.empty())
+			                        || (src == "external");
+
+			if      (src == "simulator" || src == "carlatm")  CarlaSetup.EgoL0Driver = "TM";
+			else if (src == "fixs"      || src == "internal") CarlaSetup.EgoL0Driver = "Pursuit";
+			else if (userInProcess)                           CarlaSetup.EgoL0Driver = "Embedded";
+			else if (userOnTheWire)                           CarlaSetup.EgoL0Driver = "Actuation";
+			else {
+				printf("ERROR: EgoSetup.ActuationSource must be one of simulator|fixs|user "
+				       "(carlaTM|internal|external|embedded = deprecated aliases), got '%s'\n",
+				       EgoSetup.ActuationSource.c_str());
+				exit(-1);
+			}
+
+			if (src == "embedded" && EgoSetup.Controller.empty()) {
+				printf("ERROR: EgoSetup.ActuationSource: 'embedded' needs a Controller file.\n");
+				exit(-1);
+			}
+
+			// A controller can only produce a field that is ON THE WIRE. Without
+			// this the omission is invisible: the client computes pedals, FIXS
+			// strips them, and the ego simply ignores its controller -- which
+			// reads as a controller bug for as long as you care to look for one.
+			if (userOnTheWire) {
+				const char* need[] = { "acceleratorPedalDesired", "brakePedalDesired", "steerAngleDesired" };
+				for (int i = 0; i < 3; i++) {
+					if (!hasMsgField(need[i])) {
+						printf("ERROR: EgoSetup.ActuationSource: user control over the feed needs\n"
+						       "       '%s' in VehicleMessageField; without it the controller's\n"
+						       "       command is stripped before it reaches the ego.\n", need[i]);
+						exit(-1);
+					}
+				}
+			}
+		}
 	}
 
 	return 0;

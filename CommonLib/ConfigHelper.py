@@ -28,6 +28,8 @@ class ConfigHelper:
         self.application_setup = defaultdict(lambda: None)
         self.Xil_setup = defaultdict(lambda: None)
         self.CarMaker_setup = defaultdict(lambda: None)
+        # #305 the ego, described once, for every backend
+        self.Ego_setup = defaultdict(lambda: None)
         self.Sumo_setup = defaultdict(lambda: None)
         self.Carla_setup = defaultdict(lambda: None)
         self.DataLog_setup = defaultdict(lambda: None)
@@ -141,49 +143,96 @@ class ConfigHelper:
                                               for pt in (carla_node.get("EgoRoutePoints") or [])]
 
 
-        # EgoDynamics / EgoActuationSource -- the two knobs a scenario actually
-        # sets. EgoMode and EgoL0Driver above are what the bridge reads, and are
-        # DERIVED from them here exactly as ConfigHelper.cpp:712 derives them.
+        # ---- EgoSetup: the ego, described once (#305) --------------------------
+        # A vehicle whose motion something outside the traffic simulator computes
+        # is the same situation whether that something is CarMaker, an XIL plant
+        # or Carla. It used to be described twice -- CarMakerSetup.EgoId and
+        # CarlaSetup.EgoId, and a separate branch in TrafficHelper for each -- and
+        # nothing stopped the two descriptions naming different vehicles.
         #
-        # This peer had no derivation, so a config using the declared vocabulary
-        # was read as EgoMode 0 (the traffic simulator owns the ego) and the
-        # Python bridge quietly ran an L0 scenario while TrafficLayer, reading the
-        # C++ helper, ran an L2 one. Nothing failed; the ego simply was not taken
-        # over, and the embedded controller was never called.
-        egoDynamics = self.parserString(carla_node, "EgoDynamics", "")
+        # EgoSetup is that description. Every key falls back to the CarlaSetup key
+        # it replaces, so scenarios written before it parse unchanged. Mirrors the
+        # EgoSetup section in ConfigHelper.cpp; a key defaulted differently in the
+        # two parsers is a config that means two things depending on which bridge
+        # reads it.
+        ego_node = config.get("EgoSetup", {}) or {}
+
+        def _egoKey(name, fallback):
+            v = self.parserString(ego_node, name, "")
+            return v if v else fallback
+
+        self.Ego_setup["Id"] = _egoKey("Id", self.Carla_setup["EgoId"])
+        self.Ego_setup["SumoType"] = _egoKey("SumoType", self.Carla_setup["EgoSumoType"])
+        self.Ego_setup["Controller"] = _egoKey("Controller", self.Carla_setup["EgoController"])
+        self.Ego_setup["KeepRoute"] = self.parserInteger(ego_node, "KeepRoute", 6)
+        self.Carla_setup["EgoId"] = self.Ego_setup["Id"]
+        self.Carla_setup["EgoSumoType"] = self.Ego_setup["SumoType"]
+        self.Carla_setup["EgoController"] = self.Ego_setup["Controller"]
+
+        # Dynamics -- WHAT COMPUTES THE EGO'S MOTION. EgoMode and EgoL0Driver above
+        # are what the bridge reads, and are DERIVED here exactly as the EgoSetup
+        # section of ConfigHelper.cpp derives them.
+        #
+        # This peer had no derivation at all once, so a config using the declared
+        # vocabulary was read as EgoMode 0 (the traffic simulator owns the ego) and
+        # the Python bridge quietly ran an L0 scenario while TrafficLayer, reading
+        # the C++ helper, ran an L2 one. Nothing failed; the ego simply was not
+        # taken over, and the embedded controller was never called.
+        egoDynamics = _egoKey("Dynamics", self.parserString(carla_node, "EgoDynamics", ""))
+        self.Ego_setup["Dynamics"] = egoDynamics
         if egoDynamics:
             dyn = egoDynamics.strip().lower()
             if dyn == "traffic":
                 self.Carla_setup["EgoMode"] = 0
                 self.Carla_setup["EnableExternalControl"] = False
-            elif dyn == "carla":
+            elif dyn in ("virenv", "carla"):
                 # 2, not 1, on purpose: "advisory-capable" costs nothing when no
                 # controller is wired in (the advisory read falls back to
                 # EgoTargetSpeed), and it keeps L0 and L2 ONE configuration.
                 self.Carla_setup["EgoMode"] = 2
-                # Also what TrafficLayer's carlaOwnsId reads. Deriving both from
-                # one key is the point: the two processes decide ego ownership
-                # together and have no arbiter, so they must not be able to
-                # disagree.
+                # Also what TrafficLayer's external-ego ownership test reads.
+                # Deriving both from one key is the point: the two processes decide
+                # ego ownership together and have no arbiter, so they must not be
+                # able to disagree.
                 self.Carla_setup["EnableExternalControl"] = True
             elif dyn == "xil":
                 raise SystemExit(
-                    "ERROR: EgoDynamics: 'xil' is a declared value but is not "
-                    "implemented yet. Use 'traffic' or 'carla'.")
+                    "ERROR: EgoSetup.Dynamics: 'xil' names the case where an external\n"
+                    "       plant owns the ego. That case exists and works, but it is\n"
+                    "       switched on by CarMakerSetup.EnableCosimulation today, not\n"
+                    "       by this key. Leave Dynamics unset for a CarMaker/XIL run.")
             else:
                 raise SystemExit(
-                    "ERROR: EgoDynamics must be one of traffic|carla|xil, got '%s'"
-                    % egoDynamics)
+                    "ERROR: EgoSetup.Dynamics must be one of traffic|virenv|xil "
+                    "(carla = deprecated alias for virenv), got '%s'" % egoDynamics)
 
-        egoActuation = self.parserString(carla_node, "EgoActuationSource", "")
+        # ActuationSource -- WHO PRODUCES THE PEDALS AND STEER IT RUNS ON.
+        # "user" is ONE value; whether a Controller file is named decides whether
+        # that user code runs in-process (once per Carla step, reading the plant)
+        # or on the far side of the 0.1 s feed. The old vocabulary named those two
+        # halves directly and is still accepted.
+        egoActuation = _egoKey("ActuationSource",
+                               self.parserString(carla_node, "EgoActuationSource", ""))
+        self.Ego_setup["ActuationSource"] = egoActuation
         if egoActuation:
             src = egoActuation.strip().lower()
-            driver = {"carlatm": "TM", "internal": "Pursuit",
-                      "external": "Actuation", "embedded": "Embedded"}.get(src)
-            if driver is None:
+            hasController = bool(self.Ego_setup["Controller"])
+            if src in ("simulator", "carlatm"):
+                driver = "TM"
+            elif src in ("fixs", "internal"):
+                driver = "Pursuit"
+            elif src == "embedded" or (src == "user" and hasController):
+                driver = "Embedded"
+            elif src == "external" or (src == "user" and not hasController):
+                driver = "Actuation"
+            else:
                 raise SystemExit(
-                    "ERROR: EgoActuationSource must be one of "
-                    "carlaTM|internal|external|embedded, got '%s'" % egoActuation)
+                    "ERROR: EgoSetup.ActuationSource must be one of simulator|fixs|user "
+                    "(carlaTM|internal|external|embedded = deprecated aliases), got '%s'"
+                    % egoActuation)
+            if src == "embedded" and not hasController:
+                raise SystemExit(
+                    "ERROR: EgoSetup.ActuationSource: 'embedded' needs a Controller file.")
             self.Carla_setup["EgoL0Driver"] = driver
         self.Carla_setup["EgoRouteRepeat"] = self.parserInteger(carla_node, "EgoRouteRepeat", 50)
         self.Carla_setup["EgoTargetSpeed"] = self.parserDouble(carla_node, "EgoTargetSpeed", 8.33)
@@ -208,6 +257,7 @@ class ConfigHelper:
         self.application_setup.clear()
         self.Xil_setup.clear()
         self.CarMaker_setup.clear()
+        self.Ego_setup.clear()
         self.Sumo_setup.clear()
         self.Carla_setup.clear()
         self.DataLog_setup.clear()
