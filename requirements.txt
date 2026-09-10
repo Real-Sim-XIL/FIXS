@@ -8,6 +8,12 @@ pyyaml>=6.0
 ruamel.yaml>=0.17.0
 sphinx>=5.0.0
 sphinx_rtd_theme>=1.0.0
+# Carla/carla_agents/ -- the vendored CARLA agent stack (see its VERSION.txt):
+# global_route_planner imports networkx, basic_agent and fixs_adapter import
+# shapely. Declared here rather than by each application that drives an ego,
+# because the package that needs them is this one.
+networkx
+shapely>=2.0
 # SUMO Python libraries
 traci
 sumolib
