@@ -26,6 +26,7 @@ import os
 import sys
 
 from CommonLib import fixs
+from CommonLib.VirEnv.EgoControllerHost import currentBackend
 
 _ADAPTER_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -75,6 +76,17 @@ class EgoVehicle:
         self._RoadOption = RoadOption
         self._actor = a.EgoAdapter(carla)
 
+        # A CARLA agent asks its map road questions -- get_waypoint, lane ids,
+        # is_junction -- inside its own constructor. FIXS holds the backend, so
+        # those are FORWARDED to the real map. Falling back to the adapter's
+        # stand-in is for a controller driven with no backend behind it, which
+        # is how the tests run; a run has one.
+        backend = currentBackend()
+        self._world = getattr(backend, 'carlaWorld', None) if backend else None
+        if self._world is None and backend is not None:
+            print('[agent] backend exposes no CARLA world; road questions will '
+                  'be answered from the route polyline', flush=True)
+
         # One lap, densified, kept so it can be laid down again. The corridor
         # route is a LAP and the traffic simulator drives it EgoRouteRepeat
         # times; the agent has no notion of that and brakes to a stop when its
@@ -107,7 +119,9 @@ class EgoVehicle:
                  self.fallbackSpeed), flush=True)
 
     # ---- the carla.Vehicle interface, forwarded --------------------------
-    def get_world(self):      return self._actor.get_world()
+    def get_world(self):
+        return self._world if self._world is not None else self._actor.get_world()
+
     def get_control(self):    return self._actor.get_control()
     def get_transform(self):  return self._actor.get_transform()
     def get_location(self):   return self._actor.get_location()
