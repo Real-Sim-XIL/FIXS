@@ -176,6 +176,22 @@ class ConfigHelper:
                 "ERROR: EgoSetup.ActuationSource must be one of simulator|fixs|user, "
                 "got '%s'" % src)
         self.Ego_setup["ActuationSource"] = src
+
+        # The Python backend serves a user control law IN-PROCESS only. On the
+        # feed the record's 'speed' is whatever the traffic simulator left --
+        # under L2 the advisory, not the measured speed -- so a speed loop reads
+        # back its own setpoint and never corrects, while its own log shows
+        # textbook tracking (ORNL-Real-Sim/FIXS#305).
+        if (src == "user" and not self.Ego_setup["Controller"]
+                and self.Carla_setup.get("EnableCosimulation")
+                and self.Carla_setup.get("EnablePythonBackend")):
+            raise SystemExit(
+                "ERROR: EgoSetup.ActuationSource: user needs a Controller on the Python\n"
+                "       backend -- a control law served at the 0.1 s feed reads the\n"
+                "       advisory back as measured speed. Name a .py in EgoSetup.Controller\n"
+                "       (it is called once per CARLA step), or set\n"
+                "       CarlaSetup.EnablePythonBackend: false to use the C++ bridge.")
+
         self.Carla_setup["EgoRouteRepeat"] = self.parserInteger(carla_node, "EgoRouteRepeat", 50)
         self.Carla_setup["EgoTargetSpeed"] = self.parserDouble(carla_node, "EgoTargetSpeed", 8.33)
         self.Carla_setup["TrafficManagerPort"] = self.parserInteger(carla_node, "TrafficManagerPort", 8000)

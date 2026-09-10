@@ -909,6 +909,21 @@ int ConfigHelper::getConfig(string configName) {
 			// "user" is ONE value; the Controller key decides where it runs.
 			const bool userOnTheWire = (src == "user" && EgoSetup.Controller.empty());
 
+			// The Python backend serves a user control law in-process only. On
+			// the feed the record's 'speed' carries whatever the traffic
+			// simulator left there -- under L2 that is the advisory, not the
+			// measured speed -- so a speed loop reads back its own setpoint and
+			// never corrects, while its own log shows textbook tracking (#305).
+			if (userOnTheWire && CarlaSetup.EnableCosimulation
+			    && CarlaSetup.EnablePythonBackend) {
+				printf("ERROR: EgoSetup.ActuationSource: user needs a Controller on the Python\n"
+				       "       backend -- a control law served at the 0.1 s feed reads the\n"
+				       "       advisory back as measured speed. Name a .py in EgoSetup.Controller\n"
+				       "       (it is called once per CARLA step), or set\n"
+				       "       CarlaSetup.EnablePythonBackend: false to use the C++ bridge.\n");
+				exit(-1);
+			}
+
 			// A controller can only produce a field that is on the wire; without
 			// this check the omission is silent (FIXS#305).
 			if (userOnTheWire) {

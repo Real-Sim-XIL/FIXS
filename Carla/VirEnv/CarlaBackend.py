@@ -61,6 +61,19 @@ _kSpawnOffsetZ = 0.1
 class CarlaBackend(IVirEnvBackend):
     """Implements :class:`IVirEnvBackend` against the CARLA Python client API."""
 
+    @property
+    def carlaWorld(self):
+        """The live carla.World, for an in-process controller that needs a map.
+
+        FIXS holds the backend client, so a road question a CARLA-shaped agent
+        asks -- `get_world().get_map().get_waypoint(...)` -- is FORWARDED to the
+        real map rather than answered from a reconstruction of it. Named here
+        and not on IVirEnvBackend because it is CARLA's own type: a caller that
+        reaches for it is asking for CARLA, and gets nothing from any other
+        backend.
+        """
+        return self._world
+
     def __init__(self, world, client, useVehicleTypeAsBlueprint, verbose):
         self._world = world
         self._client = client

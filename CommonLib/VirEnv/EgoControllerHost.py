@@ -150,7 +150,13 @@ class LoadedController:
         self._state = None
         self._instance = None
 
-    def setup(self, config, egoId):
+    def setup(self, config, egoId, backend=None):
+        # Registered before the controller is built, because a CARLA-shaped
+        # agent asks its map road questions inside its own constructor. The
+        # controller's own signature is unchanged: it does not take a backend,
+        # it asks FIXS -- see currentBackend.
+        global _backend
+        _backend = backend
         if self._isClass:
             self._instance = self._obj(config, egoId)
         elif self._setup is not None:
@@ -188,6 +194,36 @@ def _importFromPath(path):
     return module
 
 
+_backend = None
+
+
+def currentBackend():
+    """The backend this bridge is running, for a controller that must reach
+    past the record.
+
+    A CARLA-shaped agent asks its map road questions in its own constructor, so
+    something has to answer them. FIXS holds the backend client, so the answer
+    is FORWARDED to the real map rather than reconstructed -- reconstructing it
+    is what produced a road network invented from the ego's own route
+    (ORNL-Real-Sim/FIXS#305).
+
+    None when a controller is driven without one, which is how the tests run.
+    """
+    return _backend
+
+
+def _letControllerImportFixs():
+    """Make `import fixs` work inside a controller file.
+
+    A controller is a loose .py, not an installed package, so it has no sys.path
+    of its own -- and asking every one to reconstruct FIXS's layout before its
+    first import is the boilerplate this hook exists to remove.
+    """
+    d = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # CommonLib
+    if d not in sys.path:
+        sys.path.append(d)
+
+
 def loadController(spec, appRoot=None):
     """(string) -> LoadedController -- resolve what the scenario named.
 
@@ -201,6 +237,7 @@ def loadController(spec, appRoot=None):
     if not spec or not spec.strip():
         raise ControllerError('EgoController is empty')
     spec = spec.strip()
+    _letControllerImportFixs()
 
     modPart, sep, attr = spec.rpartition(':')
     # A Windows drive letter is not a separator: 'C:/x/y.py' has no attribute.

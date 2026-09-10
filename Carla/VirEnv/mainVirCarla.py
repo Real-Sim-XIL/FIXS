@@ -255,7 +255,7 @@ def main(argv=None):
             raise SystemExit("EgoSetup.ActuationSource: user needs a Controller: "
                              "<path to a .py defining control(ego, dt)>")
         embedded = loadController(spec, appRoot=os.getcwd())
-        embedded.setup(cs, egoId)
+        embedded.setup(cs, egoId, backend)
         print("Ego controller: %s (called every CARLA step, not every feed)"
               % embedded.spec)
     lastAdvisory = cs['EgoTargetSpeed']
