@@ -87,7 +87,7 @@ __all__ = [
     'connect', 'recv', 'send', 'close',
     'sim', 'vehicle', 'trafficlight',
     'emit', 'transport', 'commandKind',
-    'Vehicle', 'EgoVehicle', 'MAX_STEER_RAD',
+    'Vehicle', 'EgoSession', 'MAX_STEER_RAD',
     'Shutdown', 'FixsError', 'NotConnected', 'ProtocolError',
 ]
 
@@ -879,9 +879,9 @@ def _validateCommand(record):
 def __getattr__(name):
     # Imported on demand: it pulls in the CARLA-side impersonation, which a
     # client that is not driving an ego has no reason to load.
-    if name == 'EgoVehicle':
-        from CommonLib.CarlaAgent import EgoVehicle
-        return EgoVehicle
+    if name == 'EgoSession':
+        from CommonLib.CarlaAgent import EgoSession
+        return EgoSession
     # Detector records are received but not decoded -- SocketHelper.recv_data
     # drops them. Say so rather than handing back an empty view, which would
     # read as "no detectors this tick".

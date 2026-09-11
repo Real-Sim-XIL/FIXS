@@ -20,10 +20,15 @@ involved, nothing to mediate. Relaying is about who performs calls, and a
 ``Location(x=2.5)`` is not a call. Measured on a real 2656-line controller: 38
 of its 40 ``carla.`` sites are these, and all 38 need no FIXS involvement at all.
 
-SESSION OBJECTS -- ``client``, ``world``, ``map`` -- are answered by FIXS from
-the backend. These are the two remaining sites, and they are where the relay
-earns its keep: one owner of the CARLA session, and a seam a non-CARLA backend
-can answer later.
+SESSION OBJECTS -- ``client``, ``world``, ``map``, ``ego`` -- are answered by
+FIXS from the backend. ``ego`` is the REAL physics vehicle, which is what a
+user's agent should be built on::
+
+    -vehicle = world.get_actor(some_id)
+    +vehicle = carla.ego
+
+This is where the relay earns its keep: one owner of the CARLA session, and a
+seam a non-CARLA backend can answer later.
 
 WHAT IS REFUSED, and why it is refused rather than quietly allowed:
 
@@ -44,7 +49,7 @@ from __future__ import annotations
 
 import importlib
 
-__all__ = ['client', 'world', 'map', 'available']
+__all__ = ['client', 'world', 'map', 'ego', 'available']
 
 _carla = None
 _mapCache = None
@@ -106,6 +111,16 @@ def __getattr__(name):
                 "registered. This module is only live inside a controller the "
                 "bridge loaded (EgoSetup.Controller).")
         return w
+    if name == 'ego':
+        b = _backend()
+        a = getattr(b, 'carlaEgoActor', None) if b is not None else None
+        if a is None:
+            raise _Refused(
+                "carla.ego is not up yet. The traffic simulator inserts the ego "
+                "and the bridge adopts it, so it exists from the tick it enters "
+                "-- build your agent in setup() only if the scenario spawns it "
+                "up front, otherwise on the first control() call.")
+        return a
     if name == 'map':
         global _mapCache
         if _mapCache is None:

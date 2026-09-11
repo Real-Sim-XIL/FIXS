@@ -84,6 +84,17 @@ class CarlaBackend(IVirEnvBackend):
         """
         return self._client
 
+    @property
+    def carlaEgoActor(self):
+        """The physics ego CARLA owns, for `fixs.carla.ego`.
+
+        This is the vehicle a user's agent should be built on. It is real, its
+        physics are live, and its get_velocity is truthful -- measured 9.839 m/s
+        against the wire's 9.83768 at the same instant -- so there is nothing
+        about the ego worth standing in for.
+        """
+        return self._egoActor
+
     def __init__(self, world, client, useVehicleTypeAsBlueprint, verbose):
         self._world = world
         self._client = client

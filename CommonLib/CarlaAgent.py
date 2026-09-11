@@ -30,6 +30,7 @@ import sys
 
 from CommonLib import fixs
 from CommonLib.fixs import carla as fixsCarla
+from CommonLib.VirEnv.EgoControllerHost import currentBackend, currentCore
 
 #: A pose step beyond this is a teleport, not motion. Mirrors the adapter's
 #: own threshold: 5 m in one CARLA tick is 100 m/s.
@@ -47,13 +48,74 @@ def _adapter():
     return importlib.import_module('fixs_adapter')
 
 
+class _EgoActor:
+    """The real physics ego, with the one value CARLA cannot state here.
+
+    Everything -- pose, velocity, bounding box, id -- is the actor's own and
+    measured truthful (get_velocity read 9.839 m/s against the wire's 9.83768
+    at the same instant). Only the SPEED LIMIT is supplied: an imported
+    corridor carries no CARLA speed-limit signs, so the actor reports a value
+    that is not a speed, and an agent doing `int(speed_limit / 10)` for its
+    look-ahead overflowed a deque index with it. SUMO owns the limit in this
+    co-simulation and publishes it on the wire, so that is what the agent gets.
+    """
+
+    __slots__ = ('_actor', '_limitKmh')
+
+    def __init__(self, actor):
+        self._actor = actor
+        self._limitKmh = 0.0
+
+    def setSpeedLimit(self, mps):
+        self._limitKmh = max(0.0, float(mps)) * 3.6
+
+    def get_speed_limit(self):
+        return self._limitKmh
+
+    def __getattr__(self, name):
+        return getattr(self._actor, name)
+
+
+class _TrafficActor:
+    """A mirrored vehicle: CARLA's own actor, with the one thing it lacks.
+
+    Position, heading, bounding box and id are the REAL actor's -- the bridge
+    placed it, so there is no frame to convert and nothing to get wrong. Only
+    the velocity is supplied, because CARLA cannot report one: mirrors are
+    spawned physics-off and moved by set_transform (its own SUMO co-simulation
+    does the same), and set_target_velocity on such an actor does nothing.
+    Measured: 182 of 182 read exactly 0.000 while 119 were moving.
+    """
+
+    __slots__ = ('_actor', '_vel')
+
+    def __init__(self, actor, speedMs, carla_mod):
+        self._actor = actor
+        yaw = math.radians(actor.get_transform().rotation.yaw)
+        self._vel = carla_mod.Vector3D(x=speedMs * math.cos(yaw),
+                                       y=speedMs * math.sin(yaw), z=0.0)
+
+    def get_velocity(self):
+        return self._vel
+
+    def __getattr__(self, name):
+        return getattr(self._actor, name)
+
+
 class _ActorListView(list):
-    """`world.get_actors()`, carrying FIXS's traffic."""
+    """`world.get_actors()`: FIXS's traffic, CARLA's everything else."""
+
+    def __init__(self, vehicles=(), world=None):
+        super().__init__(vehicles)
+        self._world = world
 
     def filter(self, pattern):
         if 'vehicle' in pattern:
             return list(self)
-        return []                      # pedestrians and lights are not here yet
+        # Traffic lights and the rest are REAL -- the bridge keeps CARLA's
+        # lights in step with the traffic simulator, so they are truthful and
+        # there is nothing to substitute.
+        return self._world.get_actors().filter(pattern) if self._world else []
 
 
 class _WorldView:
@@ -73,9 +135,10 @@ class _WorldView:
     it unchanged.
     """
 
-    def __init__(self, carlaMap):
+    def __init__(self, carlaMap, world):
         self._map = carlaMap
-        self.vehicles = _ActorListView()
+        self._world = world
+        self.vehicles = _ActorListView(world=world)
 
     def get_map(self):
         return self._map
@@ -84,14 +147,18 @@ class _WorldView:
         return self.vehicles
 
 
-class EgoVehicle:
-    """`world.player`, backed by the FIXS record.
+class EgoSession:
+    """The FIXS side of one controlled ego: route, world view, per-tick record.
 
-    Construct it, build your agent on it exactly as you would on a
-    carla.Vehicle, then `drive()` the agent -- that is the whole binding. After
-    that the step is `update()`, your agent, then the three actuation fields
-    written onto the record -- which is the FIXS command contract, not
-    something this class does for you.
+    NOT a vehicle. The agent is built on `fixs.carla.ego`, which is CARLA's own
+    physics vehicle -- measured truthful, its get_velocity reading 9.839 m/s
+    against the wire's 9.83768 at the same instant -- so there is nothing about
+    the ego worth standing in for.
+
+    What this owns is the part CARLA cannot answer: the route the traffic
+    simulator holds, the traffic states CARLA's mirrors cannot report a velocity
+    for, and the per-tick log. `drive()` hands those to an agent; `update()`
+    refreshes them; the COMMAND is the caller's `ego.set`.
     """
 
     #: Waypoints left at which the next lap is appended (~400 m at 2 m spacing).
@@ -136,7 +203,8 @@ class EgoVehicle:
         # times; the agent has no notion of that and brakes to a stop when its
         # plan runs out, which reads exactly like a stall (FIXS#305).
         # What the agent's own sensing reads: CARLA's map, FIXS's traffic.
-        self._view = _WorldView(fixsCarla.map) if self._world is not None else None
+        self._view = (_WorldView(fixsCarla.map, self._world)
+                      if self._world is not None else None)
 
         self._lap = a.densify([(float(x), float(y)) for x, y in route],
                               self.sampling)
@@ -144,6 +212,7 @@ class EgoVehicle:
         self.lapsAllowed = max(1, int(config.get('EgoRouteRepeat') or 1))
 
         self.agent = None
+        self._ego = None
         self._lastXY = None
         self._config = config
         self.steps = 0
@@ -172,30 +241,31 @@ class EgoVehicle:
               % ('CARLA (forwarded)' if self._world is not None else 'route polyline'),
               flush=True)
 
-    # ---- the carla.Vehicle interface, forwarded --------------------------
-    def get_world(self):
-        if self._view is not None:
-            return self._view
-        return self._actor.get_world()
-
-    def get_control(self):    return self._actor.get_control()
-    def get_transform(self):  return self._actor.get_transform()
-    def get_location(self):   return self._actor.get_location()
-    def get_velocity(self):   return self._actor.get_velocity()
-    def get_speed_limit(self):return self._actor.get_speed_limit()
-
-    @property
-    def bounding_box(self):   return self._actor.bounding_box
-
-    @property
-    def id(self):             return self._actor.id
-
-    # ---- the FIXS side ---------------------------------------------------
+    # ---- the FIXS side -------------------------------------------------
     def route(self):
-        """One lap of the ego's corridor, as (waypoint, RoadOption) pairs."""
+        """One lap of the ego's corridor, as (waypoint, RoadOption) pairs.
+
+        REAL carla.Waypoints when a map is behind us, snapped from the corridor
+        the traffic simulator holds. That matters beyond tidiness: an agent
+        reads lane_id, road_id and is_junction off its own plan, and a stand-in
+        answers 0/0/False for every point -- so its lane reasoning compares the
+        real waypoint under the car against a plan that claims to be nowhere.
+        """
         self.lapsLaid += 1
-        return [(self._a.Waypoint(self._carla, x, y),
-                 self._RoadOption.LANEFOLLOW) for x, y in self._lap]
+        RO = self._RoadOption.LANEFOLLOW
+        if self._world is not None:
+            cmap, L = fixsCarla.map, self._carla.Location
+            plan = []
+            for x, y in self._lap:
+                # FIXS y is north-positive; CARLA's is flipped.
+                wp = cmap.get_waypoint(L(x=x, y=-y, z=0.0),
+                                       project_to_road=True)
+                if wp is not None:
+                    plan.append((wp, RO))
+            if plan:
+                return plan
+        return [(self._a.Waypoint(self._carla, x, y), RO)
+                for x, y in self._lap]
 
     def drive(self, agent):
         """Hand an agent over to FIXS: give it the route, and wire FIXS in.
@@ -229,7 +299,28 @@ class EgoVehicle:
 
         agent.set_global_plan(self.route())
 
-        agent.__class__ = self._a.make_agent_class(agent.__class__)
+        # The ONE thing FIXS substitutes, and it substitutes DATA, not a
+        # decision: the agent's view of the world. CARLA's mirrored traffic has
+        # no velocity -- its own SUMO co-simulation spawns physics-off and moves
+        # by set_transform, and set_target_velocity on such an actor does
+        # nothing -- so a following model reading get_velocity off them sees
+        # every leader as stationary. Everything else in the view, the map and
+        # the traffic lights included, is CARLA's own.
+        if self._view is not None:
+            agent._world = self._view
+            agent._map = self._view.get_map()
+        # The ego it was built on, with the speed limit CARLA cannot state on an
+        # imported corridor. Everything else about it is the real actor's.
+        self._ego = _EgoActor(agent._vehicle)
+        agent._vehicle = self._ego
+        lp = agent.get_local_planner()
+        if getattr(lp, '_vehicle', None) is not None:
+            lp._vehicle = self._ego
+            vc = getattr(lp, '_vehicle_controller', None)
+            for sub in ('_lon_controller', '_lat_controller'):
+                c = getattr(vc, sub, None)
+                if c is not None and hasattr(c, '_vehicle'):
+                    c._vehicle = self._ego
         # Every run_step branch takes min(max_speed, speed_limit -
         # speed_lim_dist), so the advisory has to reach it through those two
         # knobs; a target is not a ceiling to undercut.
@@ -271,40 +362,45 @@ class EgoVehicle:
         advisory = ego.speedDesired if (ego.speedDesired or 0) > 0.01 else None
         self._target = advisory if advisory is not None else self.fallbackSpeed
         self._advisory = advisory
-        if getattr(agent, '_behavior', None) is not None:
+        if agent is not None and getattr(agent, '_behavior', None) is not None:
             agent._behavior.max_speed = max(0.0, self._target) * 3.6
         # Advisory -> max_speed, ROAD limit -> speed_limit. Both are needed: the
         # obstacle search range scales off the speed limit and collapses to its
         # 10 m floor if the advisory is used there.
-        self._actor.set_speed_limit(
-            float(getattr(ego, 'speedLimit', 0.0) or 0.0) or self.fallbackSpeed)
+        if self._ego is not None:
+            self._ego.setSpeedLimit(
+                float(getattr(ego, 'speedLimit', 0.0) or 0.0) or self.fallbackSpeed)
 
-        agent.ego_record = ego               # what the detectors read
-        # Every vehicle on the wire. SUMO's leader answers "what is ahead on my
-        # route", not "is anything in my way".
-        agent.fixs_vehicles = self._others()
-        self._nSeen = len(agent.fixs_vehicles)
         if self._view is not None:
             # This tick's records, wearing the shape an agent sweeping
-            # world.get_actors() expects. The ego is left out by wire id: stock
-            # compares against a CARLA actor's int, which never matches.
+            # world.get_actors() expects. The ego is left out by wire id: an
+            # agent compares against a CARLA actor's int, which never matches.
             egoId = (ego.id or '').strip()
             self._view.vehicles = _ActorListView(
-                self._a._OtherVehicle(self._carla, r)
-                for r in agent.fixs_vehicles
-                if (r.id or '').strip() != egoId)
+                self._trafficActors(egoId), world=self._world)
+            self._nSeen = len(self._view.vehicles)
+
+        # What the agent's OWN detector concludes this tick, recorded so a run
+        # can answer "did it see the thing it hit" instead of leaving it to
+        # inference. Read-only: run_step calls it again for real.
+        self._hazardGap = None
+        if agent is not None:
+            try:
+                seen, _, gap = agent._vehicle_obstacle_detected(
+                    max_distance=agent._base_vehicle_threshold
+                    + agent._speed_ratio * (ego.speed * 3.6))
+                self._hazardGap = gap if seen else None
+            except Exception:
+                pass
 
         # Top up before the queue empties: run it to zero and the agent has
         # already braked by the time the next lap lands.
-        if len(agent.get_local_planner().get_plan()) < self._LAP_MARGIN:
+        # Nothing to top up before the caller has built its agent -- which it
+        # does on the first controlled tick, because carla.ego does not exist
+        # until the traffic simulator inserts the ego and the bridge adopts it.
+        if agent is not None and                 len(agent.get_local_planner().get_plan()) < self._LAP_MARGIN:
             self._layLap()
 
-        # What the detectors concluded this step, recorded so a run can answer
-        # "did it see the thing it hit" instead of leaving it to inference.
-        seen, _, gap = agent._vehicle_obstacle_detected(
-            max_distance=agent._base_vehicle_threshold
-            + agent._speed_ratio * (ego.speed * 3.6))
-        self._hazardGap = gap if seen else None
         return True
 
     def logStep(self, ego, cmd):
@@ -353,6 +449,29 @@ class EgoVehicle:
                                    clean_queue=False)
         self.lapsLaid += 1
         return True
+
+    def _trafficActors(self, egoId):
+        """This tick's traffic, as the CARLA actors mirroring it.
+
+        Resolved wire id -> backend handle -> actor, which is the mapping the
+        bridge itself uses to place them. A record with no actor yet (spawned
+        this tick) is skipped rather than faked.
+        """
+        core, backend = currentCore(), currentBackend()
+        if core is None or backend is None:
+            return []
+        mapped = core.mappedVehicles()
+        out = []
+        for r in self._others():
+            vid = (r.id or '').strip()
+            if not vid or vid == egoId:
+                continue
+            h = mapped.get(vid)
+            actor = backend.actorOf(h) if h is not None else None
+            if actor is None:
+                continue
+            out.append(_TrafficActor(actor, float(r.speed or 0.0), self._carla))
+        return out
 
     def _others(self):
         """Every vehicle record this tick. Empty rather than raising if the
