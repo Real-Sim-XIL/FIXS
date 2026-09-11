@@ -139,6 +139,21 @@ def test_a_teleport_tick_yields_no_command(driven):
     assert ego.update(record(positionX=900.4), 0.05) is True    # settled again
 
 
+def test_get_transform_hands_out_a_copy(driven):
+    """carla.Actor.get_transform returns a fresh copy, and stock relies on it:
+    `ego_front_transform = ego_transform; ego_front_transform.location += ...`
+    (basic_agent.py:367, :410). Hand out the stored object and every detector
+    call walks the vehicle's own pose half a body forward -- which stalled the
+    ego outright, because the planner then never purged a waypoint."""
+    ego, _ = driven
+    ego.update(record(positionX=10.0, positionY=0.0), 0.05)
+    before = ego.get_transform().location.x
+    scratch = ego.get_transform()
+    scratch.location.x += 100.0                  # what stock does, in place
+    assert ego.get_transform().location.x == pytest.approx(before)
+    assert ego.get_location().x == pytest.approx(before)
+
+
 def test_an_empty_route_fails_at_setup_rather_than_mid_run(tmp_path):
     with pytest.raises(SystemExit):
         fixs.EgoVehicle(config(tmp_path, EgoRoutePoints=[]), "ego")

@@ -241,8 +241,23 @@ class _OtherVehicle:
                                y=speed_ms * math.sin(r), z=0.0)
         self.bounding_box = _BoundingBox(c, length, width)
 
-    def get_transform(self): return self._tf
-    def get_location(self):  return self._tf.location
+    def _copyTf(self):
+        """A FRESH transform each call, as carla.Actor.get_transform gives.
+
+        Stock aliases then mutates it -- `ego_front_transform = ego_transform;
+        ego_front_transform.location += ...` (basic_agent.py:367, :410) -- which
+        is harmless against CARLA's copy and, against a stored one, walks the
+        vehicle's own pose forward by half its length on every detector call.
+        Measured: the planner then never purged a waypoint, the lateral
+        controller saturated, and the ego never moved (FIXS#305).
+        """
+        c = self._carla
+        return c.Transform(c.Location(x=self._tf.location.x, y=self._tf.location.y,
+                                      z=self._tf.location.z),
+                           c.Rotation(yaw=self._tf.rotation.yaw))
+
+    def get_transform(self): return self._copyTf()
+    def get_location(self):  return self._copyTf().location
     def get_velocity(self):  return self._vel
 
 
@@ -303,8 +318,23 @@ class EgoAdapter:
     # --- the carla.Vehicle interface ---
     def get_world(self):     return self._world
     def get_control(self):   return _Control()
-    def get_transform(self): return self._tf
-    def get_location(self):  return self._tf.location
+    def _copyTf(self):
+        """A FRESH transform each call, as carla.Actor.get_transform gives.
+
+        Stock aliases then mutates it -- `ego_front_transform = ego_transform;
+        ego_front_transform.location += ...` (basic_agent.py:367, :410) -- which
+        is harmless against CARLA's copy and, against a stored one, walks the
+        vehicle's own pose forward by half its length on every detector call.
+        Measured: the planner then never purged a waypoint, the lateral
+        controller saturated, and the ego never moved (FIXS#305).
+        """
+        c = self._carla
+        return c.Transform(c.Location(x=self._tf.location.x, y=self._tf.location.y,
+                                      z=self._tf.location.z),
+                           c.Rotation(yaw=self._tf.rotation.yaw))
+
+    def get_transform(self): return self._copyTf()
+    def get_location(self):  return self._copyTf().location
     def get_velocity(self):  return self._vel
     def get_speed_limit(self):        return self._speed_limit_kmh
     def set_speed_limit(self, ms):    self._speed_limit_kmh = max(0.0, float(ms)) * 3.6
