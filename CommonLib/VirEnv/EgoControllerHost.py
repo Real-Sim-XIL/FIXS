@@ -220,15 +220,27 @@ def currentBackend():
 
 
 def _letControllerImportFixs():
-    """Make `import fixs` work inside a controller file.
+    """Make `import fixs` inside a controller reach THIS process's fixs.
 
     A controller is a loose .py, not an installed package, so it has no sys.path
     of its own -- and asking every one to reconstruct FIXS's layout before its
     first import is the boilerplate this hook exists to remove.
+
+    The sys.modules aliases are the part that matters. The engine has already
+    imported this package as `CommonLib.fixs`, and its records live in module
+    globals; a bare `import fixs` off sys.path would find the same FILE and
+    execute it AGAIN, giving the controller a second module object whose feed is
+    never advanced. Every read then returns nothing -- silently, since a
+    controller cannot tell an empty tick from an unconnected one. Aliasing makes
+    the two names one module, which is what a caller already assumes.
     """
     d = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # CommonLib
     if d not in sys.path:
         sys.path.append(d)
+    import CommonLib.fixs
+    import CommonLib.fixs.carla
+    sys.modules['fixs'] = CommonLib.fixs
+    sys.modules['fixs.carla'] = CommonLib.fixs.carla
 
 
 def loadController(spec, appRoot=None):
