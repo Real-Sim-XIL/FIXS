@@ -534,6 +534,12 @@ int ConfigHelper::getConfig(string configName) {
 		SumoSetup.SpeedMode = 0;
 		//printf("\nXil not specified as server or client! Will set Xil as client!\n");
 	}
+	if (node["LaneChangeMode"]) {
+		SumoSetup.LaneChangeMode = parserInteger(node, "LaneChangeMode");
+	}
+	else {
+		SumoSetup.LaneChangeMode = -1;      // leave SUMO's own default alone
+	}
 	if (node["ExecutionOrder"]) {
 		SumoSetup.ExecutionOrder = parserInteger(node, "ExecutionOrder");
 	}

@@ -55,6 +55,13 @@ class ConfigHelper:
         # Sumo Setup
         sumo_node = config.get("SumoSetup", {})
         self.Sumo_setup["SpeedMode"] = sumo_node.get("SpeedMode", 0)
+
+        # SUMO's lane-change mode for the vehicles FIXS drives. -1 leaves SUMO's
+        # own default (597) alone; 512 is strategic changes only -- the vehicle
+        # still reaches the lane its next turn needs but never changes lane by
+        # choice. Applied by the TrafficLayer, which is the process that owns
+        # SUMO; see TrafficHelper.cpp beside setSpeedMode.
+        self.Sumo_setup["LaneChangeMode"] = sumo_node.get("LaneChangeMode", -1)
         # Consumed by run_cosim.py (not the C++ engine): whether it launches SUMO
         # itself, or waits for the user to start it. Parity with SumoSetup.AutoStart
         # in ConfigHelper.cpp. Default true.
@@ -195,6 +202,24 @@ class ConfigHelper:
         self.Carla_setup["EgoRouteRepeat"] = self.parserInteger(carla_node, "EgoRouteRepeat", 50)
         self.Carla_setup["EgoTargetSpeed"] = self.parserDouble(carla_node, "EgoTargetSpeed", 8.33)
         self.Carla_setup["TrafficManagerPort"] = self.parserInteger(carla_node, "TrafficManagerPort", 8000)
+
+        # Which of the two plant interfaces the ego controller commands
+        # through. Both are real and both are supported by ego.set(): FIXS
+        # reads the shape off the fields a controller wrote (fixs.commandKind).
+        #   pedals -- the controller closes the speed loop  (apply_control)
+        #   speed  -- the vehicle closes it       (apply_ackermann_control)
+        self.Carla_setup["EgoCommandShape"] = self.parserString(
+            carla_node, "EgoCommandShape", "pedals")
+
+        # An ABLATION knob, not a scenario setting. It stiffens CARLA's own
+        # Ackermann speed loop until the ego tracks a commanded speed almost
+        # exactly, so that a run isolates what the controller DECIDES from what
+        # the vehicle can physically do. It only bites for a controller that
+        # commands a speed (fixs.commandKind == 'speedsteer'); a pedal
+        # controller never reaches that loop. Off is the honest default: real
+        # vehicles do not track like this.
+        self.Carla_setup["EgoIdealSpeedTracking"] = self.parserFlag(
+            carla_node, "EgoIdealSpeedTracking", False)
 
         # Signal Subscription -- which junctions this client is served. The bridge
         # matches these ids to its traffic-light table; a junction subscribed with

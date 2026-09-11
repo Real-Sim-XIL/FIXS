@@ -589,6 +589,9 @@ def _bringUpEgo(cs, backend, egoDriver, world, virEnvOwnsEgo, useFixsDriver,
         print('ego spawn failed', file=sys.stderr)
         return False
 
+    if cs['EgoIdealSpeedTracking']:
+        backend.setEgoIdealSpeedTracking()
+
     if useFixsDriver:
         # The only Carla-specific step is the frame conversion (FIXS -> Carla is a
         # Y flip); the module then owns densification and the pursuit control law.

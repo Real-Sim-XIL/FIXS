@@ -524,6 +524,33 @@ class CarlaBackend(IVirEnvBackend):
         print('L0 ego: NATIVE Traffic Manager autopilot (TM port %d, target %s m/s)'
               % (tmPort, targetSpeedMps))
 
+    def setEgoIdealSpeedTracking(self):
+        """Stiffen CARLA's Ackermann speed loop until tracking is near-ideal.
+
+        An ABLATION lever. CARLA closes the speed loop itself on the
+        apply_ackermann_control path, with its own gains; those gains are what
+        stands between a commanded speed and the speed the vehicle reaches.
+        Raising them until the error is negligible removes the vehicle from the
+        question, so a run shows what the controller DECIDED rather than what
+        the plant could deliver.
+
+        Deliberately not a scenario default. A vehicle that tracks like this is
+        not a vehicle, and a result measured under it is a bound, not a
+        prediction.
+        """
+        if self._egoActor is None:
+            return False
+        try:
+            st = self._egoActor.get_ackermann_controller_settings()
+            st.speed_kp, st.speed_ki, st.speed_kd = 50.0, 5.0, 0.0
+            self._egoActor.apply_ackermann_controller_settings(st)
+        except (AttributeError, RuntimeError) as exc:              # noqa: BLE001
+            self.logError('ideal speed tracking unavailable: %s' % exc)
+            return False
+        print('L0 ego: IDEAL speed tracking (Ackermann kp=50 ki=5) -- ablation, '
+              'not a vehicle', flush=True)
+        return True
+
     def applyEgoActuation(self, throttle, brake, steerNorm):
         """Apply an ACTUATION command supplied by an external FIXS client.
 
