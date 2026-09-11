@@ -244,7 +244,32 @@ class _OtherVehicle:
 
 class _BoundingBox:
     def __init__(self, carla_mod, length, width):
+        self._carla = carla_mod
         self.extent = carla_mod.Vector3D(x=length / 2.0, y=width / 2.0, z=0.75)
+
+    def get_world_vertices(self, transform):
+        """The body's corners in world space, for stock's junction test.
+
+        FOUR corners, not CARLA's eight. Stock feeds them straight to
+        `Polygon([[v.x, v.y, v.z] for v in vertices])`, and the test is purely
+        planar -- so four give a clean rectangle where eight give the same
+        footprint twice over and a self-touching ring.
+
+        The box is laid BACKWARDS from the transform, because a FIXS record's
+        position is the FRONT of the vehicle where a CARLA actor's origin is
+        its centre. The same offset _bodyPolygon applies.
+        """
+        loc = transform.location
+        yaw = math.radians(transform.rotation.yaw)
+        fx, fy = math.cos(yaw), math.sin(yaw)      # forward
+        rx, ry = -fy, fx                           # right
+        ex, ey = self.extent.x, self.extent.y
+        cx, cy = loc.x - fx * ex, loc.y - fy * ex  # centre, half a body back
+        L = self._carla.Location
+        return [L(x=cx + fx * ex + rx * ey, y=cy + fy * ex + ry * ey, z=loc.z),
+                L(x=cx + fx * ex - rx * ey, y=cy + fy * ex - ry * ey, z=loc.z),
+                L(x=cx - fx * ex - rx * ey, y=cy - fy * ex - ry * ey, z=loc.z),
+                L(x=cx - fx * ex + rx * ey, y=cy - fy * ex + ry * ey, z=loc.z)]
 
 
 class EgoAdapter:
