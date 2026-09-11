@@ -213,6 +213,7 @@ class _WorldView:
         self._world = world
         self._lights = lights
         self.ego = None
+        self.agent = None
         self.vehicles = _ActorListView(world=world, lights=lights)
 
     def get_map(self):
@@ -223,26 +224,38 @@ class _WorldView:
 
 
 _view = None
+#: Laps of the scenario's corridor already given to the agent.
+_lapsLaid = 0
+#: Waypoints left at which the next lap is appended (~400 m at 2 m spacing).
+_kPlanMargin = 200
+#: Whether the vehicle feed has already reported itself unreadable.
+_feedFailed = False
 
 
-def bind(agent, egoId='', speedLimit=0.0):
-    """Give an agent FIXS's corrected view of the world, and nothing else.
+def bind(agent, egoId=''):
+    """Give an agent FIXS's corrected view of the world, and the ego's route.
 
-    ``speedLimit`` (m/s) is what the ego's limit reads until the wire publishes
-    a real one -- the caller's own default, since what to drive at where the
-    road says nothing is the application's policy, not FIXS's.
-
-    Its class, its methods and its logic are untouched -- this swaps the WORLD
-    it reads, not the decisions it makes. Call once, after constructing it on
+    Its class, its methods and its logic are untouched -- this swaps what the
+    agent READS, never what it decides. Call once, after constructing it on
     `carla.ego`; call `refresh` each tick.
+
+    The route is FIXS's to give. The ego is a vehicle in the traffic simulator
+    with a route already assigned, and the traffic around it reacts on that
+    basis, so an agent must not plan its own: `set_destination` would have it
+    choose a path the rest of the simulation does not know about. What the
+    agent gets instead is the scenario's own corridor, as CARLA waypoints on
+    real lanes -- which is what its planner reads lane_id, road_id and
+    is_junction off.
     """
-    global _view
+    global _view, _lapsLaid
+    _lapsLaid = 0
     _view = _WorldView(__getattr__('map'), __getattr__('world'), _signalHeads())
     agent._world = _view
     agent._map = _view.get_map()
-    ego = _EgoActor(agent._vehicle, speedLimit)
+    ego = _EgoActor(agent._vehicle, _configured('EgoTargetSpeed', 0.0))
     agent._vehicle = ego
     _view.ego = ego
+    _view.agent = agent
     lp = getattr(agent, 'get_local_planner', lambda: None)()
     if lp is not None and getattr(lp, '_vehicle', None) is not None:
         lp._vehicle = ego
@@ -251,18 +264,183 @@ def bind(agent, egoId='', speedLimit=0.0):
             c = getattr(vc, sub, None)
             if c is not None and hasattr(c, '_vehicle'):
                 c._vehicle = ego
+    _layRoute(agent, first=True)
     return agent
 
 
-def refresh(record, others=()):
-    """This tick's traffic and speed limit. Call before the agent runs."""
+def refresh(record):
+    """Bring the agent's view up to this tick. Call before the agent runs.
+
+    The traffic, the ego's speed limit, and enough route left to plan on. All
+    three are FIXS's to know, so none of them is asked of the caller.
+    """
     if _view is None:
         return
     egoId = (getattr(record, 'id', '') or '').strip()
-    _view.vehicles = _ActorListView(_trafficActors(others, egoId),
+    _view.vehicles = _ActorListView(_trafficActors(_feedVehicles(), egoId),
                                     world=_view._world, lights=_view._lights)
     if _view.ego is not None:
         _view.ego.setSpeedLimit(float(getattr(record, 'speedLimit', 0.0) or 0.0))
+    _layRoute(_view.agent)
+
+
+def _feedVehicles():
+    """Every vehicle record in this tick's feed.
+
+    Read here rather than asked of the controller: the caller would only be
+    fetching FIXS's own data to hand it straight back. A torn-down connection
+    must not take the run down, but it is reported once -- an empty list is
+    indistinguishable from an empty road, and an agent given one drives through
+    traffic for a whole run without a word (ORNL-Real-Sim/FIXS#355).
+    """
+    global _feedFailed
+    from CommonLib import fixs
+    try:
+        return [v for v in (fixs.vehicle.get(i)
+                            for i in fixs.vehicle.getIDList()) if v is not None]
+    except Exception as exc:                                    # noqa: BLE001
+        if not _feedFailed:
+            _feedFailed = True
+            print('[fixs] cannot read the vehicle feed (%s: %s); the agent is '
+                  'driving an empty world from here on.'
+                  % (type(exc).__name__, exc), flush=True)
+        return ()
+
+
+def _layRoute(agent, first=False):
+    """Keep the agent's plan topped up with the ego's route.
+
+    The corridor is a LAP the traffic simulator drives EgoRouteRepeat times.
+    An agent has no notion of that: its plan empties, it brakes to a stop, and
+    that reads exactly like a stall. Re-laying is therefore FIXS's job, because
+    repeating the lap is FIXS's doing.
+    """
+    global _lapsLaid
+    if agent is None:
+        return
+    lp = getattr(agent, 'get_local_planner', lambda: None)()
+    if not first and (lp is None or len(lp.get_plan()) >= _kPlanMargin):
+        return
+    if _lapsLaid >= max(1, int(_configured('EgoRouteRepeat', 1))):
+        return
+    plan = _routePlan()
+    if not plan:
+        return
+    if _lapsLaid == 0:
+        agent.set_global_plan(plan)
+    else:
+        agent.set_global_plan(plan, stop_waypoint_creation=True,
+                              clean_queue=False)
+    _lapsLaid += 1
+
+
+def _routePlan():
+    """The scenario's corridor as (waypoint, RoadOption) pairs on real lanes.
+
+    Three conversions, all FIXS's. The y flip between FIXS's north-positive
+    frame and CARLA's. The spacing: CARLA's own plans are ~2 m apart and
+    LocalPlanner's purge distance is tuned for that, while a scenario route is
+    decimated -- ~14 m on this corridor. And the DIRECTION.
+    """
+    pts = _configured('EgoRoutePoints', None) or []
+    if len(pts) < 2:
+        return []
+    from agents.navigation.local_planner import RoadOption
+    from Carla.carla_agents.fixs_adapter import densify
+    real, cmap = _real(), __getattr__('map')
+    dense = densify([(float(a), float(b)) for a, b in pts],
+                    float(_configured('EgoRouteSpacing', 2.0) or 2.0))
+    out, opposed, crossed = [], 0, 0
+    for i, (x, y) in enumerate(dense):
+        heading = _headingAt(dense, i)
+        snapped = cmap.get_waypoint(real.Location(x=x, y=-y, z=0.0),
+                                    project_to_road=True)
+        if snapped is None:
+            continue
+        wp = _facingLane(snapped, heading, real, cmap, x, -y)
+        if not _agrees(snapped, heading):
+            opposed += 1
+            if wp is not snapped:
+                crossed += 1
+        out.append((wp, RoadOption.LANEFOLLOW))
+    print('[fixs] ego route: %d waypoints; %d snapped against the route, '
+          '%d crossed to the lane that agrees'
+          % (len(out), opposed, crossed), flush=True)
+    return out
+
+
+def _headingAt(points, i):
+    """Which way the route is going at points[i], as a CARLA yaw in degrees."""
+    j = i + 1 if i + 1 < len(points) else i
+    k = j - 1 if j > 0 else 0
+    (ax, ay), (bx, by) = points[k], points[j]
+    return math.degrees(math.atan2(-(by - ay), bx - ax))
+
+
+def _facingLane(wp, headingDeg, real, cmap=None, x=0.0, y=0.0, reach=20.0):
+    """The lane at this route point that goes the way the route goes.
+
+    get_waypoint(project_to_road=True) snaps to the NEAREST driving lane and
+    says nothing about direction. On an out-and-back corridor the carriageways
+    are metres apart, so the return leg snaps onto the OUTBOUND lane and the
+    plan leads the ego up the wrong side of the road. Measured: the ego drove
+    the wrong way along lane E3_0 until it met an oncoming vehicle 3.09 m ahead,
+    both at a standstill, and the agent held an emergency stop for the rest of
+    the run -- correctly, on a route it should never have been given.
+
+    Crossing lane links is tried first and is usually enough on a divided road
+    carried as one road in OpenDRIVE. It is NOT enough here: measured on this
+    corridor, 184 of 2558 waypoints snapped against the route and not one of
+    them could reach an agreeing lane that way, because the two directions are
+    separate roads. So the second attempt probes SIDEWAYS in space -- the
+    opposing carriageway is a few metres abeam -- and takes the nearest lane
+    that agrees. Nothing within `reach` metres that agrees means the map has no
+    such lane, and CARLA's own answer stands rather than a made-up one.
+    """
+    if wp is None or _agrees(wp, headingDeg):
+        return wp
+    for step in ('get_left_lane', 'get_right_lane'):
+        cur = wp
+        for _ in range(4):
+            nxt = getattr(cur, step, lambda: None)()
+            if nxt is None or str(nxt.lane_type) != str(real.LaneType.Driving):
+                break
+            if _agrees(nxt, headingDeg):
+                return nxt
+            cur = nxt
+    if cmap is None:
+        return wp
+    rad = math.radians(headingDeg)
+    nx, ny = -math.sin(rad), math.cos(rad)          # unit normal, CARLA frame
+    best, bestOff = None, None
+    off = 2.0
+    while off <= reach:
+        for sign in (1.0, -1.0):
+            probe = cmap.get_waypoint(
+                real.Location(x=x + nx * off * sign, y=y + ny * off * sign,
+                              z=0.0), project_to_road=True)
+            if probe is not None and _agrees(probe, headingDeg):
+                if bestOff is None or off < bestOff:
+                    best, bestOff = probe, off
+        if best is not None:
+            return best
+        off += 2.0
+    return wp
+
+
+def _agrees(wp, headingDeg):
+    """Does this lane run the way the route runs? Within a right angle."""
+    d = (wp.transform.rotation.yaw - headingDeg + 180.0) % 360.0 - 180.0
+    return abs(d) <= 90.0
+
+
+def _configured(key, default=None):
+    from CommonLib.VirEnv.EgoControllerHost import currentConfig
+    cfg = currentConfig()
+    if cfg is None:
+        return default
+    v = cfg.get(key)
+    return default if v is None else v
 
 
 def _signalHeads():
@@ -377,6 +555,10 @@ def __getattr__(name):
 
 
 def _reset():
-    """Drop the cached map -- for tests, and for a backend swapped mid-process."""
-    global _mapCache
+    """Drop everything cached per run -- for tests, and for a backend swapped
+    mid-process."""
+    global _mapCache, _view, _lapsLaid, _feedFailed
     _mapCache = None
+    _view = None
+    _lapsLaid = 0
+    _feedFailed = False

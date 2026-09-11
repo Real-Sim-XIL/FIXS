@@ -114,14 +114,36 @@ class _Rec:
         self.id, self.speed, self.speedLimit = vid, speed, limit
 
 
+class _Feed:
+    """CommonLib.fixs.vehicle, as far as refresh() is concerned."""
+
+    def __init__(self):
+        self.records = []
+
+    def getIDList(self):
+        return [r.id for r in self.records]
+
+    def get(self, vid):
+        for r in self.records:
+            if r.id == vid:
+                return r
+        return None
+
+
 @pytest.fixture(autouse=True)
 def wired():
+    from CommonLib import fixs
     from CommonLib.VirEnv import EgoControllerHost as host
-    savedB, savedC = host._backend, host._core
-    host._backend, host._core = _Backend(), _Core()
+    savedB, savedC, savedCfg = host._backend, host._core, host._config
+    savedFeed = fixs.vehicle
+    host._backend, host._core, host._config = _Backend(), _Core(), {}
+    feed = _Feed()
+    fixs.vehicle = feed
     relay._reset()
+    host.feed = feed
     yield host
-    host._backend, host._core = savedB, savedC
+    host._backend, host._core, host._config = savedB, savedC, savedCfg
+    fixs.vehicle = savedFeed
     relay._reset()
 
 
@@ -151,7 +173,8 @@ def test_traffic_is_the_real_actor_with_a_supplied_velocity(wired):
 
     agent = _Agent(relay.ego)
     relay.bind(agent, 'ego')
-    relay.refresh(_Rec('ego'), [_Rec('lead', speed=3.0)])
+    wired.feed.records = [_Rec('lead', speed=3.0)]
+    relay.refresh(_Rec('ego'))
 
     seen = agent._world.get_actors().filter('*vehicle*')
     assert len(seen) == 1
@@ -168,7 +191,8 @@ def test_the_ego_is_left_out_of_its_own_traffic(wired):
 
     agent = _Agent(relay.ego)
     relay.bind(agent, 'ego')
-    relay.refresh(_Rec('ego'), [_Rec('ego'), _Rec('other')])
+    wired.feed.records = [_Rec('ego'), _Rec('other')]
+    relay.refresh(_Rec('ego'))
     assert len(agent._world.get_actors().filter('*vehicle*')) == 1
 
 
@@ -179,14 +203,15 @@ def test_a_record_with_no_actor_yet_is_skipped_not_faked(wired):
     host._core = _Core({})
     agent = _Agent(relay.ego)
     relay.bind(agent, 'ego')
-    relay.refresh(_Rec('ego'), [_Rec('brand-new', speed=5.0)])
+    wired.feed.records = [_Rec('brand-new', speed=5.0)]
+    relay.refresh(_Rec('ego'))
     assert agent._world.get_actors().filter('*vehicle*') == []
 
 
 def test_the_speed_limit_comes_from_the_wire(wired):
     agent = _Agent(relay.ego)
     relay.bind(agent, 'ego')
-    relay.refresh(_Rec('ego', limit=11.18), [])
+    relay.refresh(_Rec('ego', limit=11.18))
     assert agent._vehicle.get_speed_limit() == pytest.approx(11.18 * 3.6)
     assert agent._vehicle.get_speed_limit() < 1e6      # not the actor's value
 
@@ -219,7 +244,8 @@ def test_get_transform_hands_out_a_copy(wired):
     host._core = _Core({'lead': 7})
     agent = _Agent(relay.ego)
     relay.bind(agent, 'ego')
-    relay.refresh(_Rec('ego'), [_Rec('lead', speed=3.0)])
+    wired.feed.records = [_Rec('lead', speed=3.0)]
+    relay.refresh(_Rec('ego'))
 
     v = agent._world.get_actors().filter('*vehicle*')[0]
     before = v.get_transform().location.x
@@ -234,17 +260,92 @@ def test_a_limit_that_is_not_a_speed_is_refused(wired):
     stop that an agent obeys forever: it takes min(target, limit) in every
     branch. Measured: 12876 consecutive ticks parked at one waypoint."""
     agent = _Agent(relay.ego)
-    relay.bind(agent, 'ego', speedLimit=8.33)
-    relay.refresh(_Rec('ego', limit=11.18), [])
-    relay.refresh(_Rec('ego', limit=-815417536.0), [])
+    relay.bind(agent, 'ego')
+    relay.refresh(_Rec('ego', limit=11.18))
+    relay.refresh(_Rec('ego', limit=-815417536.0))
     assert agent._vehicle.get_speed_limit() == pytest.approx(11.18 * 3.6)
 
 
 def test_the_seed_stands_until_the_wire_publishes_a_real_one(wired):
+    """Until the wire publishes a real limit the ego reads the scenario's own
+    target speed -- FIXS answers it from the scenario, so no controller has to
+    know the field exists, let alone that it can arrive as garbage."""
+    wired._config = {'EgoTargetSpeed': 8.33}
     agent = _Agent(relay.ego)
-    relay.bind(agent, 'ego', speedLimit=8.33)
+    relay.bind(agent, 'ego')
     assert agent._vehicle.get_speed_limit() == pytest.approx(8.33 * 3.6)
-    relay.refresh(_Rec('ego', limit=-815417536.0), [])
+    relay.refresh(_Rec('ego', limit=-815417536.0))
     assert agent._vehicle.get_speed_limit() == pytest.approx(8.33 * 3.6)
-    relay.refresh(_Rec('ego', limit=13.41), [])
+    relay.refresh(_Rec('ego', limit=13.41))
     assert agent._vehicle.get_speed_limit() == pytest.approx(13.41 * 3.6)
+
+
+def test_the_route_comes_from_the_scenario_not_the_caller(wired, monkeypatch):
+    """An agent must not plan its own path here. The ego is a vehicle in the
+    traffic simulator with a route already assigned and traffic reacting to it,
+    so bind() lays the scenario's corridor and no controller calls
+    set_destination or converts a single coordinate."""
+    wired._config = {'EgoRoutePoints': [[0.0, 0.0], [30.0, 0.0]],
+                     'EgoRouteSpacing': 10.0, 'EgoRouteRepeat': 1}
+    laid = []
+
+    class _Planning(_Agent):
+        def set_global_plan(self, plan, **kw):
+            laid.append(plan)
+
+    monkeypatch.setattr(relay, '_routePlan',
+                        lambda: [('wp1', 'follow'), ('wp2', 'follow')])
+    agent = _Planning(relay.ego)
+    relay.bind(agent, 'ego')
+    assert laid and len(laid[0]) == 2
+
+
+def test_the_lap_is_relaid_before_the_plan_empties(wired, monkeypatch):
+    """The corridor is a lap the traffic simulator repeats. An agent has no
+    notion of that -- its plan empties and it brakes to a stop, which reads
+    exactly like a stall. Repeating the lap is FIXS's doing, so topping the
+    plan up is FIXS's job."""
+    wired._config = {'EgoRouteRepeat': 3}
+    monkeypatch.setattr(relay, '_routePlan', lambda: [('wp', 'follow')])
+    laid = []
+
+    class _Planning(_Agent):
+        def __init__(self, v, left):
+            _Agent.__init__(self, v)
+            self._left = left
+
+        def set_global_plan(self, plan, **kw):
+            laid.append(kw)
+
+        def get_local_planner(self):
+            outer = self
+
+            class _LP:
+                def get_plan(self):
+                    return [0] * outer._left
+            return _LP()
+
+    agent = _Planning(relay.ego, left=5000)
+    relay.bind(agent, 'ego')
+    assert len(laid) == 1                      # the first lap, at bind
+    relay.refresh(_Rec('ego'))
+    assert len(laid) == 1                      # plenty of plan left
+
+    agent._left = 3
+    relay.refresh(_Rec('ego'))
+    assert len(laid) == 2                      # running out: another lap
+    assert laid[1].get('clean_queue') is False  # appended, not replacing
+
+
+def test_traffic_is_read_from_the_feed_not_asked_of_the_caller(wired):
+    """refresh() takes the record and nothing else. Asking a controller for the
+    vehicle list only had it fetch FIXS's own data to hand straight back."""
+    from CommonLib.VirEnv import EgoControllerHost as host
+    wired._backend._actors[7] = _Actor(x=12.0, actorId=7)
+    host._core = _Core({'lead': 7})
+    wired.feed.records = [_Rec('ego'), _Rec('lead', speed=3.0)]
+
+    agent = _Agent(relay.ego)
+    relay.bind(agent, 'ego')
+    relay.refresh(_Rec('ego'))
+    assert len(agent._world.get_actors().filter('*vehicle*')) == 1

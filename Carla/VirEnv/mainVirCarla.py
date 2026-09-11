@@ -416,6 +416,7 @@ def main(argv=None):
             phase["flush batch"] += time.monotonic() - _t0
             _t0 = time.monotonic()
             world.tick()               # advance Carla one sub-step
+            backend.noteWorldTicked()  # every actor now has a snapshot
             phase["world.tick"] += time.monotonic() - _t0
 
             # SUMO <-> CARLA elevation audit, once per exchange. Here rather than

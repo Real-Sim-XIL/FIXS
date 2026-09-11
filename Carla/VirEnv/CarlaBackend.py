@@ -104,6 +104,11 @@ class CarlaBackend(IVirEnvBackend):
         self._bpLib = None
         self._map = None                 # cached for the z-alignment guard
         self._egoActor = None            # EgoMode >= 1: the CARLA-driven ego
+        #: True between spawning the ego and CARLA's first snapshot of it. The
+        #: actor exists on the client the instant try_spawn_actor returns, but
+        #: its transform reads the ORIGIN until a tick delivers a snapshot --
+        #: so readEgoState would report a pose that is not the ego's.
+        self._egoAwaitingSnapshot = False
         self._tmPort = 0
         self._egoUsesTM = False
         self._egoDesiredOverride = -1.0  # L2 advisory target (m/s); < 0 = none
@@ -252,10 +257,19 @@ class CarlaBackend(IVirEnvBackend):
     def readEgoState(self, egoId, out):
         """Mode A: read the CARLA-driven ego back in FIXS terms.
 
-        Returns False when no ego actor is owned (EgoMode 0 -- the driver does the
-        readback itself for interested ids).
+        Returns False when there is no pose to report: no ego actor is owned
+        (EgoMode 0 -- the driver does the readback itself for interested ids),
+        or the ego was spawned this tick and CARLA has not yet snapshotted it.
+
+        The second case is not hypothetical. A freshly spawned actor's
+        get_transform() returns the ORIGIN until the next tick delivers a
+        snapshot, so the first readback of a deferred ego reported (0, 0) while
+        the ego was really 933 m away. Callers treat False as "not this tick",
+        which is the honest answer -- and it spares every controller from
+        recognising the jump by its size, which only works while the origin
+        happens to be far from the route.
         """
-        if self._egoActor is None:
+        if self._egoActor is None or self._egoAwaitingSnapshot:
             return False
         cTf = self._egoActor.get_transform()
         ext = self._egoActor.bounding_box.extent
@@ -268,6 +282,14 @@ class CarlaBackend(IVirEnvBackend):
         out.grade = sTf.rotation.pitch * math.pi / 180.0
         out.speed = math.sqrt(vel.x * vel.x + vel.y * vel.y)
         return True
+
+    def noteWorldTicked(self):
+        """CARLA has advanced a tick, so every actor now has a snapshot.
+
+        Called by the host right after world.tick(). It is what ends the window
+        in which a just-spawned ego has no pose -- see readEgoState.
+        """
+        self._egoAwaitingSnapshot = False
 
     def applyEgoControl(self, egoId, desiredSpeed):
         """L2 actuation seam: route an EXTERNAL desired-speed advisory to the driver.
@@ -479,6 +501,7 @@ class CarlaBackend(IVirEnvBackend):
             return kNoHandle
         self._egoActor = actor
         self._egoActor.set_simulate_physics(True)     # full PhysX: tire contact, dynamics
+        self._egoAwaitingSnapshot = True             # no pose until CARLA ticks
         print('L0 ego spawned: %s actor %d (physics ON)' % (blueprintId, actor.id))
         return int(actor.id)
 
@@ -545,3 +568,4 @@ class CarlaBackend(IVirEnvBackend):
         if self._egoActor is not None:
             self._egoActor.destroy()
             self._egoActor = None
+        self._egoAwaitingSnapshot = False

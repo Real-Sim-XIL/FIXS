@@ -155,8 +155,8 @@ class LoadedController:
         # agent asks its map road questions inside its own constructor. The
         # controller's own signature is unchanged: it does not take a backend,
         # it asks FIXS -- see currentBackend.
-        global _backend, _core
-        _backend, _core = backend, core
+        global _backend, _core, _config
+        _backend, _core, _config = backend, core, config
         if self._isClass:
             self._instance = self._obj(config, egoId)
         elif self._setup is not None:
@@ -196,6 +196,13 @@ def _importFromPath(path):
 
 _backend = None
 _core = None
+_config = None
+
+
+def currentConfig():
+    """The scenario this bridge is running, for the parts of FIXS that answer a
+    controller from it -- the ego's route, above all. None outside a run."""
+    return _config
 
 
 def currentCore():
