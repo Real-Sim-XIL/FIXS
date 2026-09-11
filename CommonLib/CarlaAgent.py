@@ -40,6 +40,37 @@ def _adapter():
     return importlib.import_module('fixs_adapter')
 
 
+class _ActorListView(list):
+    """`world.get_actors()`, carrying FIXS's traffic."""
+
+    def filter(self, pattern):
+        if 'vehicle' in pattern:
+            return list(self)
+        return []                      # no pedestrians or lights on this wire
+
+
+class _WorldView:
+    """The world as a CARLA agent sees it: CARLA's real map, FIXS's traffic.
+
+    The map is forwarded untouched. The traffic is NOT, and the reason is
+    measured: CARLA's mirrored vehicles are spawned physics-off and moved with
+    set_transform, so `get_velocity()` returns exactly 0.000 for every one of
+    them -- 182 of 182 on this corridor, while 119 of them were moving, several
+    above 24 m/s. A following model fed those reads every leader as stationary.
+    The wire carries the truthful speed, so the agent is handed records.
+    """
+
+    def __init__(self, carlaMap):
+        self._map = carlaMap
+        self.vehicles = _ActorListView()
+
+    def get_map(self):
+        return self._map
+
+    def get_actors(self):
+        return self.vehicles
+
+
 class EgoVehicle:
     """`world.player`, backed by the FIXS record.
 
@@ -87,6 +118,17 @@ class EgoVehicle:
             print('[agent] backend exposes no CARLA world; road questions will '
                   'be answered from the route polyline', flush=True)
 
+        # Which obstacle detector drives. FIXS's override exists only because
+        # there was no road network to filter on; with a real map, stock's own
+        # can run. Under measurement -- one of the two collapses (FIXS#305).
+        self.stockObstacles = bool(config.get('EgoStockObstacles'))
+        if self.stockObstacles and self._world is None:
+            raise SystemExit(
+                "[agent] EgoStockObstacles needs the real CARLA map, and no "
+                "backend exposed one. Stock's filter is road_id/lane_id; "
+                "against the route polyline every vehicle matches.")
+        self._view = _WorldView(self._world.get_map()) if self.stockObstacles else None
+
         # One lap, densified, kept so it can be laid down again. The corridor
         # route is a LAP and the traffic simulator drives it EgoRouteRepeat
         # times; the agent has no notion of that and brakes to a stop when its
@@ -120,6 +162,8 @@ class EgoVehicle:
 
     # ---- the carla.Vehicle interface, forwarded --------------------------
     def get_world(self):
+        if self._view is not None:
+            return self._view
         return self._world if self._world is not None else self._actor.get_world()
 
     def get_control(self):    return self._actor.get_control()
@@ -156,7 +200,8 @@ class EgoVehicle:
         """
         cfg = self._config
         self.agent = agent
-        agent.__class__ = self._a.make_agent_class(agent.__class__)
+        agent.__class__ = self._a.make_agent_class(
+            agent.__class__, stockObstacles=self.stockObstacles)
         # Every run_step branch takes min(max_speed, speed_limit -
         # speed_lim_dist), so the advisory has to reach it through those two
         # knobs; a target is not a ceiling to undercut.
@@ -190,11 +235,21 @@ class EgoVehicle:
         self._actor.set_speed_limit(
             float(getattr(ego, 'speedLimit', 0.0) or 0.0) or self.fallbackSpeed)
 
-        agent.ego_record = ego               # what the two detectors read
+        agent.ego_record = ego               # what the detectors read
         # Every vehicle on the wire. SUMO's leader answers "what is ahead on my
         # route", not "is anything in my way".
         agent.fixs_vehicles = self._others()
         self._nSeen = len(agent.fixs_vehicles)
+        if self._view is not None:
+            # Stock sweeps world.get_actors() itself, so this tick's records go
+            # there, wearing the shape it expects. The ego is left out rather
+            # than filtered by id: on the wire that id is a string, and stock
+            # compares it against a CARLA actor's int.
+            egoId = (ego.id or '').strip()
+            self._view.vehicles = _ActorListView(
+                self._a._OtherVehicle(self._carla, r)
+                for r in agent.fixs_vehicles
+                if (r.id or '').strip() != egoId)
 
         # Top up before the queue empties: run it to zero and the agent has
         # already braked by the time the next lap lands.

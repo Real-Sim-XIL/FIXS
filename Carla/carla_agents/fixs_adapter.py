@@ -347,24 +347,29 @@ def _bodyPolygon(Polygon, rec):
     ])
 
 
-def make_agent_class(BasicAgent):
-    """CARLA's BasicAgent with SUMO's answers behind its two detectors.
+def make_agent_class(BasicAgent, stockObstacles=False):
+    """CARLA's BasicAgent with SUMO's answers behind its detectors.
 
     A factory rather than a module-scope class because BasicAgent is only
     importable after import_carla_agents() has resolved the path.
 
-    Both overrides keep the STOCK SIGNATURE and are handed CARLA's own
+    The overrides keep the STOCK SIGNATURE and are handed CARLA's own
     max_distance -- base_threshold + speed_ratio * speed, computed inside
     run_step -- so the thresholds stay stock too. Only the source of the answer
     changes.
 
-    Why replace them at all: stock has no notion of "my next signal", so it
-    sweeps every light actor and keeps those whose trigger volume shares its
-    road_id and faces the same way (basic_agent.py:296-309); and no notion of
-    "the vehicle ahead of me on my route", so it sweeps a polygon along its own
-    plan and intersects it with every nearby bounding box (:324-347). Both are
-    geometric reconstructions of something SUMO computes from the actual route
-    and connection topology and publishes on the wire.
+    The SIGNAL override stays either way: stock has no notion of "my next
+    signal", so it sweeps every light actor and keeps those sharing its road_id
+    and facing the same way (basic_agent.py:296-309), where SUMO answers the
+    question route-aware and publishes it on the wire. That is better
+    information, not a reconstruction.
+
+    The OBSTACLE override is the one under test. It exists because the adapter
+    had no road network, so stock's primary filter -- same road_id and lane_id
+    -- was unavailable and only its junction fallback remained, run everywhere.
+    With the map forwarded to the real one, stock can run as written:
+    stockObstacles=True drops the override. See ORNL-Real-Sim/FIXS#305; one of
+    the two collapses once the impact rate decides it.
     """
 
     class FixsBasicAgent(BasicAgent):
@@ -479,6 +484,12 @@ def make_agent_class(BasicAgent):
                 return (False, None)
             return (dist < (max_distance or self._base_tlight_threshold), None)
 
+    if stockObstacles:
+        # Stock's own, which needs a real map to filter on and a vehicle list
+        # whose speeds are truthful -- both supplied by the caller.
+        del FixsBasicAgent._vehicle_obstacle_detected
+        del FixsBasicAgent._sweptObstacle
+        del FixsBasicAgent._standIn
     return FixsBasicAgent
 
 
