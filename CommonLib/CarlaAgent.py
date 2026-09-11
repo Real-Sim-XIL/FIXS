@@ -159,6 +159,12 @@ class EgoVehicle:
               'lap repeats up to %d, dt=%.3f s, fallback %.2f m/s'
               % (len(route), len(self._lap), self.lapsAllowed, self.dt,
                  self.fallbackSpeed), flush=True)
+        # Said out loud because both are silent when wrong: a stand-in map
+        # answers every road question plausibly, and an unparsed switch reads
+        # as off.
+        print('[agent] map: %s | obstacles: %s'
+              % ('CARLA (forwarded)' if self._world is not None else 'route polyline',
+                 'stock' if self.stockObstacles else 'FIXS override'), flush=True)
 
     # ---- the carla.Vehicle interface, forwarded --------------------------
     def get_world(self):
