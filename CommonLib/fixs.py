@@ -87,9 +87,16 @@ __all__ = [
     'connect', 'recv', 'send', 'close',
     'sim', 'vehicle', 'trafficlight',
     'emit', 'transport', 'commandKind',
-    'Vehicle', 'EgoVehicle',
+    'Vehicle', 'EgoVehicle', 'MAX_STEER_RAD',
     'Shutdown', 'FixsError', 'NotConnected', 'ProtocolError',
 ]
+
+
+#: Full-lock front road-wheel angle [rad]. `steerAngleDesired` is an ANGLE on
+#: the wire, where a CARLA agent's VehicleControl.steer is normalised [-1, 1];
+#: the plant divides by this same constant, so multiplying by it here makes the
+#: round trip the agent's own number. Must match mainVirCarla's kMaxSteerRad.
+MAX_STEER_RAD = 0.7
 
 
 def _addCarlaAgentsToPath():

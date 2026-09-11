@@ -94,11 +94,16 @@ def test_the_agents_own_class_is_still_underneath(driven):
     assert type(agent).__mro__[1] is BehaviorAgent
 
 
-def test_a_command_reaches_the_record(driven):
+def test_the_command_is_three_fields_the_caller_writes(driven):
+    """A FIXS controller commands by WRITING to the record -- control()'s return
+    value is ignored. FIXS does not do it for you, because that is the interface
+    a non-CARLA controller has to use too."""
     ego, agent = driven
     rec = record()
     ego.update(rec, 0.05)
-    ego.apply(rec, agent.run_step())
+    c = agent.run_step()
+    rec.set(acceleratorPedalDesired=c.throttle, brakePedalDesired=c.brake,
+            steerAngleDesired=c.steer * fixs.MAX_STEER_RAD)
     assert rec._written == {"acceleratorPedalDesired", "brakePedalDesired",
                             "steerAngleDesired"}
     assert 0.0 <= rec.acceleratorPedalDesired <= 1.0
@@ -175,7 +180,7 @@ def test_the_log_carries_one_row_per_command(tmp_path):
     for _ in range(5):
         rec = record()
         ego.update(rec, 0.05)
-        ego.apply(rec, agent.run_step())
+        ego.logStep(rec, agent.run_step())
     ego.close()
     with open(os.path.join(str(tmp_path), "agent.csv"), encoding="utf-8") as f:
         rows = f.read().strip().splitlines()

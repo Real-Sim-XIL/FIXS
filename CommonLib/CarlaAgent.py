@@ -5,7 +5,7 @@ A user who already has a CARLA-agent-shaped controller should be able to run it
 against FIXS by swapping the vehicle it was built on, and changing nothing else.
 That is what this is. `EgoVehicle` answers everything an agent asks of
 `world.player`, out of the ego's FIXS record, and adds three verbs on the FIXS
-side: drive, update, apply.
+side: drive, update, logStep.
 
     a CARLA script                          the same script on FIXS
     ------------------------------------    -----------------------------------
@@ -83,7 +83,9 @@ class EgoVehicle:
 
     Construct it, build your agent on it exactly as you would on a
     carla.Vehicle, then `drive()` the agent -- that is the whole binding. After
-    that the step is two calls: `update()` before `run_step()`, `apply()` after.
+    that the step is `update()`, your agent, then the three actuation fields
+    written onto the record -- which is the FIXS command contract, not
+    something this class does for you.
     """
 
     #: Waypoints left at which the next lap is appended (~400 m at 2 m spacing).
@@ -311,15 +313,12 @@ class EgoVehicle:
         self._hazardGap = gap if seen else None
         return True
 
-    def apply(self, ego, cmd):
-        """The agent's VehicleControl, onto the record.
-
-        steerAngleDesired is an ANGLE on the wire; the host divides by the same
-        MAX_STEER_RAD before the plant, so the round trip is the agent's [-1, 1].
+    def logStep(self, ego, cmd):
+        """FIXS's own per-tick record of what it fed the agent and what came
+        back. Bookkeeping, not the interface -- the COMMAND is the `ego.set`
+        the controller writes itself, and a controller that wants no CSV can
+        leave this out entirely.
         """
-        ego.set(acceleratorPedalDesired=cmd.throttle,
-                brakePedalDesired=cmd.brake,
-                steerAngleDesired=cmd.steer * self._a.MAX_STEER_RAD)
         self.steps += 1
         wpLeft = None
         if self.log is not None or self.steps % 500 == 0:
