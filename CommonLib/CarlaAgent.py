@@ -4,14 +4,16 @@
 A user who already has a CARLA-agent-shaped controller should be able to run it
 against FIXS by swapping the vehicle it was built on, and changing nothing else.
 That is what this is. `EgoVehicle` answers everything an agent asks of
-`world.player`, out of the ego's FIXS record, and adds the four verbs a
-controller needs on the FIXS side: route, attach, update, apply.
+`world.player`, out of the ego's FIXS record, and adds three verbs on the FIXS
+side: drive, update, apply.
 
     a CARLA script                          the same script on FIXS
     ------------------------------------    -----------------------------------
-    vehicle = world.get_actor(id)           ego = fixs.EgoVehicle(config)
+    client = carla.Client(host, port)       (FIXS holds the connection)
+    vehicle = world.get_actor(id)           ego = fixs.EgoVehicle(config, egoId)
     agent = BehaviorAgent(vehicle)          IDENTICAL
-    agent.set_destination(loc)              agent.set_global_plan(ego.route())
+    agent.set_destination(loc)              ego.drive(agent)
+    while True: world.tick()                (FIXS calls control(ego, dt))
     agent.run_step()                        IDENTICAL
     vehicle.apply_control(control)          ego.apply(record, control)
 
@@ -79,9 +81,9 @@ class _WorldView:
 class EgoVehicle:
     """`world.player`, backed by the FIXS record.
 
-    Construct it, build your agent on it, hand it `route()`, then `attach()` the
-    agent so FIXS can wire its own sensing in. After that the step is two calls:
-    `update()` before `run_step()`, `apply()` after.
+    Construct it, build your agent on it exactly as you would on a
+    carla.Vehicle, then `drive()` the agent -- that is the whole binding. After
+    that the step is two calls: `update()` before `run_step()`, `apply()` after.
     """
 
     #: Waypoints left at which the next lap is appended (~400 m at 2 m spacing).
@@ -191,27 +193,44 @@ class EgoVehicle:
     def id(self):             return self._actor.id
 
     # ---- the FIXS side ---------------------------------------------------
-    def plannerOptions(self):
-        """opt_dict for the agent, with dt actually applied -- see the adapter's
-        planner_options for why passing {'dt': ...} alone is a no-op."""
-        return self._a.planner_options(self.dt, self.sampling)
-
     def route(self):
         """One lap of the ego's corridor, as (waypoint, RoadOption) pairs."""
         self.lapsLaid += 1
         return [(self._a.Waypoint(self._carla, x, y),
                  self._RoadOption.LANEFOLLOW) for x, y in self._lap]
 
-    def attach(self, agent):
-        """Wire FIXS's sensing into an agent already built on this vehicle.
+    def drive(self, agent):
+        """Hand an agent over to FIXS: give it the route, and wire FIXS in.
 
-        The two detectors are answered from the wire rather than by sweeping a
-        CARLA world, so they are installed on the instance rather than asking
-        the user to construct a different class. Everything else in the agent is
-        CARLA's, untouched.
+        One call rather than three, because it is one act. Construct your agent
+        on this vehicle exactly as you would on a carla.Vehicle, then hand it
+        here; from that point FIXS calls you per step.
+
+        What it does, none of which the caller should have to know: carries the
+        CARLA step into the PIDs (LocalPlanner builds its gain dicts before it
+        reads opt_dict, so passing {'dt': ...} there is a no-op and the loop
+        silently runs on CARLA's 20 Hz default), lays the first lap of the
+        route, and answers the agent's two detectors from the wire instead of
+        from a CARLA world sweep.
+
+        The agent itself is untouched -- its class is still underneath, and
+        nothing in agents/ is modified.
         """
         cfg = self._config
         self.agent = agent
+
+        # CARLA's own gains, with the step this controller is actually called
+        # at. Applied through the planner's own setters rather than opt_dict,
+        # so the caller's constructor stays the one they already wrote.
+        planner = agent.get_local_planner()
+        planner._dt = self.dt
+        planner._sampling_radius = self.sampling
+        ctl = planner._vehicle_controller
+        ctl.change_lateral_PID({'K_P': 1.95, 'K_I': 0.05, 'K_D': 0.2, 'dt': self.dt})
+        ctl.change_longitudinal_PID({'K_P': 1.0, 'K_I': 0.05, 'K_D': 0.0, 'dt': self.dt})
+
+        agent.set_global_plan(self.route())
+
         agent.__class__ = self._a.make_agent_class(
             agent.__class__, stockObstacles=self.stockObstacles)
         # Every run_step branch takes min(max_speed, speed_limit -

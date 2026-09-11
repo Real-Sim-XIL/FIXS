@@ -6,8 +6,7 @@ CARLA's agent code and a FIXS record, and nothing in a run says whether the
 agent was wired up or merely constructed.
 
 So this drives the documented shape end to end -- build the agent on the
-handle, hand it `route()`, `attach()`, then step it -- and asserts the two
-things that must be true: the agent's own class is still underneath, and a
+handle, `drive()` it, then step it -- and asserts the things that must be true: the agent's own class is still underneath, and a
 command reaches the record.
 
     python -m pytest tests/Python/unit/test_carla_agent_template.py
@@ -70,11 +69,21 @@ def noWireCheck():
 def driven(tmp_path):
     """The template, verbatim: this is the shape users are given."""
     ego = fixs.EgoVehicle(config(tmp_path), "ego")
-    agent = BehaviorAgent(ego, behavior="normal", opt_dict=ego.plannerOptions())
-    agent.set_global_plan(ego.route())
-    ego.attach(agent)
+    agent = BehaviorAgent(ego, behavior="normal")
+    ego.drive(agent)
     yield ego, agent
     ego.close()
+
+
+def test_drive_carries_the_carla_step_into_both_PIDs(driven):
+    """LocalPlanner builds its gain dicts BEFORE it reads opt_dict, so passing
+    {'dt': ...} there is a no-op and both loops silently run on CARLA's 20 Hz
+    default. drive() sets them through the planner's own setters instead, which
+    is what lets the caller's constructor stay the one they already wrote."""
+    ego, agent = driven
+    ctl = agent.get_local_planner()._vehicle_controller
+    assert ctl._lat_controller._dt == pytest.approx(ego.dt)
+    assert ctl._lon_controller._dt == pytest.approx(ego.dt)
 
 
 def test_the_agents_own_class_is_still_underneath(driven):
@@ -161,9 +170,8 @@ def test_an_empty_route_fails_at_setup_rather_than_mid_run(tmp_path):
 
 def test_the_log_carries_one_row_per_command(tmp_path):
     ego = fixs.EgoVehicle(config(tmp_path), "ego")
-    agent = BehaviorAgent(ego, behavior="normal", opt_dict=ego.plannerOptions())
-    agent.set_global_plan(ego.route())
-    ego.attach(agent)
+    agent = BehaviorAgent(ego, behavior="normal")
+    ego.drive(agent)
     for _ in range(5):
         rec = record()
         ego.update(rec, 0.05)
