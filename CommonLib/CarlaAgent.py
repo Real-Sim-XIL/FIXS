@@ -29,7 +29,7 @@ import os
 import sys
 
 from CommonLib import fixs
-from CommonLib.VirEnv.EgoControllerHost import currentBackend
+from CommonLib.fixs import carla as fixsCarla
 
 #: A pose step beyond this is a teleport, not motion. Mirrors the adapter's
 #: own threshold: 5 m in one CARLA tick is 100 m/s.
@@ -121,11 +121,9 @@ class EgoVehicle:
         # those are FORWARDED to the real map. Falling back to the adapter's
         # stand-in is for a controller driven with no backend behind it, which
         # is how the tests run; a run has one.
-        backend = currentBackend()
-        self._world = getattr(backend, 'carlaWorld', None) if backend else None
-        if self._world is None and backend is not None:
-            print('[agent] backend exposes no CARLA world; road questions will '
-                  'be answered from the route polyline', flush=True)
+        # Through fixs.carla, which is the one place FIXS reaches the
+        # simulator -- the same module a user's own code imports.
+        self._world = fixsCarla.world if fixsCarla.available() else None
 
         # Which obstacle detector drives. FIXS's override exists only because
         # there was no road network to filter on; with a real map, stock's own
@@ -136,7 +134,7 @@ class EgoVehicle:
                 "[agent] EgoStockObstacles needs the real CARLA map, and no "
                 "backend exposed one. Stock's filter is road_id/lane_id; "
                 "against the route polyline every vehicle matches.")
-        self._view = _WorldView(self._world.get_map()) if self.stockObstacles else None
+        self._view = _WorldView(fixsCarla.map) if self.stockObstacles else None
 
         # One lap, densified, kept so it can be laid down again. The corridor
         # route is a LAP and the traffic simulator drives it EgoRouteRepeat

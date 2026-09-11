@@ -74,6 +74,16 @@ class CarlaBackend(IVirEnvBackend):
         """
         return self._world
 
+    @property
+    def carlaClient(self):
+        """The live carla.Client, for `fixs.carla.client`.
+
+        Handed out rather than let a controller open its own: a synchronous
+        world may only be advanced by one party, and this is the one already
+        driving the run.
+        """
+        return self._client
+
     def __init__(self, world, client, useVehicleTypeAsBlueprint, verbose):
         self._world = world
         self._client = client

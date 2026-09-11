@@ -110,8 +110,9 @@ def _addCarlaAgentsToPath():
     so agents/ has to be on the path by the time the second line runs. Appended,
     not inserted: an installed CARLA PythonAPI, or the user's own copy, wins.
     """
+    # __file__ is CommonLib/fixs/__init__.py, so the FIXS root is three up.
     root = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
         'Carla', 'carla_agents')
     if os.path.isdir(os.path.join(root, 'agents')) and root not in sys.path:
         sys.path.append(root)
