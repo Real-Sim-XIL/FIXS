@@ -52,6 +52,10 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 SIGNAL_RED = 1          # CommonLib/TrafficHelper.cpp tlsStateToColor()
 MAX_STEER_RAD = 0.7     # must match mainVirCarla.cpp kMaxSteerRad
 
+#: A pose step beyond this is a teleport, not motion -- adoption, a lap wrap, a
+#: SUMO re-insertion. 5 m in one CARLA step is 100 m/s at 0.05 s.
+_kTeleportStep = 5.0
+
 
 # ---------------------------------------------------------------------------
 # importing the agent code
@@ -322,13 +326,21 @@ class EgoAdapter:
         or mathematical, or which way it turns. Seeded from the wire on the
         first tick because the ego is inserted at ~0 m/s and sits there.
         """
-        if self._prev_xy is None:
-            self._yaw = fixs_heading_to_carla_yaw(ego.heading or 0.0)
-        else:
+        dx = dy = 0.0
+        if self._prev_xy is not None:
             dx = ego.positionX - self._prev_xy[0]
             dy = ego.positionY - self._prev_xy[1]
-            if math.hypot(dx, dy) > 0.05:
-                self._yaw = motion_heading_to_carla_yaw(dx, dy)
+        step = math.hypot(dx, dy)
+        if self._prev_xy is None or step > _kTeleportStep:
+            # A JUMP is not motion. The ego's first record is whatever the
+            # bridge had before it was adopted -- near the origin -- so the step
+            # to its real spawn is a kilometre, and reading a heading off that
+            # points the car ~100 deg wrong. Survivable for a detector that
+            # works off the wire; fatal for stock's, whose cone is 30 deg wide,
+            # so it sees no leader, drives, and the lateral PID saturates.
+            self._yaw = fixs_heading_to_carla_yaw(ego.heading or 0.0)
+        elif step > 0.05:
+            self._yaw = motion_heading_to_carla_yaw(dx, dy)
         self._prev_xy = (ego.positionX, ego.positionY)
         self.set_state(ego.positionX, ego.positionY, self._yaw, ego.speed)
         return self._yaw
