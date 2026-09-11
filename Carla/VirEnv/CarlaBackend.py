@@ -420,6 +420,29 @@ class CarlaBackend(IVirEnvBackend):
     def trafficLightMap(self):
         return self._trafficLightMap
 
+    def signalHeads(self):
+        """[(carla.TrafficLight, carla.Transform)] -- each light, and where its
+        STOP BAR actually is.
+
+        The table gives one row per controlled movement in the SUMO frame
+        (junction, link, x, y, z, heading); this converts each to the CARLA
+        frame with the same arithmetic that places every mirrored vehicle. A
+        controller needs it because an agent locates the signal governing it
+        from the actor's trigger volume, and on an imported corridor those
+        volumes do not line up with the lanes.
+        """
+        out = []
+        for linkMap in self._trafficLightMap.values():
+            for tl in linkMap.values():
+                actor = tl.carlaTrafficLightActorPtr
+                if actor is None:
+                    continue
+                x, y, z, pitch, yaw, roll = BridgeHelper.sumo_to_carla_numeric(
+                    tl.x, tl.y, tl.z, tl.heading, 0.0, 0.0, 0.0)
+                out.append((actor, carla.Transform(carla.Location(x, y, z),
+                                                   carla.Rotation(pitch, yaw, roll))))
+        return out
+
     def lastAppliedPose(self, h):
         """(VehHandle) -> carla.Transform or None -- the pose last APPLIED to h.
 

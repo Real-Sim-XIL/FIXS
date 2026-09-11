@@ -76,6 +76,43 @@ class _EgoActor:
         return getattr(self._actor, name)
 
 
+class _LightActor:
+    """A CARLA traffic light, presented AT its stop bar.
+
+    An agent finds the signal governing it by deriving a trigger location from
+    the actor's transform and its trigger_volume, snapping that to a lane and
+    comparing road_id with its own. On an imported corridor those volumes do
+    not line up with the lanes: measured against the wire, an agent matched
+    only 619 of 2667 red ticks (23%), drove into a junction at 3.8 m/s on a
+    red, and was struck by crossing traffic.
+
+    FIXS knows exactly where each signalised movement's stop bar is
+    (tl_table.csv) and which actor shows it. Presenting the actor at that pose
+    with a zero trigger volume makes the agent's OWN derivation return the stop
+    bar, so its logic works unmodified -- this corrects an input, it does not
+    replace a decision. `state` is the real actor's; the bridge already keeps it
+    in step with the traffic simulator.
+    """
+
+    __slots__ = ('_actor', '_tf', 'trigger_volume')
+
+    def __init__(self, actor, stopBarTf, carla_mod):
+        self._actor = actor
+        self._tf = stopBarTf
+        zero = carla_mod.Vector3D(0.0, 0.0, 0.0)
+        self.trigger_volume = carla_mod.BoundingBox(
+            carla_mod.Location(0.0, 0.0, 0.0), zero)
+
+    def get_transform(self):
+        return self._tf
+
+    def get_location(self):
+        return self._tf.location
+
+    def __getattr__(self, name):
+        return getattr(self._actor, name)
+
+
 class _TrafficActor:
     """A mirrored vehicle: CARLA's own actor, with the one thing it lacks.
 
@@ -105,16 +142,16 @@ class _TrafficActor:
 class _ActorListView(list):
     """`world.get_actors()`: FIXS's traffic, CARLA's everything else."""
 
-    def __init__(self, vehicles=(), world=None):
+    def __init__(self, vehicles=(), world=None, lights=None):
         super().__init__(vehicles)
         self._world = world
+        self._lights = lights
 
     def filter(self, pattern):
         if 'vehicle' in pattern:
             return list(self)
-        # Traffic lights and the rest are REAL -- the bridge keeps CARLA's
-        # lights in step with the traffic simulator, so they are truthful and
-        # there is nothing to substitute.
+        if 'traffic_light' in pattern and self._lights is not None:
+            return list(self._lights)
         return self._world.get_actors().filter(pattern) if self._world else []
 
 
@@ -135,10 +172,11 @@ class _WorldView:
     it unchanged.
     """
 
-    def __init__(self, carlaMap, world):
+    def __init__(self, carlaMap, world, lights=None):
         self._map = carlaMap
         self._world = world
-        self.vehicles = _ActorListView(world=world)
+        self._lights = lights
+        self.vehicles = _ActorListView(world=world, lights=lights)
 
     def get_map(self):
         return self._map
@@ -203,7 +241,7 @@ class EgoSession:
         # times; the agent has no notion of that and brakes to a stop when its
         # plan runs out, which reads exactly like a stall (FIXS#305).
         # What the agent's own sensing reads: CARLA's map, FIXS's traffic.
-        self._view = (_WorldView(fixsCarla.map, self._world)
+        self._view = (_WorldView(fixsCarla.map, self._world, self._signalHeads())
                       if self._world is not None else None)
 
         self._lap = a.densify([(float(x), float(y)) for x, y in route],
@@ -222,6 +260,7 @@ class EgoSession:
         self._yaw = 0.0
         self._nSeen = 0
         self._hazardGap = None
+        self._lightStop = None
         self.log = None
         logPath = config.get('EgoControllerLog', '_datalog/agent_embedded.csv')
         if logPath:
@@ -377,13 +416,15 @@ class EgoSession:
             # agent compares against a CARLA actor's int, which never matches.
             egoId = (ego.id or '').strip()
             self._view.vehicles = _ActorListView(
-                self._trafficActors(egoId), world=self._world)
+                self._trafficActors(egoId), world=self._world,
+                lights=self._view._lights)
             self._nSeen = len(self._view.vehicles)
 
         # What the agent's OWN detector concludes this tick, recorded so a run
         # can answer "did it see the thing it hit" instead of leaving it to
         # inference. Read-only: run_step calls it again for real.
         self._hazardGap = None
+        self._lightStop = None
         if agent is not None:
             try:
                 seen, _, gap = agent._vehicle_obstacle_detected(
@@ -392,6 +433,14 @@ class EgoSession:
                 self._hazardGap = gap if seen else None
             except Exception:
                 pass
+            # Does the agent's OWN light detector see what the wire says? The
+            # wire's signalLightColor is route-aware and authoritative; the
+            # agent sweeps CARLA's light actors and matches by road_id. If the
+            # two disagree the agent drives reds, and nothing else would say so.
+            try:
+                self._lightStop = bool(agent._affected_by_traffic_light()[0])
+            except Exception:
+                self._lightStop = None
 
         # Top up before the queue empties: run it to zero and the agent has
         # already braked by the time the next lap lands.
@@ -415,7 +464,7 @@ class EgoSession:
             wpLeft = len(self.agent.get_local_planner().get_plan())
         if self.log is not None:
             self.log.write('%s,%.3f,%.3f,%.3f,%.2f,%.3f,%s,%.3f,%.4f,%.4f,%.4f,'
-                           '%d,%s,%s,%s,%d,%s\n'
+                           '%d,%s,%s,%s,%d,%s,%s\n'
                            % ('%.3f' % self.elapsed, getattr(ego, 'feedAge', 0.0),
                               ego.positionX, ego.positionY, self._yaw, ego.speed,
                               '' if self._advisory is None else '%.3f' % self._advisory,
@@ -423,7 +472,8 @@ class EgoSession:
                               wpLeft, ego.precedingVehicleDistance,
                               ego.signalLightColor, ego.signalLightDistance,
                               self._nSeen,
-                              '' if self._hazardGap is None else '%.2f' % self._hazardGap))
+                              '' if self._hazardGap is None else '%.2f' % self._hazardGap,
+                              '' if self._lightStop is None else int(self._lightStop)))
         if self.steps % 500 == 0:
             print('[agent] step %d spd=%5.2f tgt=%5.2f (age %.2fs) thr=%.2f '
                   'brk=%.2f steer=%+.2f wp=%d'
@@ -449,6 +499,17 @@ class EgoSession:
                                    clean_queue=False)
         self.lapsLaid += 1
         return True
+
+    def _signalHeads(self):
+        """Every signal head, at the stop bar it actually governs."""
+        backend = currentBackend()
+        heads = getattr(backend, 'signalHeads', None)
+        if heads is None:
+            return None
+        try:
+            return [_LightActor(a, tf, self._carla) for a, tf in heads()]
+        except Exception:
+            return None
 
     def _trafficActors(self, egoId):
         """This tick's traffic, as the CARLA actors mirroring it.
