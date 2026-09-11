@@ -53,18 +53,24 @@ class _ActorListView(list):
     def filter(self, pattern):
         if 'vehicle' in pattern:
             return list(self)
-        return []                      # no pedestrians or lights on this wire
+        return []                      # pedestrians and lights are not here yet
 
 
 class _WorldView:
-    """The world as a CARLA agent sees it: CARLA's real map, FIXS's traffic.
+    """The world an agent sees: CARLA's real map, FIXS's traffic.
 
-    The map is forwarded untouched. The traffic is NOT, and the reason is
-    measured: CARLA's mirrored vehicles are spawned physics-off and moved with
-    set_transform, so `get_velocity()` returns exactly 0.000 for every one of
-    them -- 182 of 182 on this corridor, while 119 of them were moving, several
-    above 24 m/s. A following model fed those reads every leader as stationary.
-    The wire carries the truthful speed, so the agent is handed records.
+    The map is forwarded untouched. The traffic is SUPPLIED, and that is not a
+    FIXS quirk -- CARLA's own SUMO co-simulation spawns mirrored vehicles with
+    SetSimulatePhysics(False) and moves them with set_transform
+    (Co-Simulation/Sumo/sumo_integration/carla_simulation.py:113,:144), so it
+    never gives them a velocity either. Measured here: 182 of 182 report
+    exactly 0.000 while 119 of them were moving, several above 24 m/s. Any
+    following model reading get_velocity off those sees every leader as
+    stationary.
+
+    The wire carries the truthful speed, so that is what the agent is handed.
+    This is FIXS supplying data, not deciding -- the agent's own logic runs on
+    it unchanged.
     """
 
     def __init__(self, carlaMap):
@@ -125,21 +131,13 @@ class EgoVehicle:
         # simulator -- the same module a user's own code imports.
         self._world = fixsCarla.world if fixsCarla.available() else None
 
-        # Which obstacle detector drives. FIXS's override exists only because
-        # there was no road network to filter on; with a real map, stock's own
-        # can run. Under measurement -- one of the two collapses (FIXS#305).
-        self.stockObstacles = bool(config.get('EgoStockObstacles'))
-        if self.stockObstacles and self._world is None:
-            raise SystemExit(
-                "[agent] EgoStockObstacles needs the real CARLA map, and no "
-                "backend exposed one. Stock's filter is road_id/lane_id; "
-                "against the route polyline every vehicle matches.")
-        self._view = _WorldView(fixsCarla.map) if self.stockObstacles else None
-
         # One lap, densified, kept so it can be laid down again. The corridor
         # route is a LAP and the traffic simulator drives it EgoRouteRepeat
         # times; the agent has no notion of that and brakes to a stop when its
         # plan runs out, which reads exactly like a stall (FIXS#305).
+        # What the agent's own sensing reads: CARLA's map, FIXS's traffic.
+        self._view = _WorldView(fixsCarla.map) if self._world is not None else None
+
         self._lap = a.densify([(float(x), float(y)) for x, y in route],
                               self.sampling)
         self.lapsLaid = 0
@@ -170,15 +168,15 @@ class EgoVehicle:
         # Said out loud because both are silent when wrong: a stand-in map
         # answers every road question plausibly, and an unparsed switch reads
         # as off.
-        print('[agent] map: %s | obstacles: %s'
-              % ('CARLA (forwarded)' if self._world is not None else 'route polyline',
-                 'stock' if self.stockObstacles else 'FIXS override'), flush=True)
+        print('[agent] map: %s'
+              % ('CARLA (forwarded)' if self._world is not None else 'route polyline'),
+              flush=True)
 
     # ---- the carla.Vehicle interface, forwarded --------------------------
     def get_world(self):
         if self._view is not None:
             return self._view
-        return self._world if self._world is not None else self._actor.get_world()
+        return self._actor.get_world()
 
     def get_control(self):    return self._actor.get_control()
     def get_transform(self):  return self._actor.get_transform()
@@ -231,8 +229,7 @@ class EgoVehicle:
 
         agent.set_global_plan(self.route())
 
-        agent.__class__ = self._a.make_agent_class(
-            agent.__class__, stockObstacles=self.stockObstacles)
+        agent.__class__ = self._a.make_agent_class(agent.__class__)
         # Every run_step branch takes min(max_speed, speed_limit -
         # speed_lim_dist), so the advisory has to reach it through those two
         # knobs; a target is not a ceiling to undercut.
@@ -288,10 +285,9 @@ class EgoVehicle:
         agent.fixs_vehicles = self._others()
         self._nSeen = len(agent.fixs_vehicles)
         if self._view is not None:
-            # Stock sweeps world.get_actors() itself, so this tick's records go
-            # there, wearing the shape it expects. The ego is left out rather
-            # than filtered by id: on the wire that id is a string, and stock
-            # compares it against a CARLA actor's int.
+            # This tick's records, wearing the shape an agent sweeping
+            # world.get_actors() expects. The ego is left out by wire id: stock
+            # compares against a CARLA actor's int, which never matches.
             egoId = (ego.id or '').strip()
             self._view.vehicles = _ActorListView(
                 self._a._OtherVehicle(self._carla, r)

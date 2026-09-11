@@ -414,7 +414,7 @@ def _bodyPolygon(Polygon, rec):
     ])
 
 
-def make_agent_class(BasicAgent, stockObstacles=False):
+def make_agent_class(BasicAgent):
     """CARLA's BasicAgent with SUMO's answers behind its detectors.
 
     A factory rather than a module-scope class because BasicAgent is only
@@ -431,12 +431,14 @@ def make_agent_class(BasicAgent, stockObstacles=False):
     question route-aware and publishes it on the wire. That is better
     information, not a reconstruction.
 
-    The OBSTACLE override is the one under test. It exists because the adapter
+    The OBSTACLE override is on borrowed time. It exists because the adapter
     had no road network, so stock's primary filter -- same road_id and lane_id
     -- was unavailable and only its junction fallback remained, run everywhere.
-    With the map forwarded to the real one, stock can run as written:
-    stockObstacles=True drops the override. See ORNL-Real-Sim/FIXS#305; one of
-    the two collapses once the impact rate decides it.
+    With the map forwarded it should go, and the leader distance SUMO publishes
+    should be read by the controller rather than substituted behind its back.
+    What blocks that is measured: CARLA's mirrored vehicles report a velocity
+    of exactly 0.000 (182 of 182 while 119 were moving), so a following model
+    fed world.get_actors() reads every leader as stationary. See FIXS#305.
     """
 
     class FixsBasicAgent(BasicAgent):
@@ -551,12 +553,6 @@ def make_agent_class(BasicAgent, stockObstacles=False):
                 return (False, None)
             return (dist < (max_distance or self._base_tlight_threshold), None)
 
-    if stockObstacles:
-        # Stock's own, which needs a real map to filter on and a vehicle list
-        # whose speeds are truthful -- both supplied by the caller.
-        del FixsBasicAgent._vehicle_obstacle_detected
-        del FixsBasicAgent._sweptObstacle
-        del FixsBasicAgent._standIn
     return FixsBasicAgent
 
 
@@ -615,91 +611,9 @@ def densify(points, spacing=2.0):
     return out
 
 
-def route_from_carla(carla_mod, host, port, start_xy, end_xy, spacing=2.0):
-    """CARLA's own GlobalRoutePlanner against the LIVE map -- the one path that
-    needs a running server."""
-    from agents.navigation.global_route_planner import GlobalRoutePlanner
-    client = carla_mod.Client(host, port)
-    client.set_timeout(20.0)
-    grp = GlobalRoutePlanner(client.get_world().get_map(), spacing)
-    trace = grp.trace_route(carla_mod.Location(x=start_xy[0], y=-start_xy[1]),
-                            carla_mod.Location(x=end_xy[0], y=-end_xy[1]))
-    return [(wp.transform.location.x, -wp.transform.location.y) for wp, _ in trace]
 
 
-# ---------------------------------------------------------------------------
-# scenario yaml bits the FIXS client API does not parse
-#
-# Connecting, framing, answering once per tick, shutdown and record echo are all
-# CommonLib/fixs.py's job (#316) -- none of it belongs here any more. What is
-# left is the two CarlaSetup values a CARLA-side controller needs and the python
-# ConfigHelper does not expose.
-# ---------------------------------------------------------------------------
 
-def read_route_points(config_path):
-    """EgoRoutePoints from a scenario yaml, read textually.
-
-    Not via a YAML parser on purpose: the block is machine-generated between
-    marker comments, the surrounding file carries `#pragma once` and other
-    non-YAML noise, and the python ConfigHelper does not parse
-    CarlaSetup.EgoRoutePoints at all.
-    """
-    import re
-    text = open(config_path, encoding="utf-8", errors="replace").read()
-    m = re.search(r"EgoRoutePoints:\s*\[(.*?)\n\s*\]", text, re.S)
-    if not m:
-        return []
-    return [(float(a), float(b))
-            for a, b in re.findall(r"\[\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\]", m.group(1))]
-
-
-def read_ego_id(config_path, default="ego"):
-    """EgoSetup.Id, or the EgoId key it replaced (FIXS#305).
-
-    Falling back to `default` when neither is present is how this silently
-    attached to the wrong vehicle: the default happened to match.
-    """
-    import re
-    text = open(config_path, encoding="utf-8", errors="replace").read()
-    ego = re.search(r"^EgoSetup:\s*$(.*?)(?=^\S)", text, re.M | re.S)
-    if ego:
-        m = re.search(r"^\s{1,4}Id:\s*[\"']?(\S+?)[\"']?\s*$", ego.group(1), re.M)
-        if m:
-            return m.group(1)
-    m = re.search(r"^\s*EgoId:\s*[\"']?(\S+?)[\"']?\s*$", text, re.M)
-    return m.group(1) if m else default
-
-
-def middle_port(config_path, explicit=None):
-    """The port between the advisory controller's and the bridge's.
-
-    fixs.connect() requires the port when a config declares more than one
-    subscription, and requires it rather than guessing -- silently taking entry
-    0 is how two clients end up sharing one endpoint. This picks it for the one
-    arrangement where the answer is not a guess: an actuation client must sit
-    ABOVE the advisory controller, to see its speedDesired, and BELOW
-    VirCarlaEnv, so the bridge sees the pedals. With three subscriptions that is
-    the middle one, and the choice is printed rather than assumed.
-    """
-    if explicit is not None:
-        return explicit
-    from CommonLib.ConfigHelper import ConfigHelper
-    cfg = ConfigHelper()
-    cfg.getConfig(config_path)
-    subs = cfg.application_setup.get("VehicleSubscription") or []
-    ports = sorted({p for s in subs for p in s["port"]})
-    if len(ports) < 3:
-        raise SystemExit(
-            f"[adapter] this config declares ports {ports}; an actuation client "
-            f"needs one between the controller's and VirCarlaEnv's. Pass --port.")
-    print(f"[adapter] ports {ports} -> taking {ports[1]} "
-          f"(above {ports[0]}, below {ports[-1]})", flush=True)
-    return ports[1]
-
-
-# ---------------------------------------------------------------------------
-# selftest
-# ---------------------------------------------------------------------------
 
 def _selftest():
     """Everything that can be checked without a CARLA server or a FIXS feed."""

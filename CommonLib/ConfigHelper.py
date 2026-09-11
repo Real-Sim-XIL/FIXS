@@ -124,14 +124,6 @@ class ConfigHelper:
         self.Carla_setup["EgoRoutePoints"] = [(float(pt[0]), float(pt[1]))
                                               for pt in (carla_node.get("EgoRoutePoints") or [])]
 
-        # Which obstacle detector a CARLA-shaped agent runs: FIXS's override, or
-        # stock's own against the real map. Under measurement -- one of the two
-        # collapses (ORNL-Real-Sim/FIXS#305). Parsed HERE rather than read
-        # straight off the yaml because Carla_setup is a defaultdict(None): an
-        # unparsed key reads as "off" and the switch silently never fires.
-        self.Carla_setup["EgoStockObstacles"] = self.parserFlag(
-            carla_node, "EgoStockObstacles", False)
-
 
         # ---- EgoSetup: the ego, described once (#305) --------------------------
         # Every key falls back to the per-backend key it replaces, so older
