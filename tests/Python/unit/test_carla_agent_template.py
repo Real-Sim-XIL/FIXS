@@ -127,6 +127,18 @@ def test_the_step_the_agent_is_given_is_the_one_it_is_called_at(driven):
     assert ego.dt == pytest.approx(0.025)
 
 
+def test_a_teleport_tick_yields_no_command(driven):
+    """Adoption reads the ego actor once before its spawn pose is applied, so
+    the first step is a kilometre. Steering off a discontinuity aims at a place
+    the car is not; measured, it wound the lateral PID to saturation and the
+    ego never recovered."""
+    ego, agent = driven
+    assert ego.update(record(positionX=0.0), 0.05) is True
+    assert ego.update(record(positionX=0.4), 0.05) is True      # 0.4 m: motion
+    assert ego.update(record(positionX=900.0), 0.05) is False   # 900 m: a jump
+    assert ego.update(record(positionX=900.4), 0.05) is True    # settled again
+
+
 def test_an_empty_route_fails_at_setup_rather_than_mid_run(tmp_path):
     with pytest.raises(SystemExit):
         fixs.EgoVehicle(config(tmp_path, EgoRoutePoints=[]), "ego")

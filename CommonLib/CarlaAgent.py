@@ -22,11 +22,16 @@ See ORNL-Real-Sim/FIXS#305 for why the controller talks to FIXS and not to CARLA
 from __future__ import annotations
 
 import importlib
+import math
 import os
 import sys
 
 from CommonLib import fixs
 from CommonLib.VirEnv.EgoControllerHost import currentBackend
+
+#: A pose step beyond this is a teleport, not motion. Mirrors the adapter's
+#: own threshold: 5 m in one CARLA tick is 100 m/s.
+_TELEPORT_STEP = 5.0
 
 _ADAPTER_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -139,6 +144,7 @@ class EgoVehicle:
         self.lapsAllowed = max(1, int(config.get('EgoRouteRepeat') or 1))
 
         self.agent = None
+        self._lastXY = None
         self._config = config
         self.steps = 0
         # Seconds since the first control step: the record carries no clock, and
@@ -218,8 +224,24 @@ class EgoVehicle:
         return agent
 
     def update(self, ego, dt):
-        """Become this tick's record, and hand the agent what it reads."""
+        """Become this tick's record, and hand the agent what it reads.
+
+        Returns False when this tick's pose is a JUMP rather than motion, and
+        the caller should not run its agent: adoption (the ego actor is read
+        once before its spawn pose is applied, reporting a pose near the CARLA
+        origin), a lap wrap, a SUMO re-insertion. Commanding off a
+        discontinuity steers for a place the car is not -- with the wire-based
+        detector that was survivable, because it emergency-stops on SUMO's
+        leader distance whatever the pose; with stock's, the ego wound its
+        steering up in those two ticks and never recovered (FIXS#305).
+        """
         agent = self.agent
+        prev = self._lastXY
+        self._lastXY = (ego.positionX, ego.positionY)
+        if prev is not None and math.hypot(ego.positionX - prev[0],
+                                           ego.positionY - prev[1]) > _TELEPORT_STEP:
+            self._actor.update_from_record(ego)     # keep the pose current
+            return False
         # dt is taken every step rather than assumed: the host is entitled to
         # call at a different rate than CarlaTimeStep advertised.
         if dt > 0 and abs(dt - self.dt) > 1e-9:
@@ -268,6 +290,7 @@ class EgoVehicle:
             max_distance=agent._base_vehicle_threshold
             + agent._speed_ratio * (ego.speed * 3.6))
         self._hazardGap = gap if seen else None
+        return True
 
     def apply(self, ego, cmd):
         """The agent's VehicleControl, onto the record.
