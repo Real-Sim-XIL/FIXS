@@ -380,58 +380,109 @@ def _headingAt(points, i):
 def _facingLane(wp, headingDeg, real, cmap=None, x=0.0, y=0.0, reach=20.0):
     """The lane at this route point that goes the way the route goes.
 
-    get_waypoint(project_to_road=True) snaps to the NEAREST driving lane and
-    says nothing about direction. On an out-and-back corridor the carriageways
-    are metres apart, so the return leg snaps onto the OUTBOUND lane and the
-    plan leads the ego up the wrong side of the road. Measured: the ego drove
-    the wrong way along lane E3_0 until it met an oncoming vehicle 3.09 m ahead,
-    both at a standstill, and the agent held an emergency stop for the rest of
-    the run -- correctly, on a route it should never have been given.
+    get_waypoint(project_to_road=True) returns the NEAREST driving lane and says
+    nothing about direction, which is wrong in two different ways here.
 
-    Crossing lane links is tried first and is usually enough on a divided road
-    carried as one road in OpenDRIVE. It is NOT enough here: measured on this
-    corridor, 184 of 2558 waypoints snapped against the route and not one of
-    them could reach an agreeing lane that way, because the two directions are
-    separate roads. So the second attempt probes SIDEWAYS in space -- the
-    opposing carriageway is a few metres abeam -- and takes the nearest lane
-    that agrees. Nothing within `reach` metres that agrees means the map has no
-    such lane, and CARLA's own answer stands rather than a made-up one.
+    On open road the corridor is out-and-back, so the return leg snaps onto the
+    OUTBOUND carriageway: the ego drove the wrong way along lane E3_0 until it
+    met an oncoming vehicle 3.09 m ahead. The carriageways are separate roads in
+    this map, so no lane link reaches across -- the correction has to probe
+    SIDEWAYS in space.
+
+    In a junction every turning lane is a few metres abeam and one of them is
+    always nearest. Picking by distance put the plan on a lane 54.8 degrees off
+    the route; the ego turned into the junction at 10.7 m/s and stopped there
+    for the rest of the run. Inside a junction the only thing that identifies
+    the right lane is which way it GOES.
+
+    So candidates are scored by heading error, not by proximity, and a lane
+    must be nearly parallel to qualify at all. If nothing qualifies, CARLA's own
+    answer stands rather than an invented one.
     """
-    if wp is None or _agrees(wp, headingDeg):
+    if wp is None:
         return wp
+    if abs(_angleTo(wp, headingDeg)) <= _kSameWayDeg:
+        return wp
+    # A point already inside a junction is left exactly as CARLA gave it.
+    # Measured, letting junction lanes compete -- even scored by heading -- was
+    # worse, not better: the worst excursion grew from 13.85 m to 88.60 m,
+    # because a well-aligned internal lane can still belong to a different
+    # movement. A junction is crossed by connectivity; the plan has no business
+    # choosing a lane there by looking sideways.
+    if bool(getattr(wp, 'is_junction', False)):
+        return wp
+
+    best, bestErr = wp, abs(_angleTo(wp, headingDeg))
+
+    def consider(cand):
+        nonlocal best, bestErr
+        if cand is None:
+            return
+        if str(cand.lane_type) != str(real.LaneType.Driving):
+            return
+        # Never a junction lane: on open road that is a turn the route did not
+        # ask for, and inside a junction we no longer get here.
+        if bool(getattr(cand, 'is_junction', False)):
+            return
+        err = abs(_angleTo(cand, headingDeg))
+        if err < bestErr:
+            best, bestErr = cand, err
+
     for step in ('get_left_lane', 'get_right_lane'):
         cur = wp
         for _ in range(4):
             nxt = getattr(cur, step, lambda: None)()
             if nxt is None or str(nxt.lane_type) != str(real.LaneType.Driving):
                 break
-            if _agrees(nxt, headingDeg):
-                return nxt
+            consider(nxt)
             cur = nxt
-    if cmap is None:
-        return wp
-    rad = math.radians(headingDeg)
-    nx, ny = -math.sin(rad), math.cos(rad)          # unit normal, CARLA frame
-    best, bestOff = None, None
-    off = 2.0
-    while off <= reach:
-        for sign in (1.0, -1.0):
-            probe = cmap.get_waypoint(
-                real.Location(x=x + nx * off * sign, y=y + ny * off * sign,
-                              z=0.0), project_to_road=True)
-            if probe is not None and _agrees(probe, headingDeg):
-                if bestOff is None or off < bestOff:
-                    best, bestOff = probe, off
-        if best is not None:
-            return best
-        off += 2.0
-    return wp
+
+    if cmap is not None:
+        rad = math.radians(headingDeg)
+        nx, ny = -math.sin(rad), math.cos(rad)      # unit normal, CARLA frame
+        off = 2.0
+        while off <= reach:
+            for sign in (1.0, -1.0):
+                consider(cmap.get_waypoint(
+                    real.Location(x=x + nx * off * sign, y=y + ny * off * sign,
+                                  z=0.0), project_to_road=True))
+            off += 2.0
+
+    return best if bestErr <= _kSameWayDeg else wp
+
+
+#: A lane more than this far off the route's heading is a different movement,
+#: not the same road. Measured: a junction turning lane 54.8 degrees off the
+#: route passed the old right-angle test, and the sideways probe put the plan
+#: 10 m onto it -- the ego turned into the junction and stopped there.
+_kSameWayDeg = 35.0
 
 
 def _agrees(wp, headingDeg):
-    """Does this lane run the way the route runs? Within a right angle."""
-    d = (wp.transform.rotation.yaw - headingDeg + 180.0) % 360.0 - 180.0
-    return abs(d) <= 90.0
+    """Is this lane going the route's way at all, rather than against it?
+
+    A right angle, because the question here is only "is this the opposing
+    carriageway" -- it decides whether a correction is needed, not which lane
+    to correct to.
+    """
+    return abs(_angleTo(wp, headingDeg)) <= 90.0
+
+
+def _accepts(wp, headingDeg):
+    """Is this lane the one the route actually wants?
+
+    Stricter than _agrees on purpose. Anything within a right angle passes for
+    "not opposed", but a lane must be nearly parallel to be the same road: a
+    turning lane half a right angle off is a different movement, and steering
+    a plan onto it drives the ego somewhere its route never went.
+    """
+    if getattr(wp, 'is_junction', False):
+        return False
+    return abs(_angleTo(wp, headingDeg)) <= _kSameWayDeg
+
+
+def _angleTo(wp, headingDeg):
+    return (wp.transform.rotation.yaw - headingDeg + 180.0) % 360.0 - 180.0
 
 
 def _configured(key, default=None):

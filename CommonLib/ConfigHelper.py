@@ -208,6 +208,12 @@ class ConfigHelper:
         # reads the shape off the fields a controller wrote (fixs.commandKind).
         #   pedals -- the controller closes the speed loop  (apply_control)
         #   speed  -- the vehicle closes it       (apply_ackermann_control)
+        # Whether the ego controller follows an external speed advisory at all.
+        # False drives the scenario's EgoTargetSpeed instead, which takes the
+        # advisory loop out of a run: what is left is route following.
+        self.Carla_setup["EgoUseAdvisory"] = self.parserFlag(
+            carla_node, "EgoUseAdvisory", True)
+
         self.Carla_setup["EgoCommandShape"] = self.parserString(
             carla_node, "EgoCommandShape", "pedals")
 

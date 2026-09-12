@@ -77,10 +77,14 @@ class _Map:
         self.outbound, self.back, self.gap = outboundYaw, returnYaw, gap
         self.asked = []
 
+    junction = False
+
     def get_waypoint(self, loc, project_to_road=True):
         self.asked.append((loc.x, loc.y))
         away = (loc.x ** 2 + loc.y ** 2) ** 0.5
-        return _Lane(yaw=self.back if away >= self.gap else self.outbound)
+        lane = _Lane(yaw=self.back if away >= self.gap else self.outbound)
+        lane.is_junction = self.junction
+        return lane
 
 
 def test_a_separate_opposing_road_is_found_abeam():
@@ -104,3 +108,45 @@ def test_the_probe_walks_outwards_and_stops():
     cmap = _Map(outboundYaw=90.0, returnYaw=90.0, gap=6.0)
     relay._facingLane(_Lane(yaw=90.0), -90.0, realCarla, cmap, 0.0, 0.0, reach=8.0)
     assert max((p[0] ** 2 + p[1] ** 2) ** 0.5 for p in cmap.asked) <= 8.0
+
+
+def test_a_turning_lane_is_not_the_same_road():
+    """A junction turning lane 54.8 degrees off the route passed the old
+    right-angle test, and the sideways probe put the plan 10 m onto it: the ego
+    turned into the junction at 10.7 m/s and stopped there for the rest of the
+    run. Within a right angle means 'not opposed'; it does not mean 'this is my
+    lane'."""
+    route_east = 0.0
+    turning = _Lane(yaw=54.8)
+    assert relay._agrees(turning, route_east)        # not opposed
+    assert not relay._accepts(turning, route_east)   # but not the same road
+
+
+def test_a_junction_lane_is_never_crossed_to():
+    """Inside a junction the turning lanes fan out and one is always abeam, so
+    lateral position says nothing about which movement the route takes."""
+    j = _Lane(yaw=2.0)
+    j.lane_type = realCarla.LaneType.Driving
+    j.is_junction = True
+    assert not relay._accepts(j, 0.0)
+
+
+def test_a_junction_snap_is_left_as_carla_gave_it():
+    """Letting junction lanes compete -- even scored by heading -- measured
+    WORSE: the worst excursion grew from 13.85 m to 88.60 m, because a
+    well-aligned internal lane can still belong to a different movement. A
+    junction is crossed by connectivity, not by looking sideways."""
+    snapped = _Lane(yaw=175.0)
+    snapped.is_junction = True
+    cmap = _Map(outboundYaw=175.0, returnYaw=0.0, gap=4.0)
+    assert relay._facingLane(snapped, 0.0, realCarla, cmap, 0.0, 0.0) is snapped
+
+
+def test_the_opposing_carriageway_is_still_crossed_to():
+    """The fix must not undo what it was added for: a genuinely opposed lane on
+    a separate parallel road is still corrected."""
+    cmap = _Map(outboundYaw=90.0, returnYaw=-90.0, gap=6.0)
+    snapped = _Lane(yaw=90.0)
+    got = relay._facingLane(snapped, -90.0, realCarla, cmap, x=0.0, y=0.0)
+    assert got is not snapped
+    assert got.transform.rotation.yaw == pytest.approx(-90.0)
