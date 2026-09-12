@@ -195,6 +195,19 @@ class IVirEnvBackend(ABC):
         unavailable this step. The out-parameter shape is the C++ signature kept
         deliberately: the core calls it identically in both languages, so the
         seven-step body reads the same.
+
+        "Unavailable" includes "exists but has no pose yet". A backend that has
+        just created the ego may not be able to say where it is until its
+        simulator advances, and returning a placeholder pose there is how a
+        controller ends up commanding from somewhere the ego has never been.
+        """
+
+    def noteWorldTicked(self):
+        """The simulator advanced a step, so any actor created since the last
+        one now has a state to read.
+
+        Optional: the default does nothing, for backends whose readback never
+        lags creation. CARLA's does -- see CarlaBackend.readEgoState.
         """
 
     def setEgoPose(self, egoId, p):

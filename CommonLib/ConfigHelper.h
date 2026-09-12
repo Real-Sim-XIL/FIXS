@@ -221,6 +221,16 @@ struct CarlaSetup_t {
 struct SumoSetup_t {
 
 	int SpeedMode;
+
+	// SUMO's lane-change mode for the vehicles FIXS drives, as
+	// Vehicle::setLaneChangeMode takes it. -1 leaves SUMO's own default (597,
+	// every motive on) untouched, which is what every scenario got before this
+	// existed. 512 is strategic changes only: the vehicle still reaches the lane
+	// its next turn needs, but never changes lane by choice -- the setting for
+	// comparing against a driver that holds one lane, such as a CARLA agent
+	// steering a fixed route polyline.
+	int LaneChangeMode;
+
 	int ExecutionOrder;
 
 	// How far ahead (metres) to look for a preceding vehicle when filling the

@@ -255,7 +255,7 @@ def main(argv=None):
             raise SystemExit("EgoSetup.ActuationSource: user needs a Controller: "
                              "<path to a .py defining control(ego, dt)>")
         embedded = loadController(spec, appRoot=os.getcwd())
-        embedded.setup(cs, egoId)
+        embedded.setup(cs, egoId, backend, core)
         print("Ego controller: %s (called every CARLA step, not every feed)"
               % embedded.spec)
     lastAdvisory = cs['EgoTargetSpeed']
@@ -416,6 +416,7 @@ def main(argv=None):
             phase["flush batch"] += time.monotonic() - _t0
             _t0 = time.monotonic()
             world.tick()               # advance Carla one sub-step
+            backend.noteWorldTicked()  # every actor now has a snapshot
             phase["world.tick"] += time.monotonic() - _t0
 
             # SUMO <-> CARLA elevation audit, once per exchange. Here rather than
@@ -587,6 +588,9 @@ def _bringUpEgo(cs, backend, egoDriver, world, virEnvOwnsEgo, useFixsDriver,
     if backend.spawnEgo(cs['EgoBlueprint'], sp, cs['TrafficManagerPort']) == kNoHandle:
         print('ego spawn failed', file=sys.stderr)
         return False
+
+    if cs['EgoIdealSpeedTracking']:
+        backend.setEgoIdealSpeedTracking()
 
     if useFixsDriver:
         # The only Carla-specific step is the frame conversion (FIXS -> Carla is a

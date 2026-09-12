@@ -926,6 +926,24 @@ int TrafficHelper::sendToSUMO(double simTime, MsgHelper Msg_c) {
 						*/
 
 						SUMO_TRACI_NAMESPACE::Vehicle::setSpeedMode(idStr, Config_c->SumoSetup.SpeedMode); // 000000 most checks off
+
+						/*
+						Lane changing, by the same route: SUMO owns the vehicle,
+						so the mode is set here and not by an application. A
+						client has no TraCI connection of its own -- it holds a
+						FIXS port, and reaching for traci from one fails with
+						"Not connected".
+
+						bit0/1: strategic   (reach the lane the route needs)
+						bit2/3: cooperative (make room for others)
+						bit4/5: speed gain  (change lane to go faster)
+						bit6/7: keep right
+						597 is SUMO's default, every motive on. 512 leaves only
+						strategic: follows its route, never changes lane by choice.
+						*/
+						if (Config_c->SumoSetup.LaneChangeMode >= 0) {
+							SUMO_TRACI_NAMESPACE::Vehicle::setLaneChangeMode(idStr, Config_c->SumoSetup.LaneChangeMode);
+						}
 						//SUMO_TRACI_NAMESPACE::Vehicle::setSpeedMode(idStr, 0); // 000000 most checks off
 						//SUMO_TRACI_NAMESPACE::Vehicle::setSpeedMode(idStr, 24); // 011000
 						//SUMO_TRACI_NAMESPACE::Vehicle::setSpeedMode(idStr, 8); // 001000

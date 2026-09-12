@@ -74,6 +74,7 @@ import dataclasses
 import math
 import os
 import socket
+import sys
 import time as _time
 import typing
 
@@ -86,8 +87,38 @@ __all__ = [
     'connect', 'recv', 'send', 'close',
     'sim', 'vehicle', 'trafficlight',
     'emit', 'transport', 'commandKind',
-    'Vehicle', 'Shutdown', 'FixsError', 'NotConnected', 'ProtocolError',
+    'Vehicle', 'MAX_STEER_RAD',
+    'Shutdown', 'FixsError', 'NotConnected', 'ProtocolError',
 ]
+
+
+#: Full-lock front road-wheel angle [rad]. `steerAngleDesired` is an ANGLE on
+#: the wire, where a CARLA agent's VehicleControl.steer is normalised [-1, 1];
+#: the plant divides by this same constant, so multiplying by it here makes the
+#: round trip the agent's own number. Must match mainVirCarla's kMaxSteerRad.
+MAX_STEER_RAD = 0.7
+
+
+def _addCarlaAgentsToPath():
+    """Make the vendored CARLA agents importable off `import fixs`.
+
+    A controller that brings a CARLA-shaped agent writes
+
+        import fixs
+        from agents.navigation.behavior_agent import BehaviorAgent
+
+    so agents/ has to be on the path by the time the second line runs. Appended,
+    not inserted: an installed CARLA PythonAPI, or the user's own copy, wins.
+    """
+    # __file__ is CommonLib/fixs/__init__.py, so the FIXS root is three up.
+    root = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+        'Carla', 'carla_agents')
+    if os.path.isdir(os.path.join(root, 'agents')) and root not in sys.path:
+        sys.path.append(root)
+
+
+_addCarlaAgentsToPath()
 
 #: The roles a connection can be opened in. A CONTROLLER decides -- it may write
 #: only the command fields, and may return only records that arrived, which is
@@ -846,6 +877,8 @@ def _validateCommand(record):
 
 
 def __getattr__(name):
+    # Imported on demand: it pulls in the CARLA-side impersonation, which a
+    # client that is not driving an ego has no reason to load.
     # Detector records are received but not decoded -- SocketHelper.recv_data
     # drops them. Say so rather than handing back an empty view, which would
     # read as "no detectors this tick".

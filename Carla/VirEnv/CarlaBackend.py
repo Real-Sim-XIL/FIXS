@@ -61,6 +61,40 @@ _kSpawnOffsetZ = 0.1
 class CarlaBackend(IVirEnvBackend):
     """Implements :class:`IVirEnvBackend` against the CARLA Python client API."""
 
+    @property
+    def carlaWorld(self):
+        """The live carla.World, for an in-process controller that needs a map.
+
+        FIXS holds the backend client, so a road question a CARLA-shaped agent
+        asks -- `get_world().get_map().get_waypoint(...)` -- is FORWARDED to the
+        real map rather than answered from a reconstruction of it. Named here
+        and not on IVirEnvBackend because it is CARLA's own type: a caller that
+        reaches for it is asking for CARLA, and gets nothing from any other
+        backend.
+        """
+        return self._world
+
+    @property
+    def carlaClient(self):
+        """The live carla.Client, for `fixs.carla.client`.
+
+        Handed out rather than let a controller open its own: a synchronous
+        world may only be advanced by one party, and this is the one already
+        driving the run.
+        """
+        return self._client
+
+    @property
+    def carlaEgoActor(self):
+        """The physics ego CARLA owns, for `fixs.carla.ego`.
+
+        This is the vehicle a user's agent should be built on. It is real, its
+        physics are live, and its get_velocity is truthful -- measured 9.839 m/s
+        against the wire's 9.83768 at the same instant -- so there is nothing
+        about the ego worth standing in for.
+        """
+        return self._egoActor
+
     def __init__(self, world, client, useVehicleTypeAsBlueprint, verbose):
         self._world = world
         self._client = client
@@ -70,6 +104,11 @@ class CarlaBackend(IVirEnvBackend):
         self._bpLib = None
         self._map = None                 # cached for the z-alignment guard
         self._egoActor = None            # EgoMode >= 1: the CARLA-driven ego
+        #: True between spawning the ego and CARLA's first snapshot of it. The
+        #: actor exists on the client the instant try_spawn_actor returns, but
+        #: its transform reads the ORIGIN until a tick delivers a snapshot --
+        #: so readEgoState would report a pose that is not the ego's.
+        self._egoAwaitingSnapshot = False
         self._tmPort = 0
         self._egoUsesTM = False
         self._egoDesiredOverride = -1.0  # L2 advisory target (m/s); < 0 = none
@@ -218,10 +257,19 @@ class CarlaBackend(IVirEnvBackend):
     def readEgoState(self, egoId, out):
         """Mode A: read the CARLA-driven ego back in FIXS terms.
 
-        Returns False when no ego actor is owned (EgoMode 0 -- the driver does the
-        readback itself for interested ids).
+        Returns False when there is no pose to report: no ego actor is owned
+        (EgoMode 0 -- the driver does the readback itself for interested ids),
+        or the ego was spawned this tick and CARLA has not yet snapshotted it.
+
+        The second case is not hypothetical. A freshly spawned actor's
+        get_transform() returns the ORIGIN until the next tick delivers a
+        snapshot, so the first readback of a deferred ego reported (0, 0) while
+        the ego was really 933 m away. Callers treat False as "not this tick",
+        which is the honest answer -- and it spares every controller from
+        recognising the jump by its size, which only works while the origin
+        happens to be far from the route.
         """
-        if self._egoActor is None:
+        if self._egoActor is None or self._egoAwaitingSnapshot:
             return False
         cTf = self._egoActor.get_transform()
         ext = self._egoActor.bounding_box.extent
@@ -234,6 +282,14 @@ class CarlaBackend(IVirEnvBackend):
         out.grade = sTf.rotation.pitch * math.pi / 180.0
         out.speed = math.sqrt(vel.x * vel.x + vel.y * vel.y)
         return True
+
+    def noteWorldTicked(self):
+        """CARLA has advanced a tick, so every actor now has a snapshot.
+
+        Called by the host right after world.tick(). It is what ends the window
+        in which a just-spawned ego has no pose -- see readEgoState.
+        """
+        self._egoAwaitingSnapshot = False
 
     def applyEgoControl(self, egoId, desiredSpeed):
         """L2 actuation seam: route an EXTERNAL desired-speed advisory to the driver.
@@ -386,6 +442,29 @@ class CarlaBackend(IVirEnvBackend):
     def trafficLightMap(self):
         return self._trafficLightMap
 
+    def signalHeads(self):
+        """[(carla.TrafficLight, carla.Transform)] -- each light, and where its
+        STOP BAR actually is.
+
+        The table gives one row per controlled movement in the SUMO frame
+        (junction, link, x, y, z, heading); this converts each to the CARLA
+        frame with the same arithmetic that places every mirrored vehicle. A
+        controller needs it because an agent locates the signal governing it
+        from the actor's trigger volume, and on an imported corridor those
+        volumes do not line up with the lanes.
+        """
+        out = []
+        for linkMap in self._trafficLightMap.values():
+            for tl in linkMap.values():
+                actor = tl.carlaTrafficLightActorPtr
+                if actor is None:
+                    continue
+                x, y, z, pitch, yaw, roll = BridgeHelper.sumo_to_carla_numeric(
+                    tl.x, tl.y, tl.z, tl.heading, 0.0, 0.0, 0.0)
+                out.append((actor, carla.Transform(carla.Location(x, y, z),
+                                                   carla.Rotation(pitch, yaw, roll))))
+        return out
+
     def lastAppliedPose(self, h):
         """(VehHandle) -> carla.Transform or None -- the pose last APPLIED to h.
 
@@ -422,6 +501,7 @@ class CarlaBackend(IVirEnvBackend):
             return kNoHandle
         self._egoActor = actor
         self._egoActor.set_simulate_physics(True)     # full PhysX: tire contact, dynamics
+        self._egoAwaitingSnapshot = True             # no pose until CARLA ticks
         print('L0 ego spawned: %s actor %d (physics ON)' % (blueprintId, actor.id))
         return int(actor.id)
 
@@ -443,6 +523,33 @@ class CarlaBackend(IVirEnvBackend):
         self._egoUsesTM = True
         print('L0 ego: NATIVE Traffic Manager autopilot (TM port %d, target %s m/s)'
               % (tmPort, targetSpeedMps))
+
+    def setEgoIdealSpeedTracking(self):
+        """Stiffen CARLA's Ackermann speed loop until tracking is near-ideal.
+
+        An ABLATION lever. CARLA closes the speed loop itself on the
+        apply_ackermann_control path, with its own gains; those gains are what
+        stands between a commanded speed and the speed the vehicle reaches.
+        Raising them until the error is negligible removes the vehicle from the
+        question, so a run shows what the controller DECIDED rather than what
+        the plant could deliver.
+
+        Deliberately not a scenario default. A vehicle that tracks like this is
+        not a vehicle, and a result measured under it is a bound, not a
+        prediction.
+        """
+        if self._egoActor is None:
+            return False
+        try:
+            st = self._egoActor.get_ackermann_controller_settings()
+            st.speed_kp, st.speed_ki, st.speed_kd = 50.0, 5.0, 0.0
+            self._egoActor.apply_ackermann_controller_settings(st)
+        except (AttributeError, RuntimeError) as exc:              # noqa: BLE001
+            self.logError('ideal speed tracking unavailable: %s' % exc)
+            return False
+        print('L0 ego: IDEAL speed tracking (Ackermann kp=50 ki=5) -- ablation, '
+              'not a vehicle', flush=True)
+        return True
 
     def applyEgoActuation(self, throttle, brake, steerNorm):
         """Apply an ACTUATION command supplied by an external FIXS client.
@@ -488,3 +595,4 @@ class CarlaBackend(IVirEnvBackend):
         if self._egoActor is not None:
             self._egoActor.destroy()
             self._egoActor = None
+        self._egoAwaitingSnapshot = False

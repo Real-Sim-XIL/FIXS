@@ -37,7 +37,11 @@ BASE = {
                                  "attribute": {"all": ["true"]},
                                  "ip": ["127.0.0.1"], "port": [430]}],
     },
-    "CarlaSetup": {"EnableCosimulation": True, "InterestedIds": ["ego"]},
+    # The C++ bridge, so these tests are about the EgoSetup vocabulary and not
+    # about the Python backend's in-process rule -- which has its own test at
+    # the bottom of this file.
+    "CarlaSetup": {"EnableCosimulation": True, "InterestedIds": ["ego"],
+                   "EnablePythonBackend": False},
 }
 
 EGO = ("Id", "Type", "Dynamics", "ActuationSource", "Controller")
@@ -162,3 +166,35 @@ def test_EgoL0Driver_still_says_ActuationSource(l0, source, tmp_path):
 
 def test_a_config_with_no_ego_keys_at_all_is_not_taken_over(tmp_path):
     assert parse(tmp_path).Ego_setup["Dynamics"] == ""
+
+
+# --------------------------------------------------------------------------
+# the Python backend serves a user control law in-process only
+# --------------------------------------------------------------------------
+
+def test_the_python_backend_refuses_user_control_over_the_feed(tmp_path):
+    """On the feed, `speed` carries whatever the traffic simulator left -- the
+    eco advisory under L2 -- so a speed loop reads back its own setpoint. The
+    run does not fail; the controller's own log shows textbook tracking while
+    the car does something else. Refused at load instead."""
+    with pytest.raises(SystemExit) as exc:
+        parse(tmp_path, ego={"Dynamics": "virenv", "ActuationSource": "user"},
+              carla={"EnablePythonBackend": True})
+    assert "needs a Controller on the Python" in str(exc.value)
+
+
+def test_naming_a_controller_satisfies_it(tmp_path):
+    cfg = parse(tmp_path, ego={"Dynamics": "virenv", "ActuationSource": "user",
+                               "Controller": "ctl.py"},
+                carla={"EnablePythonBackend": True})
+    assert cfg.Ego_setup["Controller"] == "ctl.py"
+
+
+def test_the_legacy_spelling_is_refused_the_same_way(tmp_path):
+    """EgoL0Driver: Actuation is the v0.9.0 way of asking for the feed path, and
+    it is the same broken loop -- so it is refused, not quietly honoured."""
+    with pytest.raises(SystemExit) as exc:
+        parse(tmp_path, carla={"EgoMode": 2, "EnableExternalControl": True,
+                               "EgoL0Driver": "Actuation",
+                               "EnablePythonBackend": True})
+    assert "needs a Controller on the Python" in str(exc.value)

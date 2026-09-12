@@ -150,7 +150,13 @@ class LoadedController:
         self._state = None
         self._instance = None
 
-    def setup(self, config, egoId):
+    def setup(self, config, egoId, backend=None, core=None):
+        # Registered before the controller is built, because a CARLA-shaped
+        # agent asks its map road questions inside its own constructor. The
+        # controller's own signature is unchanged: it does not take a backend,
+        # it asks FIXS -- see currentBackend.
+        global _backend, _core, _config
+        _backend, _core, _config = backend, core, config
         if self._isClass:
             self._instance = self._obj(config, egoId)
         elif self._setup is not None:
@@ -188,6 +194,62 @@ def _importFromPath(path):
     return module
 
 
+_backend = None
+_core = None
+_config = None
+
+
+def currentConfig():
+    """The scenario this bridge is running, for the parts of FIXS that answer a
+    controller from it -- the ego's route, above all. None outside a run."""
+    return _config
+
+
+def currentCore():
+    """The VirEnvCore this bridge is running, for a controller that must map a
+    wire id to the CARLA actor mirroring it. None outside a run."""
+    return _core
+
+
+def currentBackend():
+    """The backend this bridge is running, for a controller that must reach
+    past the record.
+
+    A CARLA-shaped agent asks its map road questions in its own constructor, so
+    something has to answer them. FIXS holds the backend client, so the answer
+    is FORWARDED to the real map rather than reconstructed -- reconstructing it
+    is what produced a road network invented from the ego's own route
+    (ORNL-Real-Sim/FIXS#305).
+
+    None when a controller is driven without one, which is how the tests run.
+    """
+    return _backend
+
+
+def _letControllerImportFixs():
+    """Make `import fixs` inside a controller reach THIS process's fixs.
+
+    A controller is a loose .py, not an installed package, so it has no sys.path
+    of its own -- and asking every one to reconstruct FIXS's layout before its
+    first import is the boilerplate this hook exists to remove.
+
+    The sys.modules aliases are the part that matters. The engine has already
+    imported this package as `CommonLib.fixs`, and its records live in module
+    globals; a bare `import fixs` off sys.path would find the same FILE and
+    execute it AGAIN, giving the controller a second module object whose feed is
+    never advanced. Every read then returns nothing -- silently, since a
+    controller cannot tell an empty tick from an unconnected one. Aliasing makes
+    the two names one module, which is what a caller already assumes.
+    """
+    d = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # CommonLib
+    if d not in sys.path:
+        sys.path.append(d)
+    import CommonLib.fixs
+    import CommonLib.fixs.carla
+    sys.modules['fixs'] = CommonLib.fixs
+    sys.modules['fixs.carla'] = CommonLib.fixs.carla
+
+
 def loadController(spec, appRoot=None):
     """(string) -> LoadedController -- resolve what the scenario named.
 
@@ -201,6 +263,7 @@ def loadController(spec, appRoot=None):
     if not spec or not spec.strip():
         raise ControllerError('EgoController is empty')
     spec = spec.strip()
+    _letControllerImportFixs()
 
     modPart, sep, attr = spec.rpartition(':')
     # A Windows drive letter is not a separator: 'C:/x/y.py' has no attribute.
