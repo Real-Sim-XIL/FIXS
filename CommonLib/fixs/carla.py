@@ -337,152 +337,73 @@ def _layRoute(agent, first=False):
 def _routePlan():
     """The scenario's corridor as (waypoint, RoadOption) pairs on real lanes.
 
-    Three conversions, all FIXS's. The y flip between FIXS's north-positive
-    frame and CARLA's. The spacing: CARLA's own plans are ~2 m apart and
-    LocalPlanner's purge distance is tuned for that, while a scenario route is
-    decimated -- ~14 m on this corridor. And the DIRECTION.
+    Traced with CARLA's OWN GlobalRoutePlanner, leg by leg between the route's
+    points. That is the part worth insisting on: a route is a path through a
+    road network, and CARLA already knows the network. Snapping each point to
+    the nearest lane instead -- which is what this did -- answers a different
+    question, and answers it wrongly wherever the nearest lane is not the lane
+    the route is on. The measured cost of that was the ego turning into a
+    junction at 10.7 m/s onto a lane 54.8 degrees off its route and stopping
+    there, 79.81 m off route at the 90th percentile.
+
+    trace_route also returns the REAL RoadOption for each waypoint. The snapping
+    version could only ever say LANEFOLLOW, so an agent reading its plan never
+    knew it was about to turn.
+
+    The y flip is FIXS's: FIXS is north-positive and CARLA is not.
     """
     pts = _configured('EgoRoutePoints', None) or []
     if len(pts) < 2:
         return []
-    from agents.navigation.local_planner import RoadOption
-    from Carla.carla_agents.fixs_adapter import densify
+    from agents.navigation.global_route_planner import GlobalRoutePlanner
     real, cmap = _real(), __getattr__('map')
-    dense = densify([(float(a), float(b)) for a, b in pts],
-                    float(_configured('EgoRouteSpacing', 2.0) or 2.0))
-    out, opposed, crossed = [], 0, 0
-    for i, (x, y) in enumerate(dense):
-        heading = _headingAt(dense, i)
-        snapped = cmap.get_waypoint(real.Location(x=x, y=-y, z=0.0),
-                                    project_to_road=True)
-        if snapped is None:
-            continue
-        wp = _facingLane(snapped, heading, real, cmap, x, -y)
-        if not _agrees(snapped, heading):
-            opposed += 1
-            if wp is not snapped:
-                crossed += 1
-        out.append((wp, RoadOption.LANEFOLLOW))
-    print('[fixs] ego route: %d waypoints; %d snapped against the route, '
-          '%d crossed to the lane that agrees'
-          % (len(out), opposed, crossed), flush=True)
+    spacing = float(_configured('EgoRouteSpacing', 2.0) or 2.0)
+    grp = GlobalRoutePlanner(cmap, spacing)
+
+    out, skipped = [], 0
+    here = real.Location(x=float(pts[0][0]), y=-float(pts[0][1]), z=0.0)
+    for nxt in _anchors(pts):
+        there = real.Location(x=float(nxt[0]), y=-float(nxt[1]), z=0.0)
+        try:
+            leg = grp.trace_route(here, there)
+        except Exception:                                       # noqa: BLE001
+            leg = []
+        if leg:
+            out.extend(leg[1:] if out else leg)
+            # Start the next leg where this one ACTUALLY ended, not at the route
+            # point that asked for it. trace_route snaps its origin and
+            # destination to lanes, so consecutive legs need not meet: measured,
+            # a gap left the plan discontinuous and the agent steered for a
+            # waypoint 400 m away, accelerating to 22.5 m/s off the road.
+            here = leg[-1][0].transform.location
+        else:
+            skipped += 1                 # no path: keep the origin, try the next
+    print('[fixs] ego route: %d waypoints traced through the road network'
+          '%s' % (len(out), '' if not skipped else ', %d legs had no path' % skipped),
+          flush=True)
     return out
 
 
-def _headingAt(points, i):
-    """Which way the route is going at points[i], as a CARLA yaw in degrees."""
-    j = i + 1 if i + 1 < len(points) else i
-    k = j - 1 if j > 0 else 0
-    (ax, ay), (bx, by) = points[k], points[j]
-    return math.degrees(math.atan2(-(by - ay), bx - ax))
+#: Shortest leg, in metres, worth asking the route planner to trace.
+#: The planner searches a graph whose nodes are the ENDS of road edges, so a leg
+#: shorter than an edge is answered by running to the end of one and back:
+#: tracing the route own ~14 m spacing produced 15049 waypoints for a 5 km
+#: corridor and drove the ego up to 66.56 m off it. Anchors far enough apart to
+#: span whole edges give the search something real to solve.
+_kAnchorSpacing = 250.0
 
 
-def _facingLane(wp, headingDeg, real, cmap=None, x=0.0, y=0.0, reach=20.0):
-    """The lane at this route point that goes the way the route goes.
-
-    get_waypoint(project_to_road=True) returns the NEAREST driving lane and says
-    nothing about direction, which is wrong in two different ways here.
-
-    On open road the corridor is out-and-back, so the return leg snaps onto the
-    OUTBOUND carriageway: the ego drove the wrong way along lane E3_0 until it
-    met an oncoming vehicle 3.09 m ahead. The carriageways are separate roads in
-    this map, so no lane link reaches across -- the correction has to probe
-    SIDEWAYS in space.
-
-    In a junction every turning lane is a few metres abeam and one of them is
-    always nearest. Picking by distance put the plan on a lane 54.8 degrees off
-    the route; the ego turned into the junction at 10.7 m/s and stopped there
-    for the rest of the run. Inside a junction the only thing that identifies
-    the right lane is which way it GOES.
-
-    So candidates are scored by heading error, not by proximity, and a lane
-    must be nearly parallel to qualify at all. If nothing qualifies, CARLA's own
-    answer stands rather than an invented one.
-    """
-    if wp is None:
-        return wp
-    if abs(_angleTo(wp, headingDeg)) <= _kSameWayDeg:
-        return wp
-    # A point already inside a junction is left exactly as CARLA gave it.
-    # Measured, letting junction lanes compete -- even scored by heading -- was
-    # worse, not better: the worst excursion grew from 13.85 m to 88.60 m,
-    # because a well-aligned internal lane can still belong to a different
-    # movement. A junction is crossed by connectivity; the plan has no business
-    # choosing a lane there by looking sideways.
-    if bool(getattr(wp, 'is_junction', False)):
-        return wp
-
-    best, bestErr = wp, abs(_angleTo(wp, headingDeg))
-
-    def consider(cand):
-        nonlocal best, bestErr
-        if cand is None:
-            return
-        if str(cand.lane_type) != str(real.LaneType.Driving):
-            return
-        # Never a junction lane: on open road that is a turn the route did not
-        # ask for, and inside a junction we no longer get here.
-        if bool(getattr(cand, 'is_junction', False)):
-            return
-        err = abs(_angleTo(cand, headingDeg))
-        if err < bestErr:
-            best, bestErr = cand, err
-
-    for step in ('get_left_lane', 'get_right_lane'):
-        cur = wp
-        for _ in range(4):
-            nxt = getattr(cur, step, lambda: None)()
-            if nxt is None or str(nxt.lane_type) != str(real.LaneType.Driving):
-                break
-            consider(nxt)
-            cur = nxt
-
-    if cmap is not None:
-        rad = math.radians(headingDeg)
-        nx, ny = -math.sin(rad), math.cos(rad)      # unit normal, CARLA frame
-        off = 2.0
-        while off <= reach:
-            for sign in (1.0, -1.0):
-                consider(cmap.get_waypoint(
-                    real.Location(x=x + nx * off * sign, y=y + ny * off * sign,
-                                  z=0.0), project_to_road=True))
-            off += 2.0
-
-    return best if bestErr <= _kSameWayDeg else wp
-
-
-#: A lane more than this far off the route's heading is a different movement,
-#: not the same road. Measured: a junction turning lane 54.8 degrees off the
-#: route passed the old right-angle test, and the sideways probe put the plan
-#: 10 m onto it -- the ego turned into the junction and stopped there.
-_kSameWayDeg = 35.0
-
-
-def _agrees(wp, headingDeg):
-    """Is this lane going the route's way at all, rather than against it?
-
-    A right angle, because the question here is only "is this the opposing
-    carriageway" -- it decides whether a correction is needed, not which lane
-    to correct to.
-    """
-    return abs(_angleTo(wp, headingDeg)) <= 90.0
-
-
-def _accepts(wp, headingDeg):
-    """Is this lane the one the route actually wants?
-
-    Stricter than _agrees on purpose. Anything within a right angle passes for
-    "not opposed", but a lane must be nearly parallel to be the same road: a
-    turning lane half a right angle off is a different movement, and steering
-    a plan onto it drives the ego somewhere its route never went.
-    """
-    if getattr(wp, 'is_junction', False):
-        return False
-    return abs(_angleTo(wp, headingDeg)) <= _kSameWayDeg
-
-
-def _angleTo(wp, headingDeg):
-    return (wp.transform.rotation.yaw - headingDeg + 180.0) % 360.0 - 180.0
+def _anchors(pts):
+    """The route points, thinned to legs long enough to be worth tracing."""
+    out, last = [], pts[0]
+    for p in pts[1:]:
+        if math.hypot(float(p[0]) - float(last[0]),
+                      float(p[1]) - float(last[1])) >= _kAnchorSpacing:
+            out.append(p)
+            last = p
+    if not out or out[-1] is not pts[-1]:
+        out.append(pts[-1])
+    return out
 
 
 def _configured(key, default=None):
