@@ -349,3 +349,27 @@ def test_traffic_is_read_from_the_feed_not_asked_of_the_caller(wired):
     relay.bind(agent, 'ego')
     relay.refresh(_Rec('ego'))
     assert len(agent._world.get_actors().filter('*vehicle*')) == 1
+
+
+def test_the_ceiling_is_the_vehicles_free_flow_speed(wired):
+    """An agent takes min(its target, the speed limit) in every branch, so the
+    ceiling must be what THIS vehicle may drive here -- the road's limit times
+    its own speed factor -- not the bare limit. Measured with the bare limit:
+    the agent's target read exactly 40.248 km/h wherever the advisory asked for
+    more, and it topped out at 11.8 m/s where the traffic simulator's ego
+    reached 14.7."""
+    rec = _Rec('ego', limit=11.18)
+    rec.speedFreeFlow = 12.60                  # 11.18 * the ego's 1.1273 factor
+    agent = _Agent(relay.ego)
+    relay.bind(agent, 'ego')
+    relay.refresh(rec)
+    assert agent._vehicle.get_speed_limit() == pytest.approx(12.60 * 3.6)
+
+
+def test_without_a_free_flow_speed_the_limit_still_stands(wired):
+    rec = _Rec('ego', limit=11.18)
+    rec.speedFreeFlow = 0.0
+    agent = _Agent(relay.ego)
+    relay.bind(agent, 'ego')
+    relay.refresh(rec)
+    assert agent._vehicle.get_speed_limit() == pytest.approx(11.18 * 3.6)

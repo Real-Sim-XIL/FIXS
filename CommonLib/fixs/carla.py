@@ -280,7 +280,15 @@ def refresh(record):
     _view.vehicles = _ActorListView(_trafficActors(_feedVehicles(), egoId),
                                     world=_view._world, lights=_view._lights)
     if _view.ego is not None:
-        _view.ego.setSpeedLimit(float(getattr(record, 'speedLimit', 0.0) or 0.0))
+        # speedFreeFlow, not speedLimit: the ceiling an agent should hold is the
+        # speed THIS vehicle would drive here unimpeded, which is the road's
+        # limit times its own speed factor. The limit alone clipped the eco
+        # advisory -- the agent's target read exactly 40.248 km/h (11.18 m/s)
+        # wherever the advisory asked for more, and it topped out at 11.8 m/s
+        # where the traffic simulator's ego reached 14.7.
+        _view.ego.setSpeedLimit(
+            float(getattr(record, 'speedFreeFlow', 0.0) or 0.0)
+            or float(getattr(record, 'speedLimit', 0.0) or 0.0))
     _layRoute(_view.agent)
 
 
