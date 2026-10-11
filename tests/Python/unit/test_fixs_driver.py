@@ -591,3 +591,83 @@ def test_start_in_gear_is_opt_in_and_set_before_building(scenario, monkeypatch):
 def test_driver_set_refuses_an_unknown_option():
     with pytest.raises(TypeError):
         fixs.driver.set(startInGera=True)
+
+
+# -- referenceMode: what the driver reads from the eco controller ------------
+
+def test_the_acceleration_rebuilds_the_exact_float32_speed():
+    """Exact at a stop and above 0.25 m/s; in between, within float32 of the acceleration."""
+    import random
+    rng = random.Random(0)
+    for _ in range(50000):
+        v = fixs._f32(rng.uniform(0.0, 30.0))
+        target = fixs._f32(max(0.0, v + rng.uniform(-3.0, 2.0) * 0.1))
+        a = fixs.accelerationFromSpeed(v, target, 0.1)
+        assert a == fixs._f32(a)
+        got = fixs.speedFromAcceleration(v, a, 0.1)
+        if target == 0.0 or target > 0.25:
+            assert got == target, (v, target)
+        else:
+            assert abs(got - target) < 2e-8, (v, target)
+
+
+def test_the_reference_mode_comes_from_the_scenario():
+    assert _options({}).reference_mode == 'speed'
+    assert _options({'EgoControllerArgs': ['--reference-mode', 'accel']}).reference_mode == 'accel'
+    assert _options({}, {'referenceMode': 'both'}).reference_mode == 'both'
+
+
+@pytest.mark.parametrize('mode', ['speed', 'accel', 'both'])
+def test_every_reference_mode_drives_the_same_speed(passive, mode):
+    v, target = fixs._f32(12.3), fixs._f32(12.41)
+    d = _build(driver(lambda vref, dt: vref, referenceMode=mode))
+    ego = _passiveEgo(speed=v, feedSpeed=v, speedDesired=target,
+                      accelerationDesired=fixs.accelerationFromSpeed(v, target, 0.1))
+    d.control(ego, 0.1)
+    assert ego.speedDesired == target
+
+
+@pytest.mark.parametrize('sent', [dict(speedDesired=12.41, accelerationDesired=0.0),
+                                  dict(speedDesired=12.3, accelerationDesired=1.1)])
+def test_both_refuses_a_controller_that_sent_only_one(passive, sent):
+    """The field left unset holds TrafficLayer's default: 0 acceleration, or the speed echoed back."""
+    d = _build(driver(lambda vref, dt: vref, referenceMode='both'))
+    with pytest.raises(fixs.FixsError, match='disagrees'):
+        d.control(_passiveEgo(speed=12.3, feedSpeed=12.3, **sent), 0.1)
+
+
+def test_accel_mode_refuses_a_wire_without_the_field(passive):
+    fixs._declaredFields = frozenset({'id', 'speed', 'speedDesired'})
+    d = _build(driver(lambda vref, dt: vref, referenceMode='accel'))
+    with pytest.raises(fixs.FixsError, match='accelerationDesired'):
+        d.control(_passiveEgo(feedSpeed=4.0), 0.1)
+
+
+def test_a_three_argument_exchange_gets_the_acceleration(passive):
+    got = []
+
+    def exchange(vref, aref, dt):
+        got.append((vref, aref))
+        return vref
+
+    d = _build(driver(exchange, referenceMode='accel'))
+    d.control(_passiveEgo(speed=10.0, feedSpeed=10.0, speedDesired=0.0,
+                          accelerationDesired=1.5), 0.1)
+    assert got[0][0] == pytest.approx(10.15, abs=1e-5)
+    assert got[0][1] == pytest.approx(1.5)
+
+
+def test_the_acceleration_follows_a_speed_the_driver_changed():
+    d = _build(driver(lambda vref, aref, dt: vref))
+    d.feedVref, d.feedAref, d.feedStep = 10.0, 1.0, 0.1
+    assert d.arefFor(10.0) == pytest.approx(1.0)
+    assert d.arefFor(9.8) == pytest.approx(-1.0)
+
+
+def test_the_exchange_says_what_it_takes_by_its_arguments():
+    from CommonLib.fixs import xil
+    assert driver(lambda vref, dt: vref)._EXCHANGE_TAKES_AREF is False
+    assert driver(lambda vref, aref, dt: vref)._EXCHANGE_TAKES_AREF is True
+    assert driver(xil.dynosim().exchange)._EXCHANGE_TAKES_AREF is True
+    with pytest.raises(TypeError):
+        driver(lambda vref: vref)

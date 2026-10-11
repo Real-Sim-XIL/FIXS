@@ -21,10 +21,11 @@ is the glue, and it is the whole of what this module asks for.
 
 Pass nothing and nothing is in the loop. This module never goes looking for a
 dyno -- deciding one is there belongs to the caller, so passing a function IS
-the declaration. For the simulated dyno, wrap the one FIXS already has::
+the declaration. For the simulated dyno, pass the one FIXS already has; its
+exchange takes (vref, aref, dt), and the driver supplies aref::
 
     dyno = fixs.xil.dynosim()
-    Controller = fixs.driver(lambda vref, dt: dyno.exchange(vref, 0.0, dt))
+    Controller = fixs.driver(dyno.exchange)
 
 which is a function like any other and holds no privilege over yours.
 
@@ -63,9 +64,11 @@ closing a speed loop there reads back its own setpoint (FIXS#305).
 from __future__ import annotations
 
 import argparse
+import inspect
 import math
 
-from . import FixsError                 # noqa: E402
+from . import FixsError, speedFromAcceleration   # noqa: E402
+from .. import fixs as _fixs            # noqa: E402
 from . import carla as carla            # noqa: E402
 # CARLA's vendored agents: importing the package puts them on sys.path.
 from agents.navigation.behavior_agent import BehaviorAgent   # noqa: E402
@@ -111,6 +114,17 @@ IDEAL_SPEED_TRACKING = True
 #:            it -- measured, amplitude moves with the gains, period does not.
 #:            Fix the lag (lead term) before selecting this.
 PEDAL_LOOP = 'speed'
+
+#: What the upstream controller sends, and so what the driver reads: 'speed'
+#: (speedDesired), 'accel' (accelerationDesired) or 'both'. The one not sent is
+#: rebuilt from the feed's speed; 'both' checks that the two agree.
+REFERENCE_MODE = 'speed'
+
+#: The eco controller's step [s]: speedDesired = feedSpeed + accelerationDesired * FEED_STEP.
+FEED_STEP = 0.1
+
+#: 'both': how far [m/s^2] accelerationDesired may sit from (speedDesired - feedSpeed) / FEED_STEP.
+BOTH_TOLERANCE = 1e-3
 
 
 class Tuning(object):
@@ -279,7 +293,7 @@ _NO_LEADER = -1.0
 
 #: The options fixs.driver(**options) and fixs.driver.set(**options) take.
 _OPTION_NAMES = frozenset({'shape', 'loop', 'tuning', 'limits', 'idealSpeedTracking',
-                           'startInGear'})
+                           'startInGear', 'referenceMode', 'feedStep'})
 #: Set by fixs.driver.set(); every driver built afterwards starts from these.
 _DEFAULTS = {}
 
@@ -309,6 +323,8 @@ def _options(config, overrides=None):
                    default=over.get('shape', COMMAND_SHAPE))
     p.add_argument('--pedal-loop', choices=('speed', 'accel'),
                    default=over.get('loop', PEDAL_LOOP))
+    p.add_argument('--reference-mode', choices=('speed', 'accel', 'both'),
+                   default=over.get('referenceMode', REFERENCE_MODE))
     #: One option, not six: a gain ladder is then one token per rung, and the
     #: whole tuning state is one string that lands in the log verbatim.
     p.add_argument('--tune', default=None, metavar='kv=0.3,ki=0.6')
@@ -329,6 +345,7 @@ def _options(config, overrides=None):
     opt.idealSpeedTracking = bool(
         over.get('idealSpeedTracking', IDEAL_SPEED_TRACKING))
     opt.startInGear = bool(over.get('startInGear', False))
+    opt.feedStep = float(over.get('feedStep', FEED_STEP))
     return opt
 
 
@@ -337,6 +354,8 @@ class Controller:
 
     #: Both set by :func:`driver`. None means "ask the scenario".
     _EXCHANGE = None
+    #: True for an exchange(vref, aref, dt), False for exchange(vref, dt).
+    _EXCHANGE_TAKES_AREF = False
     _OPTIONS = None
     _USERCONTROL = None
 
@@ -354,6 +373,10 @@ class Controller:
         #: spawned car in neutral below ~15% throttle, so a creeping pedal never moves it.
         self.startInGear = opt.startInGear
         self._inGear = False
+        self.referenceMode = opt.reference_mode
+        self.feedStep = opt.feedStep
+        #: This feed's speed and acceleration commands. None until a feed is read.
+        self.feedVref, self.feedAref = None, 0.0
         self.dt = float(config.get('CarlaTimeStep') or 0.1)
         self.fallbackSpeed = float(config.get('EgoTargetSpeed') or 8.33)
         self.useAdvisory = USE_ADVISORY
@@ -368,8 +391,8 @@ class Controller:
         self.passive = currentDynamics() == 'traffic'
         self.log = _openLog(
             config.get('EgoControllerLog', '_datalog/agent_embedded.csv'),
-            'fixs.driver shape=%s loop=%s %s %s exchange=%s'
-            % (self.shape, self.loop, self.tuning, self.limits,
+            'fixs.driver shape=%s loop=%s reference=%s %s %s exchange=%s'
+            % (self.shape, self.loop, self.referenceMode, self.tuning, self.limits,
                getattr(self._EXCHANGE, '__name__', 'none')))
         self.steps, self.elapsed = 0, 0.0
         #: Held between feeds -- see _advisoryOf.
@@ -420,18 +443,56 @@ class Controller:
     def exchange(self, vRef):
         """(mps) -> mps -- what the dyno did with the speed we asked for.
 
+        A 3-argument exchange also gets the acceleration that goes with vRef.
+
         An exchange that cannot answer this tick returns None, and the
         REFERENCE goes through untouched: it is the only value that cannot
         invent motion, so the run behaves as though nothing were attached.
         Those ticks are counted, because a run that ends with many of them did
         not test what it claims to have tested.
         """
-        reached = self._exchange(vRef, self.dt)
+        if self._EXCHANGE_TAKES_AREF:
+            reached = self._exchange(vRef, self.arefFor(vRef), self.dt)
+        else:
+            reached = self._exchange(vRef, self.dt)
         if reached is None:
             self.misses += 1
             return vRef
         self.vDyno = float(reached)
         return self.vDyno
+
+    def _readFeed(self, ego):
+        """The feed's vref, per referenceMode. Keeps vref and aref for arefFor; the one not read is rebuilt."""
+        v = getattr(ego, 'feedSpeed', None)
+        v = float(ego.speed if v is None else v)
+        declared = _fixs._declaredFields
+        if (self.referenceMode != 'speed' and declared is not None
+                and 'accelerationDesired' not in declared):
+            raise FixsError("referenceMode=%r reads accelerationDesired, which is not in "
+                            "VehicleMessageField" % self.referenceMode)
+        if self.referenceMode == 'accel':
+            aref = float(ego.accelerationDesired)
+            vref = speedFromAcceleration(v, aref, self.feedStep)
+        else:
+            vref = float(getattr(ego, 'speedDesired', 0.0) or 0.0)
+            aref = (vref - v) / self.feedStep
+            if self.referenceMode == 'both':
+                sent = float(ego.accelerationDesired)
+                # A field the upstream controller left unset holds TrafficLayer's default, so the pair disagrees.
+                if abs(sent - aref) > BOTH_TOLERANCE:
+                    raise FixsError(
+                        "referenceMode='both': accelerationDesired %.4f disagrees with "
+                        "(speedDesired - feedSpeed) / feedStep = %.4f m/s^2. Does the upstream "
+                        "controller send both, with a %.3f s step?" % (sent, aref, self.feedStep))
+                aref = sent
+        self.feedVref, self.feedAref = vref, aref
+        return vref
+
+    def arefFor(self, vRef):
+        """The acceleration that goes with vRef: the feed's, plus whatever this driver changed the speed by."""
+        if self.feedVref is None:
+            return 0.0
+        return self.feedAref + (vRef - self.feedVref) / self.feedStep
 
     def _build(self):
         """Built on the first controlled tick, not in __init__: the traffic
@@ -638,7 +699,7 @@ class Controller:
         # Safe to read the field directly: it is dual-use, but runController
         # restores the feed's value before every call, so what is here is the
         # eco controller's, never this driver's own last command (FIXS#305).
-        advisory = float(getattr(ego, 'speedDesired', 0.0) or 0.0)
+        advisory = self._readFeed(ego)
         self.advisory = advisory
         #: Neither computed nor applied. Logged as such, so a passive trace
         #: cannot be read as though an envelope had bound.
@@ -673,11 +734,11 @@ class Controller:
         sub-tick. `feedAge` is 0 exactly on the tick a feed lands, so that is when
         the field still holds the advisory; between feeds the last one stands.
         """
+        if float(getattr(ego, 'feedAge', 0.0) or 0.0) <= 1e-9:
+            v = self._readFeed(ego)
+            self.advisory = v if v > 0.01 else None
         if not self.useAdvisory:
             return None
-        if float(getattr(ego, 'feedAge', 0.0) or 0.0) <= 1e-9:
-            v = ego.speedDesired
-            self.advisory = float(v) if (v or 0) > 0.01 else None
         return self.advisory
 
     def _signalCeiling(self, ego):
@@ -840,15 +901,27 @@ class Controller:
                ',%.4f,%.4f,%.4f,%.4f\n' % self._dbg))
 
 
+def _takesAref(exchange):
+    """True for exchange(vref, aref, dt), False for exchange(vref, dt); anything else is refused."""
+    params = inspect.signature(exchange).parameters.values()
+    n = sum(1 for p in params if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
+            and p.default is p.empty)
+    if n not in (2, 3):
+        raise TypeError('fixs.driver(exchange): takes (vref, dt) or (vref, aref, dt), '
+                        'got %d required arguments' % n)
+    return n == 3
+
+
 def driver(exchange=None, usercontrol=None, **options):
     """(callable) -> class -- the controller the scenario should name.
 
     ``exchange(vref, dt) -> mps`` is yours: a speed goes in, the speed your
-    dyno reached comes back. Return None on a tick it could not answer and the
+    dyno reached comes back. ``exchange(vref, aref, dt)`` also gets the
+    acceleration that goes with vref. Return None on a tick it could not answer and the
     reference passes through untouched; those are counted and reported.
 
-    Omit it and nothing is in the loop. For the simulated cell, wrap
-    ``fixs.xil.dynosim().exchange(vref, aref, dt)``; for yours, pass yours::
+    Omit it and nothing is in the loop. For the simulated cell, pass
+    ``fixs.xil.dynosim().exchange``; for yours, pass yours::
 
         Controller = fixs.driver(exchange)
 
@@ -879,6 +952,7 @@ def driver(exchange=None, usercontrol=None, **options):
             'control(ego, dt).')
     cls = type('Controller', (Controller,),
                dict(_EXCHANGE=staticmethod(exchange) if exchange else None,
+                    _EXCHANGE_TAKES_AREF=_takesAref(exchange) if exchange else False,
                     _USERCONTROL=staticmethod(usercontrol) if usercontrol
                     else None,
                     _OPTIONS=dict(_DEFAULTS, **options)))
