@@ -617,7 +617,7 @@ def test_the_reference_mode_comes_from_the_scenario():
     assert _options({}, {'referenceMode': 'both'}).reference_mode == 'both'
 
 
-@pytest.mark.parametrize('mode', ['speed', 'accel', 'both', 'independent'])
+@pytest.mark.parametrize('mode', ['speed', 'accel', 'both'])
 def test_every_reference_mode_drives_the_same_speed(passive, mode):
     v, target = fixs._f32(12.3), fixs._f32(12.41)
     d = _build(driver(lambda vref, dt: vref, referenceMode=mode))
@@ -627,13 +627,18 @@ def test_every_reference_mode_drives_the_same_speed(passive, mode):
     assert ego.speedDesired == target
 
 
-@pytest.mark.parametrize('sent', [dict(speedDesired=12.41, accelerationDesired=0.0),
-                                  dict(speedDesired=12.3, accelerationDesired=1.1)])
-def test_both_refuses_a_controller_that_sent_only_one(passive, sent):
-    """The field left unset holds TrafficLayer's default: 0 acceleration, or the speed echoed back."""
-    d = _build(driver(lambda vref, dt: vref, referenceMode='both'))
-    with pytest.raises(fixs.FixsError, match='disagrees'):
-        d.control(_passiveEgo(speed=12.3, feedSpeed=12.3, **sent), 0.1)
+def test_both_takes_the_pair_as_sent_even_when_they_disagree(passive):
+    got = []
+
+    def exchange(vref, aref, dt):
+        got.append((vref, aref))
+        return vref
+
+    d = _build(driver(exchange, referenceMode='both'))
+    ego = _passiveEgo(speed=10.0, feedSpeed=10.0, speedDesired=8.5, accelerationDesired=-1.5)
+    d.control(ego, 0.1)
+    assert got[0] == (pytest.approx(8.5), pytest.approx(-1.5))
+    assert ego.speedDesired == pytest.approx(8.5)
 
 
 def test_accel_mode_refuses_a_wire_without_the_field(passive):
@@ -655,20 +660,6 @@ def test_a_three_argument_exchange_gets_the_acceleration(passive):
                           accelerationDesired=1.5), 0.1)
     assert got[0][0] == pytest.approx(10.15, abs=1e-5)
     assert got[0][1] == pytest.approx(1.5)
-
-
-def test_independent_tracks_the_speed_and_hands_the_dyno_the_acceleration_as_sent(passive):
-    got = []
-
-    def exchange(vref, aref, dt):
-        got.append((vref, aref))
-        return vref
-
-    d = _build(driver(exchange, referenceMode='independent'))
-    ego = _passiveEgo(speed=10.0, feedSpeed=10.0, speedDesired=8.5, accelerationDesired=-1.5)
-    d.control(ego, 0.1)
-    assert got[0] == (pytest.approx(8.5), pytest.approx(-1.5))
-    assert ego.speedDesired == pytest.approx(8.5)
 
 
 def test_the_acceleration_follows_a_speed_the_driver_changed():
