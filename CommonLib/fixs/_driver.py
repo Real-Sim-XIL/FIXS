@@ -118,6 +118,7 @@ PEDAL_LOOP = 'speed'
 #: What the upstream controller sends, and so what the driver reads: 'speed'
 #: (speedDesired), 'accel' (accelerationDesired) or 'both'. The one not sent is
 #: rebuilt from the feed's speed; 'both' checks that the two agree.
+#: 'independent' reads both and lets them differ: speed is tracked, the acceleration goes to the dyno as sent.
 REFERENCE_MODE = 'speed'
 
 #: The eco controller's step [s]: speedDesired = feedSpeed + accelerationDesired * FEED_STEP.
@@ -323,7 +324,7 @@ def _options(config, overrides=None):
                    default=over.get('shape', COMMAND_SHAPE))
     p.add_argument('--pedal-loop', choices=('speed', 'accel'),
                    default=over.get('loop', PEDAL_LOOP))
-    p.add_argument('--reference-mode', choices=('speed', 'accel', 'both'),
+    p.add_argument('--reference-mode', choices=('speed', 'accel', 'both', 'independent'),
                    default=over.get('referenceMode', REFERENCE_MODE))
     #: One option, not six: a gain ladder is then one token per rung, and the
     #: whole tuning state is one string that lands in the log verbatim.
@@ -476,7 +477,9 @@ class Controller:
         else:
             vref = float(getattr(ego, 'speedDesired', 0.0) or 0.0)
             aref = (vref - v) / self.feedStep
-            if self.referenceMode == 'both':
+            if self.referenceMode == 'independent':
+                aref = float(ego.accelerationDesired)
+            elif self.referenceMode == 'both':
                 sent = float(ego.accelerationDesired)
                 # A field the upstream controller left unset holds TrafficLayer's default, so the pair disagrees.
                 if abs(sent - aref) > BOTH_TOLERANCE:

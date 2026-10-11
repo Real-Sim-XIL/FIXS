@@ -617,7 +617,7 @@ def test_the_reference_mode_comes_from_the_scenario():
     assert _options({}, {'referenceMode': 'both'}).reference_mode == 'both'
 
 
-@pytest.mark.parametrize('mode', ['speed', 'accel', 'both'])
+@pytest.mark.parametrize('mode', ['speed', 'accel', 'both', 'independent'])
 def test_every_reference_mode_drives_the_same_speed(passive, mode):
     v, target = fixs._f32(12.3), fixs._f32(12.41)
     d = _build(driver(lambda vref, dt: vref, referenceMode=mode))
@@ -655,6 +655,20 @@ def test_a_three_argument_exchange_gets_the_acceleration(passive):
                           accelerationDesired=1.5), 0.1)
     assert got[0][0] == pytest.approx(10.15, abs=1e-5)
     assert got[0][1] == pytest.approx(1.5)
+
+
+def test_independent_tracks_the_speed_and_hands_the_dyno_the_acceleration_as_sent(passive):
+    got = []
+
+    def exchange(vref, aref, dt):
+        got.append((vref, aref))
+        return vref
+
+    d = _build(driver(exchange, referenceMode='independent'))
+    ego = _passiveEgo(speed=10.0, feedSpeed=10.0, speedDesired=8.5, accelerationDesired=-1.5)
+    d.control(ego, 0.1)
+    assert got[0] == (pytest.approx(8.5), pytest.approx(-1.5))
+    assert ego.speedDesired == pytest.approx(8.5)
 
 
 def test_the_acceleration_follows_a_speed_the_driver_changed():
