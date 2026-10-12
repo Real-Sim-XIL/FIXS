@@ -117,14 +117,11 @@ PEDAL_LOOP = 'speed'
 
 #: What the upstream controller sends, and so what the driver reads: 'speed'
 #: (speedDesired), 'accel' (accelerationDesired) or 'both'. The one not sent is
-#: rebuilt from the feed's speed; 'both' checks that the two agree.
+#: rebuilt from the feed's speed; 'both' takes each as sent, and they may differ.
 REFERENCE_MODE = 'speed'
 
 #: The eco controller's step [s]: speedDesired = feedSpeed + accelerationDesired * FEED_STEP.
 FEED_STEP = 0.1
-
-#: 'both': how far [m/s^2] accelerationDesired may sit from (speedDesired - feedSpeed) / FEED_STEP.
-BOTH_TOLERANCE = 1e-3
 
 
 class Tuning(object):
@@ -475,16 +472,10 @@ class Controller:
             vref = speedFromAcceleration(v, aref, self.feedStep)
         else:
             vref = float(getattr(ego, 'speedDesired', 0.0) or 0.0)
-            aref = (vref - v) / self.feedStep
             if self.referenceMode == 'both':
-                sent = float(ego.accelerationDesired)
-                # A field the upstream controller left unset holds TrafficLayer's default, so the pair disagrees.
-                if abs(sent - aref) > BOTH_TOLERANCE:
-                    raise FixsError(
-                        "referenceMode='both': accelerationDesired %.4f disagrees with "
-                        "(speedDesired - feedSpeed) / feedStep = %.4f m/s^2. Does the upstream "
-                        "controller send both, with a %.3f s step?" % (sent, aref, self.feedStep))
-                aref = sent
+                aref = float(ego.accelerationDesired)
+            else:
+                aref = (vref - v) / self.feedStep
         self.feedVref, self.feedAref = vref, aref
         return vref
 
