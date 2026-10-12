@@ -393,14 +393,13 @@ def test_complete_actuation_is_accepted():
     fixs.close()
 
 
-def test_both_longitudinal_commands_are_rejected():
-    """ConfigHelper.cpp:256 accepts exactly one."""
-    _install([(1, 0.1, [_veh('ego')])], fields=FULL_FIELDS)
+def test_both_longitudinal_commands_are_sent():
+    """speedDesired for SUMO, accelerationDesired beside it for a downstream controller."""
+    sock = _install([(1, 0.1, [_veh('ego')])], fields=FULL_FIELDS)
     fixs.recv()
     fixs.vehicle.get('ego').set(speedDesired=9.0, accelerationDesired=1.0)
-    with pytest.raises(fixs.ProtocolError) as excinfo:
-        fixs.send()
-    assert 'not both' in str(excinfo.value)
+    fixs.send()
+    assert _recordCount(sock.sent[0], FULL_FIELDS) == 1
     fixs.close()
 
 

@@ -115,11 +115,11 @@ def test_steer_alone_rejected():
         fixs._validateCommand(ego)
 
 
-def test_both_longitudinal_rejected():
+def test_both_longitudinal_accepted():
     ego = makeEgo()
     write(ego, speedDesired=8.3, accelerationDesired=1.0)
-    with pytest.raises(fixs.ProtocolError, match='not both'):
-        fixs._validateCommand(ego)
+    assert fixs.commandKind(ego) == 'speedsteer'
+    fixs._validateCommand(ego)
 
 
 def test_nothing_written_is_not_an_error():
@@ -306,6 +306,19 @@ def test_feedage_is_zero_on_a_feed_and_grows_between(tmp_path):
     runController(backend, ctl, ego, 0.05, False, 0.7)     # sub-step
     runController(backend, ctl, ego, 0.05, False, 0.7)     # sub-step
     assert sys.modules['ages'].seenAges == pytest.approx([0.0, 0.05, 0.10])
+
+
+def test_feedspeed_holds_the_feeds_speed_while_speed_goes_live(tmp_path):
+    body = ("seen = []\n"
+            "def control(ego, dt):\n"
+            "    seen.append((ego.feedSpeed, ego.speed))\n"
+            "    ego.set(speedDesired=5.0, steerAngleDesired=0.0)\n")
+    backend = _mockWithEgo(speed=7.25)
+    ctl = loadController(controllerFile(tmp_path, body, name='feedspeed.py'))
+    ego = makeEgo(speed=6.0)
+    runController(backend, ctl, ego, 0.05, True, 0.7)      # the feed
+    runController(backend, ctl, ego, 0.05, False, 0.7)     # sub-step
+    assert sys.modules['feedspeed'].seen == [(6.0, 7.25), (6.0, 7.25)]
 
 
 def test_written_is_cleared_between_steps(tmp_path):

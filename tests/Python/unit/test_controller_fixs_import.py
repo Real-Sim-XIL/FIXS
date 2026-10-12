@@ -28,6 +28,13 @@ def test_the_relay_resolves_to_the_same_one():
     assert sys.modules['fixs.carla'] is CommonLib.fixs.carla
 
 
+def test_xil_needs_no_import_of_its_own():
+    host._letControllerImportFixs()
+    import fixs
+    import CommonLib.fixs.xil
+    assert fixs.xil is CommonLib.fixs.xil
+
+
 def test_an_import_executed_by_a_controller_sees_the_live_records():
     """What the controller actually writes: `import fixs` then read the feed.
     The object it gets must be the one the engine mutates, not a twin."""

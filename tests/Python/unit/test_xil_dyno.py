@@ -294,6 +294,98 @@ def test_separate_throttle_and_brake_ceilings():
     assert thr == pytest.approx(0.25)
 
 
+def test_a_delay_applies_the_command_of_that_long_ago():
+    plain, late = RobotDriver(), RobotDriver(delay_s=0.1)
+    sent = [plain.step(20.0, 0.0, 0.05) for _ in range(6)]
+    got = [late.step(20.0, 0.0, 0.05) for _ in range(6)]
+    assert got[:2] == [(0.0, 0.0)] * 2
+    assert got[2:] == sent[:4]
+    assert late.pedal == plain.pedal
+
+
+def test_reset_empties_the_delay_line():
+    driver = RobotDriver(delay_s=0.1)
+    for _ in range(5):
+        driver.step(20.0, 0.0, 0.05)
+    driver.reset()
+    assert driver.step(20.0, 0.0, 0.05) == (0.0, 0.0)
+
+
+def test_the_actuator_gets_the_delayed_command_and_has_the_last_word():
+    seen = []
+
+    def half(thr, brk, dt):
+        seen.append((thr, brk, dt))
+        return 0.5 * thr, brk
+
+    plain = RobotDriver()
+    late = RobotDriver(delay_s=0.05, actuator=half)
+    sent = [plain.step(20.0, 0.0, 0.05) for _ in range(3)]
+    got = [late.step(20.0, 0.0, 0.05) for _ in range(3)]
+    assert seen == [(0.0, 0.0, 0.05)] + [c + (0.05,) for c in sent[:2]]
+    assert got == [(0.0, 0.0)] + [(0.5 * t, b) for t, b in sent[:2]]
+
+
+def test_reset_resets_the_actuator_if_it_can():
+    class Lag(object):
+        resets = 0
+
+        def __call__(self, thr, brk, dt):
+            return thr, brk
+
+        def reset(self):
+            self.resets += 1
+
+    lag = Lag()
+    DynoSim(driver=RobotDriver(actuator=lag)).reset()
+    assert lag.resets == 1
+
+
+def test_a_delayed_driver_still_settles_on_the_reference():
+    sim = DynoSim(driver=RobotDriver(delay_s=0.2))
+    for _ in range(int(60.0 / 0.05)):
+        state = sim.step(15.0, 0.05)
+    assert state.speed == pytest.approx(15.0, abs=0.05)
+
+
+def test_an_unknown_mode_is_rejected():
+    with pytest.raises(ValueError):
+        RobotDriver(mode='torque')
+
+
+def test_accel_mode_needs_an_acceleration_command():
+    with pytest.raises(ValueError):
+        RobotDriver(mode='accel').step(5.0, 0.0, 0.05)
+
+
+def test_accel_mode_tracks_a_constant_acceleration():
+    sim = DynoSim(driver=RobotDriver(mode='accel'))
+    speeds = [sim.step(0.0, 0.05, a_ref=1.0).speed for _ in range(160)]
+    assert speeds[-1] == pytest.approx(8.0, abs=0.3)
+    assert (speeds[-1] - speeds[-81]) / 4.0 == pytest.approx(1.0, abs=0.02)
+
+
+def test_accel_mode_ignores_the_speed_reference():
+    a, b = RobotDriver(mode='accel'), RobotDriver(mode='accel')
+    for k in range(20):
+        v = 0.1 * k
+        assert a.step(0.0, v, 0.05, a_ref=0.5) == b.step(30.0, v, 0.05, a_ref=0.5)
+
+
+def test_accel_mode_caps_the_command_at_the_envelope():
+    sim = DynoSim(driver=RobotDriver(mode='accel', max_accel_mps2=1.8))
+    speeds = [sim.step(0.0, 0.05, a_ref=5.0).speed for _ in range(160)]
+    assert (speeds[-1] - speeds[-81]) / 4.0 == pytest.approx(1.8, abs=0.05)
+
+
+def test_accel_mode_holds_the_brake_at_rest_when_not_asked_to_move():
+    driver = RobotDriver(mode='accel')
+    for _ in range(20):
+        thr, brk = driver.step(0.0, 0.0, 0.05, a_ref=0.0)
+    assert thr == 0.0 and brk == pytest.approx(0.3)
+    assert driver.integral == 0.0
+
+
 def test_the_bench_can_fail_to_reach_the_reference():
     """The gap between asked and achieved is the point of having a plant."""
     sim = DynoSim()

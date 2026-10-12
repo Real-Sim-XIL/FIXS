@@ -43,27 +43,27 @@ import fixs
 
 
 # --------------------------------------------------------------------------- #
-#  YOUR OWN DRIVING.  None of the driver's logic runs -- no ceilings, no pedal
-#  law, no agent. FIXS still builds the class and calls it every step, so you
-#  write a function, never __init__ or a method named control.
+#  YOUR OWN DRIVING.  None of the driver's logic runs unless you call it -- no
+#  ceilings, no pedal law, no agent. FIXS still builds the class and calls it
+#  every step, so you write a function, never __init__ or a method named control.
 #
 #  Uncomment it, then switch the Driver line at the end of the file to
 #  the one that names it.
 #
-#  A DYNAMOMETER STILL WORKS: uncomment the block above too and call it inside
-#  my_control, wherever you want it -- `target = dyno.exchange(target, 0.0, dt)`.
-#  What you cannot do is pass BOTH to fixs.driver(): replacing the driving
-#  leaves no point in the tick for an exchange to be called from, so that is
-#  refused rather than silently ignored.
+#  THE DRIVER IS STILL THERE: drv = fixs.driver.instance() inside my_control
+#  gives this run's driver -- drv.default(ego, dt) is its whole step, and
+#  drv.signalCeiling(ego), drv.leaderCeiling(ego), vRef, aRef = drv.reference(control),
+#  drv.exchange(vRef, aRef) and the rest are its pieces. Pass xil= as well and
+#  drv.exchange reaches your dyno.
 #
 #  ego.speed / positionX / positionY / heading / acceleration are LIVE.
-#  speedDesired, signalLightColor, precedingVehicleDistance were HELD since
-#  the last feed, ego.feedAge seconds ago.
+#  speedDesired, accelerationDesired, signalLightColor, precedingVehicleDistance
+#  were HELD since the last feed, ego.feedAge seconds ago: the upstream
+#  controller's raw command, on every step.
 #
 #  speedDesired IS DUAL-USE: the advisory arrives in it, and a speed command
-#  goes back out through it. Read it only when ego.feedAge is 0 -- between
-#  feeds you are reading back your own last command. (Measured before that was
-#  understood: 1299 of 2554 ticks matched the previous tick's own target.)
+#  goes back out through it. FIXS puts the advisory back before each step, so
+#  reading it never returns your own last command.
 #
 #  steerAngleDesired IS AN ANGLE, in radians, where a CARLA agent's
 #  control.steer is normalised [-1, 1]. Commanding through fixs.carla does
@@ -83,5 +83,5 @@ import fixs
 #: carries the '#'. The name on the left is yours: fixs.driver() tells FIXS
 #: what it built, so nothing here has to be spelled a particular way.
 Driver = fixs.driver()                          # the driver as it is
-# Driver = fixs.driver(exchange)                # ... with a dynamometer
-# Driver = fixs.driver(usercontrol=my_control)  # your own driving
+# Driver = fixs.driver(xil=exchange)            # ... with a dynamometer
+# Driver = fixs.driver(control=my_control)      # your own driving

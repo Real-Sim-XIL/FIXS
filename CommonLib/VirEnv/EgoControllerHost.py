@@ -67,6 +67,7 @@ computes a time-to-collision from two different instants:
     LIVE, this call      positionX/Y/Z, heading, speed, acceleration
     HELD since the feed  speedDesired      (the eco advisory -- genuinely 10 Hz)
                          signalLightColor  (the traffic simulator owns the phase)
+                         feedSpeed         (the feed's speed, which the eco advisory was planned from)
     ego.feedAge          seconds since the last feed: how old the held ones are
 
 A controller that ignores ``feedAge`` is fine. One that differentiates a held
@@ -402,6 +403,9 @@ _feedAge = [0.0]
 #: follow it. Beside _feedAge for the same reason, and cleared with it.
 _heldInputs = {}
 
+#: The ego speed the last feed carried, before the live state overwrites it.
+_feedSpeed = [None]
+
 #: Fields the traffic simulator OWNS and a controller also WRITES.
 #:
 #: The record is one object used in both directions, so a controller's command
@@ -479,6 +483,7 @@ def runController(backend, controller, ego, dt, onFeed, maxSteerRad):
         resetFeedAge()
         for name in _DUAL_USE:
             _heldInputs[name] = getattr(ego, name, None)
+        _feedSpeed[0] = getattr(ego, 'speed', None)
     else:
         _feedAge[0] += dt
         # Put the feed's value back before asking the controller for a new
@@ -501,6 +506,7 @@ def runController(backend, controller, ego, dt, onFeed, maxSteerRad):
         object.__setattr__(ego, 'heading', es.heading)
         object.__setattr__(ego, 'speed', es.speed)
     object.__setattr__(ego, 'feedAge', _feedAge[0])
+    object.__setattr__(ego, 'feedSpeed', _feedSpeed[0])
 
     # Clear what the LAST step wrote before asking for this one. The record
     # survives every sub-step of a feed, so without this _written only ever

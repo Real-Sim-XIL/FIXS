@@ -74,7 +74,7 @@ def test_it_returns_a_class_because_that_is_what_the_loader_expects():
 
 def test_a_non_callable_exchange_is_refused_at_the_call_not_at_the_tick():
     with pytest.raises(TypeError):
-        driver(42)
+        driver(xil=42)
 
 
 # -- the three cases the seam has to answer ---------------------------------
@@ -96,7 +96,7 @@ def test_the_scenario_alone_brings_nothing(scenario):
 @pytest.mark.parametrize('scenario', [False], indirect=True)
 def test_your_function_needs_no_scenario_flag(scenario):
     """Passing one IS the declaration."""
-    d = _build(driver(lambda v, dt: v))
+    d = _build(driver(xil=lambda v, dt: v))
     assert d.benchInLoop is True
 
 
@@ -110,7 +110,7 @@ def test_the_simulated_dyno_is_passed_in_like_any_other(scenario):
     def exchange(vref, dt):
         return bench.exchange(vref, 0.0, dt)
 
-    d = _build(driver(exchange))
+    d = _build(driver(xil=exchange))
     assert d.benchInLoop is True
     assert d.exchange(10.0) > 0.0        # it answered
     assert bench.sim.vehicle.mass_kg == 900.0   # stated in code, not the yaml
@@ -133,7 +133,7 @@ def test_the_driver_does_not_import_xil():
 def test_a_tick_the_dyno_cannot_answer_passes_the_reference_through(scenario):
     """None back must not become 0 m/s: that would invent a stop."""
     answers = [7.5, None, 7.6]
-    d = _build(driver(lambda v, dt: answers.pop(0)))
+    d = _build(driver(xil=lambda v, dt: answers.pop(0)))
     assert d.exchange(9.0) == 7.5           # the cell answered
     assert d.exchange(9.0) == 9.0           # it did not -- the reference stands
     assert d.misses == 1
@@ -187,7 +187,7 @@ def test_the_scenario_beats_the_factory_for_gains_too():
 def test_the_run_records_what_drove_it(scenario, tmp_path):
     """A batch once reported gains it had not used. The log says."""
     path = tmp_path / 'agent.csv'
-    cls = driver(lambda v, dt: v, shape='pedals', tuning=Tuning(kv=0.33))
+    cls = driver(xil=lambda v, dt: v, shape='pedals', tuning=Tuning(kv=0.33))
     obj = cls.__new__(cls)
     Controller.__init__(obj, {'EgoControllerLog': str(path)}, 'ego')
     obj.shutdown()
@@ -212,23 +212,23 @@ def test_a_stopped_car_asked_for_nothing_holds_the_brake():
     """The full-stop rule -- and the line that broke rung 4 in review, because
     it reads a gain before the law had bound it."""
     d = _pedalLaw()
-    assert d._speedToPedal(0.0, 0.0) == (0.0, 1.0)
+    assert d.speedToPedal(0.0, 0.0) == (0.0, 1.0)
 
 
 def test_zero_speed_error_still_holds_a_pedal():
     """The whole reason the integral exists: road load has to be paid."""
     d = _pedalLaw()
     for _ in range(40):
-        thr, brk = d._speedToPedal(8.0, 8.0 - 0.2)     # a standing shortfall
+        thr, brk = d.speedToPedal(8.0, 8.0 - 0.2)     # a standing shortfall
     assert thr > 0.0
-    thr, brk = d._speedToPedal(8.0, 8.0)               # error now zero
+    thr, brk = d.speedToPedal(8.0, 8.0)               # error now zero
     assert thr > 0.0, 'the pedal collapsed when the error did'
 
 
 def test_the_gains_reach_the_law():
     """A tuning that cannot move the pedal is a tuning nobody is applying."""
     slow, fast = _pedalLaw(kv=0.01), _pedalLaw(kv=0.9)
-    assert fast._speedToPedal(9.0, 4.0)[0] > slow._speedToPedal(9.0, 4.0)[0]
+    assert fast.speedToPedal(9.0, 4.0)[0] > slow.speedToPedal(9.0, 4.0)[0]
 
 
 # -- the limits, and that they reach the ceilings ---------------------------
@@ -338,7 +338,7 @@ def test_the_template_names_keys_and_files_that_exist():
 
 def test_the_template_shows_the_other_two_forms():
     src = io.open(_template(), encoding='utf-8').read()
-    assert 'exchange' in src and 'usercontrol' in src
+    assert 'xil=' in src and 'control=' in src
 
 
 # -- your own driving, through the same factory ------------------------------
@@ -353,7 +353,7 @@ class _FakeEgo:
 
 
 @pytest.mark.parametrize('scenario', [False], indirect=True)
-def test_usercontrol_replaces_the_driving_entirely(scenario):
+def test_control_replaces_the_driving_entirely(scenario):
     """Your logic, called with the same (ego, dt), writing the same way --
     and none of the driver's own runs."""
     seen = []
@@ -362,31 +362,86 @@ def test_usercontrol_replaces_the_driving_entirely(scenario):
         seen.append(dt)
         ego.set(speedDesired=9.0)
 
-    d = _build(driver(usercontrol=mine))
+    d = _build(driver(control=mine))
     ego = _FakeEgo()
     d.control(ego, 0.05)
     assert seen == [0.05]
     assert ego.cmd == {'speedDesired': 9.0}
     assert d.agent is None, 'the CARLA agent was built for logic that is not ours'
+    assert (d.dt, d.steps) == (0.05, 1)
 
 
 @pytest.mark.parametrize('scenario', [False], indirect=True)
-def test_usercontrol_needs_no_name_and_no_method(scenario):
+def test_control_needs_no_name_and_no_method(scenario):
     """The point of it: you write a function, not a class with control()."""
-    from CommonLib.VirEnv.EgoControllerHost import loadController
-    cls = driver(usercontrol=lambda ego, dt: None)
+    cls = driver(control=lambda ego, dt: None)
     assert callable(getattr(cls, 'control', None))
 
 
-def test_usercontrol_and_exchange_together_is_refused():
-    """Your control decides when to ask a cell; ours would never call it."""
-    with pytest.raises(TypeError):
-        driver(exchange=lambda v, dt: v, usercontrol=lambda ego, dt: None)
+@pytest.mark.parametrize('scenario', [False], indirect=True)
+def test_control_reaches_the_driver_and_its_dyno(scenario):
+    """Your step gets this run's driver from instance(), and the xil passed beside it."""
+    got = []
+
+    def mine(ego, dt):
+        drv = fixs.driver.instance()
+        got.append((drv, drv.exchange(7.0)))
+
+    d = _build(driver(xil=lambda v, dt: v - 0.5, control=mine))
+    d.control(_FakeEgo(), 0.05)
+    assert got == [(d, 6.5)]
 
 
-def test_a_non_callable_usercontrol_is_refused_at_the_call():
+def test_instance_outside_a_run_is_refused():
+    from CommonLib.fixs import _driver as mod
+    mod._instance = None
+    with pytest.raises(fixs.FixsError, match='inside your'):
+        fixs.driver.instance()
+
+
+@pytest.mark.parametrize('scenario', [False], indirect=True)
+def test_shutdown_ends_the_instance(scenario):
+    d = _build(driver())
+    assert fixs.driver.instance() is d
+    d.shutdown()
+    with pytest.raises(fixs.FixsError):
+        fixs.driver.instance()
+
+
+def test_a_non_callable_control_is_refused_at_the_call():
     with pytest.raises(TypeError):
-        driver(usercontrol=42)
+        driver(control=42)
+
+
+# -- the old names, kept for one release (_driver._oldNames) ------------------
+
+def _ex(v, dt):
+    return v
+
+
+def _mine(ego, dt):
+    pass
+
+
+@pytest.mark.parametrize('call', [lambda: fixs.driver(_ex), lambda: fixs.driver(exchange=_ex)])
+def test_the_old_exchange_still_means_xil_and_says_so(call):
+    with pytest.warns(FutureWarning, match='xil=exchange') as caught:
+        cls = call()
+    assert cls._EXCHANGE is _ex
+    assert caught[0].filename == __file__, 'the warning should name the caller'
+
+
+def test_the_old_usercontrol_still_means_control_and_says_so():
+    with pytest.warns(FutureWarning, match='control=fn'):
+        cls = fixs.driver(usercontrol=_mine)
+    assert cls._CONTROL is _mine
+
+
+@pytest.mark.parametrize('kw', [dict(exchange=_ex, xil=_ex),
+                                dict(usercontrol=_mine, control=_mine)])
+def test_an_old_and_a_new_name_together_is_refused(kw):
+    with pytest.raises(TypeError, match='once'):
+        fixs.driver(**kw)
 
 
 def test_the_template_makes_exactly_one_driver():
@@ -460,7 +515,7 @@ def passive(scenario_off):
 def test_the_cell_drives_a_traffic_owned_ego(passive):
     """No agent is built and no simulator is touched: the cell's answer is
     written straight onto the record for the traffic simulator to integrate."""
-    d = _build(driver(lambda v, dt: v * 0.5))
+    d = _build(driver(xil=lambda v, dt: v * 0.5))
     assert d.passive is True
 
     ego = _passiveEgo(speedDesired=9.0)
@@ -475,7 +530,7 @@ def test_the_cell_drives_a_traffic_owned_ego(passive):
 def test_passive_leaves_the_lateral_alone(passive):
     """Steering belongs to whoever owns the lateral, and on this rung that is
     the traffic simulator. Writing one would be a command nothing asked for."""
-    d = _build(driver(lambda v, dt: v))
+    d = _build(driver(xil=lambda v, dt: v))
     ego = _passiveEgo()
     d.control(ego, 0.1)
     assert 'steerAngleDesired' not in ego._written
@@ -486,7 +541,7 @@ def test_a_null_cell_reproduces_the_rung_below(passive):
     the advisory exactly as the eco controller wrote it -- because that, with no
     cell at all, IS the rung below. If this drifts, a dyno comparison is not
     measuring the dyno."""
-    d = _build(driver(lambda v, dt: v))
+    d = _build(driver(xil=lambda v, dt: v))
     for advisory in (0.25, 4.0, 9.75, 13.4):
         ego = _passiveEgo(speedDesired=advisory)
         d.control(ego, 0.1)
@@ -506,7 +561,7 @@ def test_an_almost_massless_cell_tracks_the_advisory(passive):
     """A bench with almost no dynamics must be almost invisible. This is the
     cheap check that a dyno run can be trusted: make the cell nearly ideal and
     the two rungs should sit on top of each other."""
-    d = _build(driver(lambda v, dt: v * 0.999))
+    d = _build(driver(xil=lambda v, dt: v * 0.999))
     ego = _passiveEgo(speedDesired=12.0)
     d.control(ego, 0.1)
     assert ego.speedDesired == pytest.approx(12.0, rel=2e-3)
@@ -521,7 +576,7 @@ def test_the_stop_bar_is_not_planned_twice(passive):
     200 m out, and the ego crawled toward a bar it was never going to overrun.
     Safety is not lost by leaving it out -- SumoSetup.SpeedMode keeps the
     traffic simulator's own red-light and safe-speed checks on."""
-    d = _build(driver(lambda v, dt: v))
+    d = _build(driver(xil=lambda v, dt: v))
     ego = _passiveEgo(speedDesired=11.0, signalLightColor=1,   # _RED
                       signalLightDistance=150.0, speed=11.0)
     d.control(ego, 0.1)
@@ -531,7 +586,7 @@ def test_the_stop_bar_is_not_planned_twice(passive):
 def test_a_leader_is_not_planned_twice(passive):
     """Same, for the vehicle ahead: the traffic simulator's car-following owns
     the gap on this rung, and it still runs under SpeedMode."""
-    d = _build(driver(lambda v, dt: v))
+    d = _build(driver(xil=lambda v, dt: v))
     ego = _passiveEgo(speedDesired=11.0, hasPrecedingVehicle=1,
                       precedingVehicleDistance=6.0, precedingVehicleSpeed=0.0)
     d.control(ego, 0.1)
@@ -543,7 +598,7 @@ def test_the_command_shape_is_inert_when_nothing_integrates_pedals(passive):
     plant here, so both shapes arrive at the same place and a scenario carries
     the same Controller line as its virenv sibling."""
     for shape in ('speed', 'pedals'):
-        d = _build(driver(lambda v, dt: v * 0.5, shape=shape))
+        d = _build(driver(xil=lambda v, dt: v * 0.5, shape=shape))
         ego = _passiveEgo(speedDesired=8.0)
         d.control(ego, 0.1)
         assert ego.speedDesired == pytest.approx(4.0), shape
@@ -559,7 +614,7 @@ def test_a_zero_advisory_is_a_command_not_an_absence(passive):
     just been asked to stop at. The cell must see the zero, and the zero must
     reach the traffic simulator."""
     seen = []
-    d = _build(driver(lambda v, dt: (seen.append(v), v)[1]))
+    d = _build(driver(xil=lambda v, dt: (seen.append(v), v)[1]))
     ego = _passiveEgo(speedDesired=0.0, speed=0.0)
     d.control(ego, 0.1)
     assert seen == [pytest.approx(0.0)], 'the cell must be asked for the stop'
@@ -582,12 +637,180 @@ def test_start_in_gear_is_opt_in_and_set_before_building(scenario, monkeypatch):
     """CARLA's autobox leaves a spawned car in neutral below ~15% throttle."""
     import CommonLib.fixs._driver as drv
     monkeypatch.setattr(drv, '_DEFAULTS', {})
-    assert _build(driver(lambda v, dt: v)).startInGear is False
+    assert _build(driver(xil=lambda v, dt: v)).startInGear is False
     fixs.driver.set(startInGear=True)
-    assert _build(driver(lambda v, dt: v)).startInGear is True
-    assert _build(driver(lambda v, dt: v, startInGear=False)).startInGear is False
+    assert _build(driver(xil=lambda v, dt: v)).startInGear is True
+    assert _build(driver(xil=lambda v, dt: v, startInGear=False)).startInGear is False
+
+
+class _FakeCarla:
+    """The fixs.carla calls the agent steps make, recorded."""
+    def __init__(self):
+        self.calls = []
+        self.ego = self
+
+    def apply_control(self, control):
+        self.calls.append(('apply_control', control))
+
+    def VehicleControl(self, **kw):                     # noqa: N802
+        return kw
+
+    def refresh(self, ego):
+        self.calls.append(('refresh', ego))
+
+
+@pytest.mark.parametrize('scenario', [False], indirect=True)
+def test_first_gear_takes_the_first_step_only(scenario, monkeypatch):
+    import CommonLib.fixs._driver as drv
+    d = _build(driver(startInGear=True))
+    off = _build(driver())
+    fake = _FakeCarla()
+    monkeypatch.setattr(drv, 'carla', fake)
+    assert d.shiftIntoFirstGear() is True
+    assert d.shiftIntoFirstGear() is False
+    assert off.shiftIntoFirstGear() is False
+    assert fake.calls == [('apply_control', {'manual_gear_shift': True, 'gear': 1})]
+
+
+@pytest.mark.parametrize('scenario', [False], indirect=True)
+def test_step_agent_aims_the_agent_then_plans(scenario, monkeypatch):
+    """The speed goes to the agent in km/h; an emergency stop also advances the planner."""
+    import types
+    import CommonLib.fixs._driver as drv
+    planner = types.SimpleNamespace(steps=0)
+    planner.run_step = lambda: setattr(planner, 'steps', planner.steps + 1)
+    stop = types.SimpleNamespace(throttle=0.0, brake=1.0, steer=0.0)
+    agent = types.SimpleNamespace(_behavior=types.SimpleNamespace(), _max_brake=1.0,
+                                  run_step=lambda: stop, get_local_planner=lambda: planner)
+    d = _build(driver())
+    d.agent = agent
+    fake = _FakeCarla()
+    monkeypatch.setattr(drv, 'carla', fake)
+    assert d.stepAgent('ego', speed=10.0, minLookaheadDist=12.5) is stop
+    assert agent._behavior.max_speed == pytest.approx(36.0)
+    assert agent._behavior.min_proximity_threshold == 12.5
+    assert fake.calls == [('refresh', 'ego')]
+    assert planner.steps == 1
 
 
 def test_driver_set_refuses_an_unknown_option():
     with pytest.raises(TypeError):
         fixs.driver.set(startInGera=True)
+
+
+# -- referenceMode: what the driver reads from the eco controller ------------
+
+def test_the_acceleration_rebuilds_the_exact_float32_speed():
+    """Exact at a stop and above 0.25 m/s; in between, within float32 of the acceleration."""
+    import random
+    rng = random.Random(0)
+    for _ in range(50000):
+        v = fixs._f32(rng.uniform(0.0, 30.0))
+        target = fixs._f32(max(0.0, v + rng.uniform(-3.0, 2.0) * 0.1))
+        a = fixs.accelerationFromSpeed(v, target, 0.1)
+        assert a == fixs._f32(a)
+        got = fixs.speedFromAcceleration(v, a, 0.1)
+        if target == 0.0 or target > 0.25:
+            assert got == target, (v, target)
+        else:
+            assert abs(got - target) < 2e-8, (v, target)
+
+
+def test_the_reference_mode_comes_from_the_scenario():
+    assert _options({}).reference_mode == 'speed'
+    assert _options({'EgoControllerArgs': ['--reference-mode', 'accel']}).reference_mode == 'accel'
+    assert _options({}, {'referenceMode': 'both'}).reference_mode == 'both'
+
+
+@pytest.mark.parametrize('mode', ['speed', 'accel', 'both'])
+def test_every_reference_mode_drives_the_same_speed(passive, mode):
+    v, target = fixs._f32(12.3), fixs._f32(12.41)
+    d = _build(driver(xil=lambda vref, dt: vref, referenceMode=mode))
+    ego = _passiveEgo(speed=v, feedSpeed=v, speedDesired=target,
+                      accelerationDesired=fixs.accelerationFromSpeed(v, target, 0.1))
+    d.control(ego, 0.1)
+    assert ego.speedDesired == target
+
+
+def test_both_takes_the_pair_as_sent_even_when_they_disagree(passive):
+    got = []
+
+    def exchange(vref, aref, dt):
+        got.append((vref, aref))
+        return vref
+
+    d = _build(driver(xil=exchange, referenceMode='both'))
+    ego = _passiveEgo(speed=10.0, feedSpeed=10.0, speedDesired=8.5, accelerationDesired=-1.5)
+    d.control(ego, 0.1)
+    assert got[0] == (pytest.approx(8.5), pytest.approx(-1.5))
+    assert ego.speedDesired == pytest.approx(8.5)
+
+
+def test_accel_mode_refuses_a_wire_without_the_field(passive):
+    fixs._declaredFields = frozenset({'id', 'speed', 'speedDesired'})
+    d = _build(driver(xil=lambda vref, dt: vref, referenceMode='accel'))
+    with pytest.raises(fixs.FixsError, match='accelerationDesired'):
+        d.control(_passiveEgo(feedSpeed=4.0), 0.1)
+
+
+def test_a_three_argument_exchange_gets_the_acceleration(passive):
+    got = []
+
+    def exchange(vref, aref, dt):
+        got.append((vref, aref))
+        return vref
+
+    d = _build(driver(xil=exchange, referenceMode='accel'))
+    d.control(_passiveEgo(speed=10.0, feedSpeed=10.0, speedDesired=0.0,
+                          accelerationDesired=1.5), 0.1)
+    assert got[0][0] == pytest.approx(10.15, abs=1e-5)
+    assert got[0][1] == pytest.approx(1.5)
+
+
+def test_the_acceleration_follows_a_speed_the_driver_changed():
+    d = _build(driver(xil=lambda vref, aref, dt: vref))
+    d.feedVref, d.feedAref, d.feedStep = 10.0, 1.0, 0.1
+    assert d._arefFor(10.0) == pytest.approx(1.0)
+    assert d._arefFor(9.8) == pytest.approx(-1.0)
+
+
+def _agentAt(targetMps):
+    from types import SimpleNamespace
+    planner = SimpleNamespace(_target_speed=targetMps * 3.6)
+    return SimpleNamespace(get_local_planner=lambda: planner, _max_brake=0.5)
+
+
+def test_reference_returns_the_agents_speed_and_the_acceleration_that_goes_with_it():
+    from types import SimpleNamespace
+    d = _build(driver(xil=lambda vref, aref, dt: vref))
+    d.feedVref, d.feedAref, d.feedStep = 10.0, 1.0, 0.1
+    d.agent = _agentAt(9.8)
+    vRef, aRef = d.reference(SimpleNamespace(throttle=0.3, brake=0.0))
+    assert vRef == pytest.approx(9.8)
+    assert aRef == pytest.approx(-1.0)
+    vRef, aRef = d.reference(SimpleNamespace(throttle=0.0, brake=0.5))   # emergency stop
+    assert vRef == 0.0
+    assert aRef == pytest.approx(1.0 - 10.0 / 0.1)
+
+
+def test_exchange_hands_the_dyno_the_acceleration_it_is_given():
+    got = []
+
+    def exchange(vref, aref, dt):
+        got.append((vref, aref))
+        return vref
+
+    d = _build(driver(xil=exchange))
+    d.feedVref, d.feedAref, d.feedStep = 10.0, 1.0, 0.1
+    d.exchange(9.8, 0.25)
+    d.exchange(9.8)                          # without one: the acceleration that goes with 9.8
+    assert got == [(pytest.approx(9.8), pytest.approx(0.25)), (pytest.approx(9.8), pytest.approx(-1.0))]
+
+
+def test_the_exchange_says_what_it_takes_by_its_arguments():
+    from CommonLib.fixs import xil
+    assert driver(xil=lambda vref, dt: vref)._EXCHANGE_TAKES_AREF is False
+    assert driver(xil=lambda vref, aref, dt: vref)._EXCHANGE_TAKES_AREF is True
+    assert driver(xil=xil.dynosim().exchange)._EXCHANGE_TAKES_AREF is True
+    with pytest.raises(TypeError):
+        driver(xil=lambda vref: vref)
