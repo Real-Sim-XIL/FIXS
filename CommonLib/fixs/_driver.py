@@ -40,8 +40,8 @@ YOUR OWN STEP, using as much of this driver as you want::
     Controller = fixs.driver(xil=exchange, control=my_control)
 
 ``default(ego, dt)`` is the stock step, and the methods it calls are public:
-advisoryOf, signalCeiling, leaderCeiling, build, isEmergencyStop, reference,
-exchange, speedToPedal, logStep, controlPassive.
+controlPassive, shiftIntoFirstGear, advisoryOf, signalCeiling, leaderCeiling,
+stepAgent, reference, exchange, speedToPedal, logStep.
 
 HOW IT DECIDES A SPEED. Every input that can demand less is turned into a SPEED
 -- the fastest the ego may go and still stop comfortably for the thing that
@@ -401,7 +401,6 @@ class Controller:
         self.steps, self.elapsed = 0, 0.0
         #: Held between feeds -- see advisoryOf.
         self.advisory = None
-        self.vSignal = self.vLeader = _NO_LIMIT
         #: Who answers "you asked for this speed -- what did you reach?".
         #: Whatever was handed to fixs.driver(), and nothing else: this module
         #: never goes looking for a cell. Deciding one is in the loop is the
@@ -436,7 +435,6 @@ class Controller:
         #: acceleration the inner stage closes on.
         self._dbg = None
         self.speedInteg = 0.0
-        self.vRef = None
         self.pedal = 0.0
         self._vPrev = 0.0
         self._aMeas = 0.0
@@ -553,103 +551,64 @@ class Controller:
             self.default(ego, dt)
 
     def default(self, ego, dt):
-        """The stock step. A control(ego, dt) of your own may call it whole."""
+        """The stock step: a target speed, CARLA's agent planning toward it, the dyno, the command."""
         if self.passive:
             self.controlPassive(ego)
             return
-
-        if self.startInGear and not self._inGear:
-            # No pedal command this step, so the host does not overwrite the gear.
-            carla.ego.apply_control(carla.VehicleControl(manual_gear_shift=True, gear=1))
-            self._inGear = True
+        if self.shiftIntoFirstGear():
             return
 
-        if self.agent is None:
-            self.build()
-
+        # 1. Target speed: the advisory, capped by the signal and the leader.
         advisory = self.advisoryOf(ego)
         wanted = advisory if advisory is not None else self.fallbackSpeed
+        vSignal = self.signalCeiling(ego)
+        vLeader = self.leaderCeiling(ego)
+        target = max(0.0, min(wanted, vSignal, vLeader))
 
-        # EVERY CONSTRAINT IS A SPEED, so combining them is a min() and there is
-        # no arbitration left to get wrong. Each is an envelope: the fastest this
-        # controller may go and still stop comfortably for the thing it names.
-        # The agent's own following model and obstacle sweep still run beneath
-        # this ceiling -- they see what the wire cannot.
-        self.vSignal = self.signalCeiling(ego)
-        self.vLeader = self.leaderCeiling(ego)
-        target = max(0.0, min(wanted, self.vSignal, self.vLeader))
-        self.agent._behavior.max_speed = target * 3.6
-
-        # The agent's OWN obstacle sweep reaches a constant too:
-        # collision_and_car_avoid_manager takes max(min_proximity_threshold,
-        # speed_limit/3), which is about 13 m here, centre to centre. Measured on
-        # this corridor, a hazard entered that sweep at 5.6 m while the ego held
-        # 10.1 m/s and contact followed 0.05 s later; a full-brake stop from
-        # 10.5 m/s takes 9.8-11.0 m. Give the sweep the same stopping distance
-        # the envelopes use, so the agent's own following model is engaged while
-        # there is still room for it to act. It still decides.
-        self.agent._behavior.min_proximity_threshold = max(
-            10.0, ego.speed * ego.speed / (2.0 * self.limits.comfortDecel)
-            + self.limits.leaderMargin)
-
-        # NOT a ceiling from the bench. Capping the agent's target with the
-        # bench's MEASURED speed latches: the bench starts at zero, so the
-        # ceiling is zero, so the reference handed to the bench is zero, and it
-        # never moves. Measured -- the ego sat at the spawn point for the whole
-        # 800 s. The agent plans against the signal and the leader; the bench's
-        # speed is what the pedal law chases, not a limit on intent.
-
-        carla.refresh(ego)
-        control = self.agent.run_step()
-        if self.isEmergencyStop(control):
-            # BehaviorAgent.run_step RETURNS from emergency_stop before the local
-            # planner runs, so the plan does not advance while the ego brakes --
-            # and the ego is still moving. Measured on this corridor: a stop
-            # beginning at 7.4 m/s carried the ego over the head of its own
-            # waypoint queue (0.21 m at the closest) and 8.5 m past it. The
-            # planner purges by distance, so a waypoint 8.5 m BEHIND is never
-            # purged; when the brake lifted, the lateral controller went to full
-            # lock to go back for it and drove the ego in a circle 9.8 m off the
-            # corridor, into another vehicle.
-            #
-            # Running the planner and discarding its command restores exactly
-            # what the early return skipped -- the purge, on CARLA's own rule --
-            # and invents no geometry of its own.
-            self.agent.get_local_planner().run_step()
-
-        # THE COMMAND. A FIXS controller commands by writing to the ego record;
-        # control()'s return value is ignored. steerAngleDesired is an ANGLE in
-        # radians where the agent's steer is normalised [-1, 1], and the plant
-        # divides by the same constant.
+        # 2. CARLA's agent plans toward it, watching for vehicles out to its stopping distance.
+        minLookahead = max(10.0, ego.speed * ego.speed / (2.0 * self.limits.comfortDecel)
+                           + self.limits.leaderMargin)
+        control = self.stepAgent(ego, speed=target, minLookaheadDist=minLookahead)
         vRef = self.reference(control)
-        #: What the loop was actually told to chase. lp._target_speed is
-        #: NOT this: it goes stale at the route limit whenever the agent
-        #: panic-brakes, so a figure drawn from it shows the ego being
-        #: asked for 53 km/h at the exact moment it was asked for zero.
-        self.vRef = vRef
 
-        # THE BENCH, when there is one. The agent has decided a speed; the bench
-        # says what a vehicle with mass and a torque delay actually reaches, and
-        # THAT is what CARLA is told to hold. Next tick the agent reads back
-        # ego.speed, so the bench is in the loop rather than beside it.
+        # 3. The dyno: the speed a real vehicle reaches.
         if self.benchInLoop:
-            vRef = self.vRef = self.exchange(vRef)
+            vRef = self.exchange(vRef)
 
-        # THE COMMAND, in CARLA's own two shapes. fixs.carla relays them onto
-        # the ego record and converts the normalised steer to the wire's radians
-        # in the one place that conversion belongs.
+        # 4. Command, and log.
         if self.shape == 'speed':
             carla.apply_ackermann_control(carla.VehicleAckermannControl(
                 speed=max(0.0, vRef), steer=control.steer))
         else:
-            # The SHAPE decides who closes the speed loop; the bench only
-            # decides what vRef is. Gating this on the bench made 'pedals'
-            # silently fall through to the agent's own pedals whenever
-            # EnableXil was off, so the law under test never ran.
             thr, brk = self.speedToPedal(vRef, ego.speed)
             carla.apply_control(carla.VehicleControl(
                 throttle=thr, brake=brk, steer=control.steer))
-        self.logStep(ego, control, target, advisory)
+        self.logStep(ego, control, advisory=advisory, target=target,
+                     vSignal=vSignal, vLeader=vLeader, vRef=vRef)
+
+    def shiftIntoFirstGear(self):
+        """With startInGear, put the ego in first gear on its first step and return True; that step sends nothing else."""
+        if not self.startInGear or self._inGear:
+            return False
+        # A pedal command in the same step would overwrite the gear.
+        carla.ego.apply_control(carla.VehicleControl(manual_gear_shift=True, gear=1))
+        self._inGear = True
+        return True
+
+    def stepAgent(self, ego, speed, minLookaheadDist):
+        """CARLA's agent plans one step toward `speed` [m/s], watching for vehicles at least
+        `minLookaheadDist` [m] ahead. Built on the first call. Returns its control."""
+        if self.agent is None:
+            self.build()
+        self.agent._behavior.max_speed = speed * 3.6
+        # The agent looks out to this or speed_limit/3, whichever is farther, centre to centre.
+        self.agent._behavior.min_proximity_threshold = minLookaheadDist
+        carla.refresh(ego)
+        control = self.agent.run_step()
+        if self.isEmergencyStop(control):
+            # run_step skips the planner on an emergency stop; advance it, or the ego later steers back for passed waypoints.
+            self.agent.get_local_planner().run_step()
+        return control
 
     def controlPassive(self, ego):
         """TELEPORT: the cell is the whole driver.
@@ -697,14 +656,9 @@ class Controller:
         # eco controller's, never this driver's own last command (FIXS#305).
         advisory = self._readFeed(ego)
         self.advisory = advisory
-        #: Neither computed nor applied. Logged as such, so a passive trace
-        #: cannot be read as though an envelope had bound.
-        self.vSignal = self.vLeader = _NO_LIMIT
-        target = advisory
-
-        vRef = self.vRef = target
+        vRef = advisory
         if self.benchInLoop:
-            vRef = self.vRef = self.exchange(vRef)
+            vRef = self.exchange(vRef)
 
         # THE COMMAND. speedDesired only: steer belongs to whoever owns the
         # lateral, and here that is the traffic simulator.
@@ -716,7 +670,9 @@ class Controller:
         # Controller line as its virenv sibling, and the pair differs by
         # Dynamics alone.
         ego.set(speedDesired=max(0.0, vRef))
-        self.logStep(ego, None, target, advisory)
+        # No ceilings on this rung: logged blank, so the trace cannot read as though one bound.
+        self.logStep(ego, None, advisory=advisory, target=advisory,
+                     vSignal=_NO_LIMIT, vLeader=_NO_LIMIT, vRef=vRef)
 
     def advisoryOf(self, ego):
         """The eco controller's advisory, read only on the tick it is new.
@@ -867,12 +823,8 @@ class Controller:
                   % (self.misses, self.steps), flush=True)
         print('[driver] %d control steps' % self.steps, flush=True)
 
-    def logStep(self, ego, cmd, target, advisory):
-        """This application's instrumentation. It records what FIXS supplied
-        beside what the agent concluded -- vehicles seen, the wire's limit, the
-        speed the agent settled on -- because two defects that stopped the ego
-        dead were invisible without those three and obvious with them
-        (ORNL-Real-Sim/FIXS#355)."""
+    def logStep(self, ego, cmd, *, advisory, target, vSignal, vLeader, vRef):
+        """One row of the driver log: what FIXS supplied, what this step decided, and what the agent concluded."""
         if self.log is None:
             return
         # Agent-side columns are blank on a passive run: there is no planner,
@@ -896,9 +848,9 @@ class Controller:
                ego.signalLightDistance,
                nSeen,
                float(getattr(ego, 'speedLimit', 0.0) or 0.0), agentTarget,
-               _col(self.vSignal), _col(self.vLeader),
+               _col(vSignal), _col(vLeader),
                '' if self.vDyno is None else '%.4f' % self.vDyno)
-            + (',' if self.vRef is None else ',%.4f' % self.vRef)
+            + (',' if vRef is None else ',%.4f' % vRef)
             + (',,,,\n' if self._dbg is None else
                ',%.4f,%.4f,%.4f,%.4f\n' % self._dbg))
 

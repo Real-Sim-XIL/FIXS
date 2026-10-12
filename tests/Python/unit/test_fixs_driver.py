@@ -617,6 +617,56 @@ def test_start_in_gear_is_opt_in_and_set_before_building(scenario, monkeypatch):
     assert _build(driver(xil=lambda v, dt: v, startInGear=False)).startInGear is False
 
 
+class _FakeCarla:
+    """The fixs.carla calls the agent steps make, recorded."""
+    def __init__(self):
+        self.calls = []
+        self.ego = self
+
+    def apply_control(self, control):
+        self.calls.append(('apply_control', control))
+
+    def VehicleControl(self, **kw):                     # noqa: N802
+        return kw
+
+    def refresh(self, ego):
+        self.calls.append(('refresh', ego))
+
+
+@pytest.mark.parametrize('scenario', [False], indirect=True)
+def test_first_gear_takes_the_first_step_only(scenario, monkeypatch):
+    import CommonLib.fixs._driver as drv
+    d = _build(driver(startInGear=True))
+    off = _build(driver())
+    fake = _FakeCarla()
+    monkeypatch.setattr(drv, 'carla', fake)
+    assert d.shiftIntoFirstGear() is True
+    assert d.shiftIntoFirstGear() is False
+    assert off.shiftIntoFirstGear() is False
+    assert fake.calls == [('apply_control', {'manual_gear_shift': True, 'gear': 1})]
+
+
+@pytest.mark.parametrize('scenario', [False], indirect=True)
+def test_step_agent_aims_the_agent_then_plans(scenario, monkeypatch):
+    """The speed goes to the agent in km/h; an emergency stop also advances the planner."""
+    import types
+    import CommonLib.fixs._driver as drv
+    planner = types.SimpleNamespace(steps=0)
+    planner.run_step = lambda: setattr(planner, 'steps', planner.steps + 1)
+    stop = types.SimpleNamespace(throttle=0.0, brake=1.0, steer=0.0)
+    agent = types.SimpleNamespace(_behavior=types.SimpleNamespace(), _max_brake=1.0,
+                                  run_step=lambda: stop, get_local_planner=lambda: planner)
+    d = _build(driver())
+    d.agent = agent
+    fake = _FakeCarla()
+    monkeypatch.setattr(drv, 'carla', fake)
+    assert d.stepAgent('ego', speed=10.0, minLookaheadDist=12.5) is stop
+    assert agent._behavior.max_speed == pytest.approx(36.0)
+    assert agent._behavior.min_proximity_threshold == 12.5
+    assert fake.calls == [('refresh', 'ego')]
+    assert planner.steps == 1
+
+
 def test_driver_set_refuses_an_unknown_option():
     with pytest.raises(TypeError):
         fixs.driver.set(startInGera=True)
