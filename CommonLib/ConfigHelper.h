@@ -103,6 +103,12 @@ struct XilSetup_t {
 
 	Subscription_t DetectorSubscription;
 
+	// The ego speed SUMO is given: virenv (the virtual environment's) | xil (the bench's)
+	std::string SpeedToTraffic;
+
+	// The ego speed applications receive: traffic (the traffic simulator's) | xil (the bench's)
+	std::string SpeedToApplication;
+
 };
 
 

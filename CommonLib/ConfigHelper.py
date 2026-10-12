@@ -96,6 +96,12 @@ class ConfigHelper:
             raise SystemExit(
                 "ERROR: XilSetup.Transport must be one of inprocess|udp|tcp, got '%s'"
                 % self.Xil_setup["Transport"])
+        # The ego speed SUMO is given (virenv | xil) and applications receive (traffic | xil).
+        for key, allowed in (("SpeedToTraffic", ("virenv", "xil")), ("SpeedToApplication", ("traffic", "xil"))):
+            value = self.parserString(xil_node, key, allowed[0]).strip().lower()
+            if value not in allowed:
+                raise SystemExit("ERROR: XilSetup.%s must be one of %s, got '%s'" % (key, "|".join(allowed), value))
+            self.Xil_setup[key] = value
 
         # Carla Setup
         carla_node = config.get("CarlaSetup", {})
@@ -203,6 +209,16 @@ class ConfigHelper:
             raise SystemExit(
                 "ERROR: EgoSetup.Dynamics must be one of traffic|virenv|xil, got '%s'" % dyn)
         self.Ego_setup["Dynamics"] = dyn
+        # The bench's speed arrives in the speedDesired of a virtual environment's ego record.
+        if "xil" in (self.Xil_setup["SpeedToTraffic"], self.Xil_setup["SpeedToApplication"]) and (
+                not self.Xil_setup["EnableXil"] or dyn != "virenv"
+                or self.simulation_setup["EnableExternalDynamics"]
+                or self.simulation_setup["SelectedTrafficSimulator"] != "SUMO"
+                or not self.Carla_setup.get("EnablePythonBackend", True)):
+            raise SystemExit(
+                "ERROR: XilSetup.SpeedToTraffic/SpeedToApplication: xil needs XilSetup.EnableXil: true,\n"
+                "       EgoSetup.Dynamics: virenv, SimulationSetup.EnableExternalDynamics: false,\n"
+                "       SelectedTrafficSimulator: SUMO and CarlaSetup.EnablePythonBackend: true.")
         # A dynamometer in the controller's loop is not a plant that owns the
         # ego: whoever integrates the ego still owns position, heading and
         # everything lateral, and the bench supplies one longitudinal number the

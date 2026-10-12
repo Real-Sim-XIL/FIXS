@@ -1,5 +1,6 @@
 #include "ConfigHelper.h"
 #include "PlatformCompat.h"   // #65: windows.h/shlwapi live behind this now
+#include <algorithm>
 
 using namespace std;
 
@@ -301,6 +302,19 @@ int ConfigHelper::getConfig(string configName) {
 	parserSubscription(node, "SignalSubscription", XilSetup.SignalSubscription);
 
 	parserSubscription(node, "DetectorSubscription", XilSetup.DetectorSubscription);
+
+	XilSetup.SpeedToTraffic = parserString(node, "SpeedToTraffic", "virenv");
+	XilSetup.SpeedToApplication = parserString(node, "SpeedToApplication", "traffic");
+	for (std::string* v : { &XilSetup.SpeedToTraffic, &XilSetup.SpeedToApplication })
+		std::transform(v->begin(), v->end(), v->begin(), [](unsigned char c) { return (char)std::tolower(c); });
+	if (XilSetup.SpeedToTraffic != "virenv" && XilSetup.SpeedToTraffic != "xil") {
+		printf("ERROR: XilSetup.SpeedToTraffic must be one of virenv|xil, got '%s'\n", XilSetup.SpeedToTraffic.c_str());
+		exit(-1);
+	}
+	if (XilSetup.SpeedToApplication != "traffic" && XilSetup.SpeedToApplication != "xil") {
+		printf("ERROR: XilSetup.SpeedToApplication must be one of traffic|xil, got '%s'\n", XilSetup.SpeedToApplication.c_str());
+		exit(-1);
+	}
 
 
 	// ===========================================================================
@@ -959,6 +973,17 @@ int ConfigHelper::getConfig(string configName) {
 		}
 	}
 
+	// The bench's speed arrives in the speedDesired of a virtual environment's ego record.
+	if (XilSetup.SpeedToTraffic == "xil" || XilSetup.SpeedToApplication == "xil") {
+		if (!XilSetup.EnableXil || EgoSetup.Dynamics != "virenv" || SimulationSetup.EnableExternalDynamics
+		    || SimulationSetup.SelectedTrafficSimulator != "SUMO" || !CarlaSetup.EnablePythonBackend) {
+			printf("ERROR: XilSetup.SpeedToTraffic/SpeedToApplication: xil needs XilSetup.EnableXil: true,\n"
+			       "       EgoSetup.Dynamics: virenv, SimulationSetup.EnableExternalDynamics: false,\n"
+			       "       SelectedTrafficSimulator: SUMO and CarlaSetup.EnablePythonBackend: true.\n");
+			exit(-1);
+		}
+	}
+
 	return 0;
 }
 
@@ -976,6 +1001,8 @@ void ConfigHelper::resetConfig() {
 	XilSetup.VehicleSubscription.clear();
 	XilSetup.SignalSubscription.clear();
 	XilSetup.DetectorSubscription.clear();
+	XilSetup.SpeedToTraffic.clear();
+	XilSetup.SpeedToApplication.clear();
 
 }
 
