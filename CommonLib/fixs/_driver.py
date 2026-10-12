@@ -443,10 +443,11 @@ class Controller:
             print('[driver] exchange in the loop (%s)'
                   % getattr(self._EXCHANGE, '__name__', 'exchange'), flush=True)
 
-    def exchange(self, vRef):
-        """(mps) -> mps -- what the dyno did with the speed we asked for.
+    def exchange(self, vRef, aRef=None):
+        """(mps, mps^2) -> mps -- what the dyno did with the speed and acceleration we asked for.
 
-        A 3-argument exchange also gets the acceleration that goes with vRef.
+        A 3-argument exchange gets aRef; a 2-argument one gets vRef alone.
+        Without aRef, the one that goes with vRef is used (see reference()).
 
         An exchange that cannot answer this tick returns None, and the
         REFERENCE goes through untouched: it is the only value that cannot
@@ -455,7 +456,7 @@ class Controller:
         not test what it claims to have tested.
         """
         if self._EXCHANGE_TAKES_AREF:
-            reached = self._exchange(vRef, self.arefFor(vRef), self.dt)
+            reached = self._exchange(vRef, self._arefFor(vRef) if aRef is None else aRef, self.dt)
         else:
             reached = self._exchange(vRef, self.dt)
         if reached is None:
@@ -465,7 +466,7 @@ class Controller:
         return self.vDyno
 
     def _readFeed(self, ego):
-        """The feed's vref, per referenceMode. Keeps vref and aref for arefFor; the one not read is rebuilt."""
+        """The feed's vref, per referenceMode. Keeps vref and aref as feedVref, feedAref; the one not read is rebuilt."""
         v = getattr(ego, 'feedSpeed', None)
         v = float(ego.speed if v is None else v)
         declared = _fixs._declaredFields
@@ -485,7 +486,7 @@ class Controller:
         self.feedVref, self.feedAref = vref, aref
         return vref
 
-    def arefFor(self, vRef):
+    def _arefFor(self, vRef):
         """The acceleration that goes with vRef: the feed's, plus whatever this driver changed the speed by."""
         if self.feedVref is None:
             return 0.0
@@ -570,22 +571,21 @@ class Controller:
         minLookahead = max(10.0, ego.speed * ego.speed / (2.0 * self.limits.comfortDecel)
                            + self.limits.leaderMargin)
         control = self.stepAgent(ego, speed=target, minLookaheadDist=minLookahead)
-        vRef = self.reference(control)
+        vRef, aRef = self.reference(control)
 
-        # 3. The dyno: the speed a real vehicle reaches.
-        if self.benchInLoop:
-            vRef = self.exchange(vRef)
+        # 3. The dyno: the speed a real vehicle reaches, which CARLA is told to hold.
+        vHold = self.exchange(vRef, aRef) if self.benchInLoop else vRef
 
         # 4. Command, and log.
         if self.shape == 'speed':
             carla.apply_ackermann_control(carla.VehicleAckermannControl(
-                speed=max(0.0, vRef), steer=control.steer))
+                speed=max(0.0, vHold), steer=control.steer))
         else:
-            thr, brk = self.speedToPedal(vRef, ego.speed)
+            thr, brk = self.speedToPedal(vHold, ego.speed)
             carla.apply_control(carla.VehicleControl(
                 throttle=thr, brake=brk, steer=control.steer))
         self.logStep(ego, control, advisory=advisory, target=target,
-                     vSignal=vSignal, vLeader=vLeader, vRef=vRef)
+                     vSignal=vSignal, vLeader=vLeader, vRef=vRef, aRef=aRef)
 
     def shiftIntoFirstGear(self):
         """With startInGear, put the ego in first gear on its first step and return True; that step sends nothing else."""
@@ -657,9 +657,8 @@ class Controller:
         # eco controller's, never this driver's own last command (FIXS#305).
         advisory = self._readFeed(ego)
         self.advisory = advisory
-        vRef = advisory
-        if self.benchInLoop:
-            vRef = self.exchange(vRef)
+        vRef, aRef = advisory, self.feedAref
+        vHold = self.exchange(vRef, aRef) if self.benchInLoop else vRef
 
         # THE COMMAND. speedDesired only: steer belongs to whoever owns the
         # lateral, and here that is the traffic simulator.
@@ -670,10 +669,10 @@ class Controller:
         # simulator is asked to hold. A scenario therefore carries the same
         # Controller line as its virenv sibling, and the pair differs by
         # Dynamics alone.
-        ego.set(speedDesired=max(0.0, vRef))
+        ego.set(speedDesired=max(0.0, vHold))
         # No ceilings on this rung: logged blank, so the trace cannot read as though one bound.
         self.logStep(ego, None, advisory=advisory, target=advisory,
-                     vSignal=_NO_LIMIT, vLeader=_NO_LIMIT, vRef=vRef)
+                     vSignal=_NO_LIMIT, vLeader=_NO_LIMIT, vRef=vRef, aRef=aRef)
 
     def advisoryOf(self, ego):
         """The eco controller's advisory, read only on the tick it is new.
@@ -794,16 +793,21 @@ class Controller:
         return (max(0.0, self.pedal), max(0.0, -self.pedal))
 
     def reference(self, control):
-        """The speed the agent is asking for, in m/s.
+        """(vRef, aRef): the speed the agent is asking for [m/s], and the acceleration that goes with it [m/s^2].
 
-        The agent's own longitudinal target, except when it panic-brakes: an
+        vRef is the agent's own longitudinal target, except when it panic-brakes: an
         emergency stop leaves that target untouched, so reading it alone would
         command the ego to keep driving through the thing the agent stopped for.
         A full-brake command IS the target speed being zero.
+
+        aRef is the eco controller's acceleration (feedAref), plus the change the
+        caps and the agent made to its speed (vRef - feedVref) over one feed step.
         """
         if self.isEmergencyStop(control):
-            return 0.0
-        return max(0.0, self.agent.get_local_planner()._target_speed / 3.6)
+            vRef = 0.0
+        else:
+            vRef = max(0.0, self.agent.get_local_planner()._target_speed / 3.6)
+        return vRef, self._arefFor(vRef)
 
     def isEmergencyStop(self, control):
         """Is the agent's command its emergency_stop rather than a planned one?"""
@@ -824,8 +828,11 @@ class Controller:
                   % (self.misses, self.steps), flush=True)
         print('[driver] %d control steps' % self.steps, flush=True)
 
-    def logStep(self, ego, cmd, *, advisory, target, vSignal, vLeader, vRef):
-        """One row of the driver log: what FIXS supplied, what this step decided, and what the agent concluded."""
+    def logStep(self, ego, cmd, *, advisory, target, vSignal, vLeader, vRef, aRef=None):
+        """One row of the driver log: what FIXS supplied, what this step decided, and what the agent concluded.
+
+        vRef and aRef are what the step sent the dyno; vDyno is what came back.
+        """
         if self.log is None:
             return
         # Agent-side columns are blank on a passive run: there is no planner,
@@ -852,6 +859,7 @@ class Controller:
                _col(vSignal), _col(vLeader),
                '' if self.vDyno is None else '%.4f' % self.vDyno)
             + (',' if vRef is None else ',%.4f' % vRef)
+            + (',' if aRef is None else ',%.4f' % aRef)
             + (',,,,\n' if self._dbg is None else
                ',%.4f,%.4f,%.4f,%.4f\n' % self._dbg))
 
@@ -989,6 +997,6 @@ def _openLog(path, provenance=''):
         f.write('# %s' % provenance + chr(10))
     f.write('t,feedAge,x,y,speed,advisory,target,throttle,brake,steer,'
             'wpLeft,leaderGap,signalColor,signalDist,nSeen,'
-            'wireLimit,agentTarget,vSignal,vLeader,vDyno,vRef,'
+            'wireLimit,agentTarget,vSignal,vLeader,vDyno,vRef,aRef,'
             'pidError,pidDemand,pidAMeas,pidPedal\n')
     return f
