@@ -1032,6 +1032,12 @@ int main(int argc, char* argv[]) {
 	// initConnection() accepted them before the loop (no warm-up, no CarMaker).
 	bool clientsAccepted = !ENABLE_VEH_SIMULATOR && !WARMUP_CONFIGURED;
 
+	// XilSetup.SpeedTo*: xil -- per virtual-environment ego, the bench's speed the bridge last returned
+	struct XilSpeed_t { float speed; float prevSpeed; bool hasPrev; };
+	unordered_map<string, XilSpeed_t> xilSpeed;
+	const bool XIL_SPEED = Config_c.XilSetup.SpeedToTraffic == "xil" || Config_c.XilSetup.SpeedToApplication == "xil";
+	double xilStep = 0;   // the traffic simulator's step, read once it is connected
+
 	//while (simTime <= tSimuEnd && ii < nT) {
 	while (!g_shutdown.shutdownRequested) {
 
@@ -1279,6 +1285,18 @@ int main(int argc, char* argv[]) {
 					// (lowest-port) client, so single-client flows stay byte-identical.
 					unordered_map<string, VehFullData_t> pubSrc = MsgServer_c.VehDataRecv_um;
 					for (auto& bIt : MsgClient_c.VehDataRecv_um) pubSrc[bIt.first] = bIt.second;
+					// SpeedToApplication: xil -- applications get the bench's speed; the bridge keeps SUMO's
+					if (Config_c.XilSetup.SpeedToApplication == "xil" && curPort != Config_c.CarlaSetup.CarlaClientPort) {
+						if (xilStep <= 0) xilStep = SUMO_TRACI_NAMESPACE::Simulation::getDeltaT();
+						for (auto& xIt : xilSpeed) {
+							auto pIt = pubSrc.find(xIt.first);
+							if (pIt == pubSrc.end()) continue;
+							pIt->second.speed = xIt.second.speed;
+							// SUMO's acceleration: (v_k - v_k-1) / step
+							if (xIt.second.hasPrev)
+								pIt->second.acceleration = (float)(((double)xIt.second.speed - (double)xIt.second.prevSpeed) / xilStep);
+						}
+					}
 					for (auto it : pubSrc) {
 						if (ENABLE_VEH_SIMULATOR) {
 							// if id is ego, and is the first socket (XIL), send it 
@@ -1402,6 +1420,20 @@ int main(int argc, char* argv[]) {
 
 					// ---- #174 sequential: RECV this client's return, merge into B ----
 					// (last-writer-wins per id; feeds the NEXT client's overlaid publish).
+					// The bridge's ego records carry the bench's speed in speedDesired. Earlier
+					// clients' records for those egos are set aside so only the bridge's are read.
+					const bool fromBridge = XIL_SPEED && curPort == Config_c.CarlaSetup.CarlaClientPort;
+					unordered_map<string, VehFullData_t> setAside;
+					if (fromBridge) {
+						for (auto rIt = MsgClient_c.VehDataRecv_um.begin(); rIt != MsgClient_c.VehDataRecv_um.end();) {
+							if (Traffic_c.externalEgoOwnerOf(rIt->first) == TrafficHelper::ExternalEgoOwner::VirEnv) {
+								setAside.insert(*rIt);
+								rIt = MsgClient_c.VehDataRecv_um.erase(rIt);
+							}
+							else ++rIt;
+						}
+					}
+
 					int simStateRecvC; float simTimeRecvC;
 					if (Sock_c.recvData(actualClientSock[iC], &simStateRecvC, &simTimeRecvC, MsgClient_c) < 0) {
 						if (FIXS::Platform::socketErrorCode() != FIXS::Platform::kSocketErrInterrupted &&
@@ -1423,6 +1455,20 @@ int main(int argc, char* argv[]) {
 							}
 						}
 						for (auto& r : idToRemove) MsgClient_c.VehDataRecv_um.erase(r);
+					}
+
+					if (fromBridge) {
+						for (auto& rIt : MsgClient_c.VehDataRecv_um) {
+							if (Traffic_c.externalEgoOwnerOf(rIt.first) != TrafficHelper::ExternalEgoOwner::VirEnv) continue;
+							VehFullData_t& r = rIt.second;
+							auto xIt = xilSpeed.find(rIt.first);
+							if (xIt == xilSpeed.end()) xilSpeed[rIt.first] = { r.speedDesired, 0.0f, false };
+							else xIt->second = { r.speedDesired, xIt->second.speed, true };
+							// SpeedToTraffic: xil -- SUMO's setSpeed reads speed
+							if (Config_c.XilSetup.SpeedToTraffic == "xil") r.speed = r.speedDesired;
+						}
+						// an ego the bridge did not return this tick keeps the earlier client's record
+						for (auto& kv : setAside) MsgClient_c.VehDataRecv_um.insert(kv);
 					}
 
 				}

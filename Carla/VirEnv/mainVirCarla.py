@@ -167,6 +167,10 @@ def main(argv=None):
     os.environ['FIXS_CONFIG_YAML'] = os.path.abspath(args.configPath)
     cs = config.Carla_setup
     egoCfg = config.Ego_setup          # the ego, once (FIXS#305)
+    # XilSetup.SpeedTo*: xil -- the ego's speedDesired carries the bench's speed to TrafficLayer
+    xilSpeedWanted = 'xil' in (config.Xil_setup['SpeedToTraffic'], config.Xil_setup['SpeedToApplication'])
+    if xilSpeedWanted:
+        from CommonLib.fixs import _driver as _fixsDriver
     verbose = cs['EnableVerboseLog']
 
     feed, carlaStep, poseRefresh = resolveCadence(cs)
@@ -284,6 +288,7 @@ def main(argv=None):
                   "No physics ego is spawned.")
     lastAdvisory = cs['EgoTargetSpeed']
     cellSpeed = None          # what the cell last commanded (cellOnTraffic only)
+    xilSpeedSeen = False
 
     try:
         # Checked here rather than inside the bring-up, so a missing route fails
@@ -489,6 +494,13 @@ def main(argv=None):
                         # target is verifiable.
                         d.speed = es.speed
                         d.speedDesired = lastAdvisory
+                        if xilSpeedWanted:
+                            # the bench's speed; the measured one until the bench first answers
+                            vDyno = getattr(_fixsDriver._instance, 'vDyno', None)
+                            d.speedDesired = es.speed if vDyno is None else vDyno
+                            if vDyno is not None and not xilSpeedSeen:
+                                xilSpeedSeen = True
+                                print("XilSetup.SpeedTo*: the bench's speed reaches TrafficLayer from t=%.2f" % simTime)
                         d.positionX, d.positionY, d.positionZ = es.x, es.y, es.z
                         d.heading = es.heading
                         d.grade = es.grade
