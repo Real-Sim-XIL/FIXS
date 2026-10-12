@@ -70,6 +70,7 @@ from __future__ import annotations
 import argparse
 import inspect
 import math
+import warnings
 
 from . import FixsError, speedFromAcceleration   # noqa: E402
 from .. import fixs as _fixs            # noqa: E402
@@ -866,7 +867,29 @@ def _takesAref(exchange):
     return n == 3
 
 
-def driver(*, xil=None, control=None, **options):
+def _oldNames(exchange, usercontrol, xil, control):
+    """fixs.driver(exchange) and usercontrol=, translated to xil= and control= with a warning.
+
+    Kept for one release. To remove: delete this function, the `exchange` and
+    `usercontrol` parameters of driver() (here and in fixs/__init__.py), and the
+    line in driver() that calls it.
+    """
+    if exchange is not None:
+        if xil is not None:
+            raise TypeError('fixs.driver(): pass the dyno once, as xil=')
+        warnings.warn('fixs.driver(exchange) is now fixs.driver(xil=exchange)',
+                      FutureWarning, stacklevel=4)
+        xil = exchange
+    if usercontrol is not None:
+        if control is not None:
+            raise TypeError('fixs.driver(): pass your step once, as control=')
+        warnings.warn('fixs.driver(usercontrol=fn) is now fixs.driver(control=fn)',
+                      FutureWarning, stacklevel=4)
+        control = usercontrol
+    return xil, control
+
+
+def driver(exchange=None, *, xil=None, control=None, usercontrol=None, **options):
     """-> class -- the controller the scenario should name.
 
     ``xil(vref, dt) -> mps`` is yours: a speed goes in, the speed your dyno
@@ -889,6 +912,7 @@ def driver(*, xil=None, control=None, **options):
     ``fixs.driver.set()`` before this call; the scenario's own
     ``--command-shape`` still wins over all of them, being nearer the run.
     """
+    xil, control = _oldNames(exchange, usercontrol, xil, control)
     for name, fn in (('xil', xil), ('control', control)):
         if fn is not None and not callable(fn):
             raise TypeError('fixs.driver(%s=): %r is not callable' % (name, fn))

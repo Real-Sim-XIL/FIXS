@@ -413,9 +413,35 @@ def test_a_non_callable_control_is_refused_at_the_call():
         driver(control=42)
 
 
-def test_the_dyno_is_passed_by_name():
-    with pytest.raises(TypeError):
-        driver(lambda v, dt: v)
+# -- the old names, kept for one release (_driver._oldNames) ------------------
+
+def _ex(v, dt):
+    return v
+
+
+def _mine(ego, dt):
+    pass
+
+
+@pytest.mark.parametrize('call', [lambda: fixs.driver(_ex), lambda: fixs.driver(exchange=_ex)])
+def test_the_old_exchange_still_means_xil_and_says_so(call):
+    with pytest.warns(FutureWarning, match='xil=exchange') as caught:
+        cls = call()
+    assert cls._EXCHANGE is _ex
+    assert caught[0].filename == __file__, 'the warning should name the caller'
+
+
+def test_the_old_usercontrol_still_means_control_and_says_so():
+    with pytest.warns(FutureWarning, match='control=fn'):
+        cls = fixs.driver(usercontrol=_mine)
+    assert cls._CONTROL is _mine
+
+
+@pytest.mark.parametrize('kw', [dict(exchange=_ex, xil=_ex),
+                                dict(usercontrol=_mine, control=_mine)])
+def test_an_old_and_a_new_name_together_is_refused(kw):
+    with pytest.raises(TypeError, match='once'):
+        fixs.driver(**kw)
 
 
 def test_the_template_makes_exactly_one_driver():

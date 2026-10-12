@@ -101,7 +101,7 @@ __all__ = [
 ]
 
 
-def driver(*, xil=None, control=None, **options):
+def driver(exchange=None, *, xil=None, control=None, usercontrol=None, **options):
     """A ready-made controller for the ego -- see :mod:`CommonLib.fixs._driver`.
 
         Controller = fixs.driver()                       # no cell
@@ -109,10 +109,11 @@ def driver(*, xil=None, control=None, **options):
         Controller = fixs.driver(control=my_control)     # your own step: my_control(ego, dt)
 
     Imported lazily: the driver pulls in fixs.carla and CARLA's agents, which
-    a SUMO-only or CarMaker run has no reason to load.
+    a SUMO-only or CarMaker run has no reason to load. `exchange` and
+    `usercontrol` are the old names, kept for one release (see _driver._oldNames).
     """
     from CommonLib.fixs._driver import driver as _driver
-    return _driver(xil=xil, control=control, **options)
+    return _driver(exchange, xil=xil, control=control, usercontrol=usercontrol, **options)
 
 
 def _driverSet(**options):
