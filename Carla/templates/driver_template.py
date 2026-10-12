@@ -52,17 +52,18 @@ import fixs
 #
 #  THE DRIVER IS STILL THERE: drv = fixs.driver.instance() inside my_control
 #  gives this run's driver -- drv.default(ego, dt) is its whole step, and
-#  drv.signalCeiling(ego), drv.leaderCeiling(ego), drv.exchange(v) and the rest
-#  are its pieces. Pass xil= as well and drv.exchange reaches your dyno.
+#  drv.signalCeiling(ego), drv.leaderCeiling(ego), vRef, aRef = drv.reference(control),
+#  drv.exchange(vRef, aRef) and the rest are its pieces. Pass xil= as well and
+#  drv.exchange reaches your dyno.
 #
 #  ego.speed / positionX / positionY / heading / acceleration are LIVE.
-#  speedDesired, signalLightColor, precedingVehicleDistance were HELD since
-#  the last feed, ego.feedAge seconds ago.
+#  speedDesired, accelerationDesired, signalLightColor, precedingVehicleDistance
+#  were HELD since the last feed, ego.feedAge seconds ago: the upstream
+#  controller's raw command, on every step.
 #
 #  speedDesired IS DUAL-USE: the advisory arrives in it, and a speed command
-#  goes back out through it. Read it only when ego.feedAge is 0 -- between
-#  feeds you are reading back your own last command. (Measured before that was
-#  understood: 1299 of 2554 ticks matched the previous tick's own target.)
+#  goes back out through it. FIXS puts the advisory back before each step, so
+#  reading it never returns your own last command.
 #
 #  steerAngleDesired IS AN ANGLE, in radians, where a CARLA agent's
 #  control.steer is normalised [-1, 1]. Commanding through fixs.carla does

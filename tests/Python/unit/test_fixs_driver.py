@@ -770,8 +770,41 @@ def test_a_three_argument_exchange_gets_the_acceleration(passive):
 def test_the_acceleration_follows_a_speed_the_driver_changed():
     d = _build(driver(xil=lambda vref, aref, dt: vref))
     d.feedVref, d.feedAref, d.feedStep = 10.0, 1.0, 0.1
-    assert d.arefFor(10.0) == pytest.approx(1.0)
-    assert d.arefFor(9.8) == pytest.approx(-1.0)
+    assert d._arefFor(10.0) == pytest.approx(1.0)
+    assert d._arefFor(9.8) == pytest.approx(-1.0)
+
+
+def _agentAt(targetMps):
+    from types import SimpleNamespace
+    planner = SimpleNamespace(_target_speed=targetMps * 3.6)
+    return SimpleNamespace(get_local_planner=lambda: planner, _max_brake=0.5)
+
+
+def test_reference_returns_the_agents_speed_and_the_acceleration_that_goes_with_it():
+    from types import SimpleNamespace
+    d = _build(driver(xil=lambda vref, aref, dt: vref))
+    d.feedVref, d.feedAref, d.feedStep = 10.0, 1.0, 0.1
+    d.agent = _agentAt(9.8)
+    vRef, aRef = d.reference(SimpleNamespace(throttle=0.3, brake=0.0))
+    assert vRef == pytest.approx(9.8)
+    assert aRef == pytest.approx(-1.0)
+    vRef, aRef = d.reference(SimpleNamespace(throttle=0.0, brake=0.5))   # emergency stop
+    assert vRef == 0.0
+    assert aRef == pytest.approx(1.0 - 10.0 / 0.1)
+
+
+def test_exchange_hands_the_dyno_the_acceleration_it_is_given():
+    got = []
+
+    def exchange(vref, aref, dt):
+        got.append((vref, aref))
+        return vref
+
+    d = _build(driver(xil=exchange))
+    d.feedVref, d.feedAref, d.feedStep = 10.0, 1.0, 0.1
+    d.exchange(9.8, 0.25)
+    d.exchange(9.8)                          # without one: the acceleration that goes with 9.8
+    assert got == [(pytest.approx(9.8), pytest.approx(0.25)), (pytest.approx(9.8), pytest.approx(-1.0))]
 
 
 def test_the_exchange_says_what_it_takes_by_its_arguments():
