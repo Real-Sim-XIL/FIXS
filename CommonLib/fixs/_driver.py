@@ -14,7 +14,7 @@ WITH A DYNAMOMETER, you write the one function FIXS cannot::
     def exchange(vref, dt):
         return my_dyno_rig.run_point(vref)  # a speed in, the speed reached out
 
-    Controller = fixs.driver(exchange)
+    Controller = fixs.driver(xil=exchange)
 
 Your rig keeps its own API, its own protocol and its own rate; ``exchange``
 is the glue, and it is the whole of what this module asks for.
@@ -25,19 +25,23 @@ the declaration. For the simulated dyno, pass the one FIXS already has; its
 exchange takes (vref, aref, dt), and the driver supplies aref::
 
     dyno = fixs.xil.dynosim()
-    Controller = fixs.driver(dyno.exchange)
+    Controller = fixs.driver(xil=dyno.exchange)
 
 which is a function like any other and holds no privilege over yours.
 
-WHERE IT GOES IN THE LOOP -- after every decision, before any command::
+YOUR OWN STEP, using as much of this driver as you want::
 
-    want = target(ego)        the advisory, capped by the signal and the leader
-    want = exchange(want)     what a real vehicle did with that
-    drive(want)               pedals, or a speed for the plant to close on
+    def my_control(ego, dt):
+        drv = fixs.driver.instance()          # the driver FIXS built for this run
+        target = min(drv.advisoryOf(ego) or drv.fallbackSpeed,
+                     drv.signalCeiling(ego), drv.leaderCeiling(ego))
+        ...
 
-Next step the driver reads ``ego.speed`` back, so the dyno is in the loop and
-not beside it. ``target`` and ``drive`` are public for anyone who wants that
-ordering in their own hands.
+    Controller = fixs.driver(xil=exchange, control=my_control)
+
+``default(ego, dt)`` is the stock step, and the methods it calls are public:
+controlPassive, shiftIntoFirstGear, advisoryOf, signalCeiling, leaderCeiling,
+stepAgent, reference, exchange, speedToPedal, logStep.
 
 HOW IT DECIDES A SPEED. Every input that can demand less is turned into a SPEED
 -- the fastest the ego may go and still stop comfortably for the thing that
@@ -66,6 +70,7 @@ from __future__ import annotations
 import argparse
 import inspect
 import math
+import warnings
 
 from . import FixsError, speedFromAcceleration   # noqa: E402
 from .. import fixs as _fixs            # noqa: E402
@@ -354,9 +359,12 @@ class Controller:
     #: True for an exchange(vref, aref, dt), False for exchange(vref, dt).
     _EXCHANGE_TAKES_AREF = False
     _OPTIONS = None
-    _USERCONTROL = None
+    #: The user's control(ego, dt), run in place of default(). None runs default().
+    _CONTROL = None
 
     def __init__(self, config, egoId):
+        global _instance
+        _instance = self
         opt = _options(config, getattr(self, '_OPTIONS', None))
         self.shape = opt.command_shape
         self.loop = opt.pedal_loop
@@ -392,9 +400,8 @@ class Controller:
             % (self.shape, self.loop, self.referenceMode, self.tuning, self.limits,
                getattr(self._EXCHANGE, '__name__', 'none')))
         self.steps, self.elapsed = 0, 0.0
-        #: Held between feeds -- see _advisoryOf.
+        #: Held between feeds -- see advisoryOf.
         self.advisory = None
-        self.vSignal = self.vLeader = _NO_LIMIT
         #: Who answers "you asked for this speed -- what did you reach?".
         #: Whatever was handed to fixs.driver(), and nothing else: this module
         #: never goes looking for a cell. Deciding one is in the loop is the
@@ -429,7 +436,6 @@ class Controller:
         #: acceleration the inner stage closes on.
         self._dbg = None
         self.speedInteg = 0.0
-        self.vRef = None
         self.pedal = 0.0
         self._vPrev = 0.0
         self._aMeas = 0.0
@@ -485,7 +491,7 @@ class Controller:
             return 0.0
         return self.feedAref + (vRef - self.feedVref) / self.feedStep
 
-    def _build(self):
+    def build(self):
         """Built on the first controlled tick, not in __init__: the traffic
         simulator inserts the ego, so `carla.ego` does not exist until the
         bridge adopts it."""
@@ -535,118 +541,77 @@ class Controller:
             self.agent.ignore_traffic_lights(True)
 
     def control(self, ego, dt):
+        """FIXS calls this every step: the control passed to fixs.driver(), else default()."""
         if dt > 0:
             self.dt = dt
         self.elapsed += dt
+        self.steps += 1
+        if self._CONTROL is not None:
+            self._CONTROL(ego, dt)
+        else:
+            self.default(ego, dt)
 
-        # YOUR driving, if you handed some to fixs.driver(). It is called with
-        # the same (ego, dt) FIXS calls us with, and writes its command the
-        # same way -- ego.set(...). Nothing of ours runs: no ceilings, no
-        # pedal law, no agent. You wanted your logic, so you get your logic.
-        if self._USERCONTROL is not None:
-            self._USERCONTROL(ego, dt)
-            self.steps += 1
-            return
-
+    def default(self, ego, dt):
+        """The stock step: a target speed, CARLA's agent planning toward it, the dyno, the command."""
         if self.passive:
-            self._controlPassive(ego)
+            self.controlPassive(ego)
+            return
+        if self.shiftIntoFirstGear():
             return
 
-        if self.startInGear and not self._inGear:
-            # No pedal command this step, so the host does not overwrite the gear.
-            carla.ego.apply_control(carla.VehicleControl(manual_gear_shift=True, gear=1))
-            self._inGear = True
-            self.steps += 1
-            return
-
-        if self.agent is None:
-            self._build()
-
-        advisory = self._advisoryOf(ego)
+        # 1. Target speed: the advisory, capped by the signal and the leader.
+        advisory = self.advisoryOf(ego)
         wanted = advisory if advisory is not None else self.fallbackSpeed
+        vSignal = self.signalCeiling(ego)
+        vLeader = self.leaderCeiling(ego)
+        target = max(0.0, min(wanted, vSignal, vLeader))
 
-        # EVERY CONSTRAINT IS A SPEED, so combining them is a min() and there is
-        # no arbitration left to get wrong. Each is an envelope: the fastest this
-        # controller may go and still stop comfortably for the thing it names.
-        # The agent's own following model and obstacle sweep still run beneath
-        # this ceiling -- they see what the wire cannot.
-        self.vSignal = self._signalCeiling(ego)
-        self.vLeader = self._leaderCeiling(ego)
-        target = max(0.0, min(wanted, self.vSignal, self.vLeader))
-        self.agent._behavior.max_speed = target * 3.6
+        # 2. CARLA's agent plans toward it, watching for vehicles out to its stopping distance.
+        minLookahead = max(10.0, ego.speed * ego.speed / (2.0 * self.limits.comfortDecel)
+                           + self.limits.leaderMargin)
+        control = self.stepAgent(ego, speed=target, minLookaheadDist=minLookahead)
+        vRef = self.reference(control)
 
-        # The agent's OWN obstacle sweep reaches a constant too:
-        # collision_and_car_avoid_manager takes max(min_proximity_threshold,
-        # speed_limit/3), which is about 13 m here, centre to centre. Measured on
-        # this corridor, a hazard entered that sweep at 5.6 m while the ego held
-        # 10.1 m/s and contact followed 0.05 s later; a full-brake stop from
-        # 10.5 m/s takes 9.8-11.0 m. Give the sweep the same stopping distance
-        # the envelopes use, so the agent's own following model is engaged while
-        # there is still room for it to act. It still decides.
-        self.agent._behavior.min_proximity_threshold = max(
-            10.0, ego.speed * ego.speed / (2.0 * self.limits.comfortDecel)
-            + self.limits.leaderMargin)
-
-        # NOT a ceiling from the bench. Capping the agent's target with the
-        # bench's MEASURED speed latches: the bench starts at zero, so the
-        # ceiling is zero, so the reference handed to the bench is zero, and it
-        # never moves. Measured -- the ego sat at the spawn point for the whole
-        # 800 s. The agent plans against the signal and the leader; the bench's
-        # speed is what the pedal law chases, not a limit on intent.
-
-        carla.refresh(ego)
-        control = self.agent.run_step()
-        if _isEmergencyStop(control, self.agent._max_brake):
-            # BehaviorAgent.run_step RETURNS from emergency_stop before the local
-            # planner runs, so the plan does not advance while the ego brakes --
-            # and the ego is still moving. Measured on this corridor: a stop
-            # beginning at 7.4 m/s carried the ego over the head of its own
-            # waypoint queue (0.21 m at the closest) and 8.5 m past it. The
-            # planner purges by distance, so a waypoint 8.5 m BEHIND is never
-            # purged; when the brake lifted, the lateral controller went to full
-            # lock to go back for it and drove the ego in a circle 9.8 m off the
-            # corridor, into another vehicle.
-            #
-            # Running the planner and discarding its command restores exactly
-            # what the early return skipped -- the purge, on CARLA's own rule --
-            # and invents no geometry of its own.
-            self.agent.get_local_planner().run_step()
-
-        # THE COMMAND. A FIXS controller commands by writing to the ego record;
-        # control()'s return value is ignored. steerAngleDesired is an ANGLE in
-        # radians where the agent's steer is normalised [-1, 1], and the plant
-        # divides by the same constant.
-        vRef = self._reference(control)
-        #: What the loop was actually told to chase. lp._target_speed is
-        #: NOT this: it goes stale at the route limit whenever the agent
-        #: panic-brakes, so a figure drawn from it shows the ego being
-        #: asked for 53 km/h at the exact moment it was asked for zero.
-        self.vRef = vRef
-
-        # THE BENCH, when there is one. The agent has decided a speed; the bench
-        # says what a vehicle with mass and a torque delay actually reaches, and
-        # THAT is what CARLA is told to hold. Next tick the agent reads back
-        # ego.speed, so the bench is in the loop rather than beside it.
+        # 3. The dyno: the speed a real vehicle reaches.
         if self.benchInLoop:
-            vRef = self.vRef = self.exchange(vRef)
+            vRef = self.exchange(vRef)
 
-        # THE COMMAND, in CARLA's own two shapes. fixs.carla relays them onto
-        # the ego record and converts the normalised steer to the wire's radians
-        # in the one place that conversion belongs.
+        # 4. Command, and log.
         if self.shape == 'speed':
             carla.apply_ackermann_control(carla.VehicleAckermannControl(
                 speed=max(0.0, vRef), steer=control.steer))
         else:
-            # The SHAPE decides who closes the speed loop; the bench only
-            # decides what vRef is. Gating this on the bench made 'pedals'
-            # silently fall through to the agent's own pedals whenever
-            # EnableXil was off, so the law under test never ran.
-            thr, brk = self._speedToPedal(vRef, ego.speed)
+            thr, brk = self.speedToPedal(vRef, ego.speed)
             carla.apply_control(carla.VehicleControl(
                 throttle=thr, brake=brk, steer=control.steer))
-        self._logStep(ego, control, target, advisory)
+        self.logStep(ego, control, advisory=advisory, target=target,
+                     vSignal=vSignal, vLeader=vLeader, vRef=vRef)
 
-    def _controlPassive(self, ego):
+    def shiftIntoFirstGear(self):
+        """With startInGear, put the ego in first gear on its first step and return True; that step sends nothing else."""
+        if not self.startInGear or self._inGear:
+            return False
+        # A pedal command in the same step would overwrite the gear.
+        carla.ego.apply_control(carla.VehicleControl(manual_gear_shift=True, gear=1))
+        self._inGear = True
+        return True
+
+    def stepAgent(self, ego, speed, minLookaheadDist):
+        """CARLA's agent plans one step toward `speed` [m/s], watching for vehicles at least
+        `minLookaheadDist` [m] ahead. Built on the first call. Returns its control."""
+        if self.agent is None:
+            self.build()
+        self.agent._behavior.max_speed = speed * 3.6
+        # The agent looks out to this or speed_limit/3, whichever is farther, centre to centre.
+        self.agent._behavior.min_proximity_threshold = minLookaheadDist
+        carla.refresh(ego)
+        control = self.agent.run_step()
+        if self.isEmergencyStop(control):
+            # run_step skips the planner on an emergency stop; advance it, or the ego later steers back for passed waypoints.
+            self.agent.get_local_planner().run_step()
+        return control
+
+    def controlPassive(self, ego):
         """TELEPORT: the cell is the whole driver.
 
         No CARLA actor, so no agent, no steering, no obstacle sweep -- the
@@ -659,13 +624,13 @@ class Controller:
         THE CEILINGS DO NOT APPLY HERE, and that is the whole of the difference
         from the virenv path.
 
-        There, the advisory is a TARGET a CARLA agent tracks, and _signalCeiling
-        and _leaderCeiling are that agent's envelope -- it plans in a world the
+        There, the advisory is a TARGET a CARLA agent tracks, and signalCeiling
+        and leaderCeiling are that agent's envelope -- it plans in a world the
         wire cannot see, so it is given room to be wrong in. Here the advisory
         is nobody's target: the eco controller writes speedDesired and the
         traffic simulator integrates it. That IS the rung below. Applying the
         envelopes on top double-counts a stop the eco controller has already
-        planned -- _signalCeiling alone commands a 2 m/s^2 deceleration to the
+        planned -- signalCeiling alone commands a 2 m/s^2 deceleration to the
         bar from as far as 200 m out -- and the ego slows long before a bar it
         was never going to overrun.
 
@@ -680,7 +645,7 @@ class Controller:
         Anything else and the cell is not the only thing being measured.
         """
         # The eco controller's command, as received, and nothing else done to
-        # it. Not _advisoryOf: that drops anything <= 0.01 as 'no advisory', and
+        # it. Not advisoryOf: that drops anything <= 0.01 as 'no advisory', and
         # a command of ZERO is exactly what the eco controller writes AT a stop
         # bar -- read as absent, it was replaced by fallbackSpeed and the ego
         # was told to accelerate away from the bar it had just been asked to
@@ -692,14 +657,9 @@ class Controller:
         # eco controller's, never this driver's own last command (FIXS#305).
         advisory = self._readFeed(ego)
         self.advisory = advisory
-        #: Neither computed nor applied. Logged as such, so a passive trace
-        #: cannot be read as though an envelope had bound.
-        self.vSignal = self.vLeader = _NO_LIMIT
-        target = advisory
-
-        vRef = self.vRef = target
+        vRef = advisory
         if self.benchInLoop:
-            vRef = self.vRef = self.exchange(vRef)
+            vRef = self.exchange(vRef)
 
         # THE COMMAND. speedDesired only: steer belongs to whoever owns the
         # lateral, and here that is the traffic simulator.
@@ -711,9 +671,11 @@ class Controller:
         # Controller line as its virenv sibling, and the pair differs by
         # Dynamics alone.
         ego.set(speedDesired=max(0.0, vRef))
-        self._logStep(ego, None, target, advisory)
+        # No ceilings on this rung: logged blank, so the trace cannot read as though one bound.
+        self.logStep(ego, None, advisory=advisory, target=advisory,
+                     vSignal=_NO_LIMIT, vLeader=_NO_LIMIT, vRef=vRef)
 
-    def _advisoryOf(self, ego):
+    def advisoryOf(self, ego):
         """The eco controller's advisory, read only on the tick it is new.
 
         `speedDesired` is one field used in both directions: the eco controller
@@ -732,7 +694,7 @@ class Controller:
             return None
         return self.advisory
 
-    def _signalCeiling(self, ego):
+    def signalCeiling(self, ego):
         """The speed the next signal allows.
 
         The traffic simulator answers for the movement THIS ego will make -- its
@@ -757,7 +719,7 @@ class Controller:
             return _NO_LIMIT
         return _stopBy(dist - lim.stopMargin, lim.comfortDecel)
 
-    def _leaderCeiling(self, ego):
+    def leaderCeiling(self, ego):
         """The speed the vehicle ahead allows.
 
         This does NOT replace the agent's own obstacle sweep. The wire's leader
@@ -785,7 +747,7 @@ class Controller:
                          + 2.0 * self.limits.comfortDecel
                          * max(0.0, gap - self.limits.leaderMargin))
 
-    def _speedToPedal(self, vTarget, vEgo):
+    def speedToPedal(self, vTarget, vEgo):
         """(float, float) -> (throttle, brake) that puts CARLA on vTarget.
 
         PEDAL_LOOP picks which error the loop closes on. Either way one
@@ -831,7 +793,7 @@ class Controller:
         self._dbg = (error, demand, self._aMeas, self.pedal)
         return (max(0.0, self.pedal), max(0.0, -self.pedal))
 
-    def _reference(self, control):
+    def reference(self, control):
         """The speed the agent is asking for, in m/s.
 
         The agent's own longitudinal target, except when it panic-brakes: an
@@ -839,11 +801,18 @@ class Controller:
         command the ego to keep driving through the thing the agent stopped for.
         A full-brake command IS the target speed being zero.
         """
-        if _isEmergencyStop(control, self.agent._max_brake):
+        if self.isEmergencyStop(control):
             return 0.0
         return max(0.0, self.agent.get_local_planner()._target_speed / 3.6)
 
+    def isEmergencyStop(self, control):
+        """Is the agent's command its emergency_stop rather than a planned one?"""
+        return _isEmergencyStop(control, self.agent._max_brake)
+
     def shutdown(self):
+        global _instance
+        if _instance is self:
+            _instance = None
         if self.log is not None:
             self.log.close()
             self.log = None
@@ -855,13 +824,8 @@ class Controller:
                   % (self.misses, self.steps), flush=True)
         print('[driver] %d control steps' % self.steps, flush=True)
 
-    def _logStep(self, ego, cmd, target, advisory):
-        """This application's instrumentation. It records what FIXS supplied
-        beside what the agent concluded -- vehicles seen, the wire's limit, the
-        speed the agent settled on -- because two defects that stopped the ego
-        dead were invisible without those three and obvious with them
-        (ORNL-Real-Sim/FIXS#355)."""
-        self.steps += 1
+    def logStep(self, ego, cmd, *, advisory, target, vSignal, vLeader, vRef):
+        """One row of the driver log: what FIXS supplied, what this step decided, and what the agent concluded."""
         if self.log is None:
             return
         # Agent-side columns are blank on a passive run: there is no planner,
@@ -885,9 +849,9 @@ class Controller:
                ego.signalLightDistance,
                nSeen,
                float(getattr(ego, 'speedLimit', 0.0) or 0.0), agentTarget,
-               _col(self.vSignal), _col(self.vLeader),
+               _col(vSignal), _col(vLeader),
                '' if self.vDyno is None else '%.4f' % self.vDyno)
-            + (',' if self.vRef is None else ',%.4f' % self.vRef)
+            + (',' if vRef is None else ',%.4f' % vRef)
             + (',,,,\n' if self._dbg is None else
                ',%.4f,%.4f,%.4f,%.4f\n' % self._dbg))
 
@@ -898,57 +862,79 @@ def _takesAref(exchange):
     n = sum(1 for p in params if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
             and p.default is p.empty)
     if n not in (2, 3):
-        raise TypeError('fixs.driver(exchange): takes (vref, dt) or (vref, aref, dt), '
+        raise TypeError('fixs.driver(xil=): takes (vref, dt) or (vref, aref, dt), '
                         'got %d required arguments' % n)
     return n == 3
 
 
-def driver(exchange=None, usercontrol=None, **options):
-    """(callable) -> class -- the controller the scenario should name.
+def _oldNames(exchange, usercontrol, xil, control):
+    """fixs.driver(exchange) and usercontrol=, translated to xil= and control= with a warning.
 
-    ``exchange(vref, dt) -> mps`` is yours: a speed goes in, the speed your
-    dyno reached comes back. ``exchange(vref, aref, dt)`` also gets the
-    acceleration that goes with vref. Return None on a tick it could not answer and the
-    reference passes through untouched; those are counted and reported.
+    Kept for one release. To remove: delete this function, the `exchange` and
+    `usercontrol` parameters of driver() (here and in fixs/__init__.py), and the
+    line in driver() that calls it.
+    """
+    if exchange is not None:
+        if xil is not None:
+            raise TypeError('fixs.driver(): pass the dyno once, as xil=')
+        warnings.warn('fixs.driver(exchange) is now fixs.driver(xil=exchange)',
+                      FutureWarning, stacklevel=4)
+        xil = exchange
+    if usercontrol is not None:
+        if control is not None:
+            raise TypeError('fixs.driver(): pass your step once, as control=')
+        warnings.warn('fixs.driver(usercontrol=fn) is now fixs.driver(control=fn)',
+                      FutureWarning, stacklevel=4)
+        control = usercontrol
+    return xil, control
 
-    Omit it and nothing is in the loop. For the simulated cell, pass
-    ``fixs.xil.dynosim().exchange``; for yours, pass yours::
 
-        Controller = fixs.driver(exchange)
+def driver(exchange=None, *, xil=None, control=None, usercontrol=None, **options):
+    """-> class -- the controller the scenario should name.
+
+    ``xil(vref, dt) -> mps`` is yours: a speed goes in, the speed your dyno
+    reached comes back. ``xil(vref, aref, dt)`` also gets the acceleration that
+    goes with vref. Return None on a tick it could not answer and the reference
+    passes through untouched; those are counted and reported. Omit it and
+    nothing is in the loop. For the simulated cell, pass
+    ``fixs.xil.dynosim().exchange``.
+
+    ``control(ego, dt)`` is your own step, called in place of :meth:`Controller.default`.
+    It reaches this driver through :func:`instance` when it wants any of it.
 
     Returns a CLASS, and ALSO records it here, so the name you give it is
     yours::
 
-        Driver = fixs.driver(exchange)      # any name
-        fixs.driver(exchange)               # or none at all
-
-    The loader asks :func:`built` before it scans the module for a name. The
-    scenario still says which FILE -- FIXS has nothing to import otherwise --
-    but nothing inside it has to be spelled a particular way.
+        Driver = fixs.driver(xil=exchange)  # any name
+        fixs.driver(xil=exchange)           # or none at all
 
     ``options`` override the module defaults and anything given to
     ``fixs.driver.set()`` before this call; the scenario's own
     ``--command-shape`` still wins over all of them, being nearer the run.
     """
-    for name, fn in (('exchange', exchange), ('usercontrol', usercontrol)):
+    xil, control = _oldNames(exchange, usercontrol, xil, control)
+    for name, fn in (('xil', xil), ('control', control)):
         if fn is not None and not callable(fn):
-            raise TypeError('fixs.driver(%s): %r is not callable' % (name, fn))
-    if usercontrol is not None and exchange is not None:
-        # Your control() decides when to ask a cell and what to do with the
-        # answer. Taking an exchange too would mean we called it somewhere
-        # inside logic we are not running.
-        raise TypeError(
-            'fixs.driver(): usercontrol replaces the driving, so an exchange '
-            'here would never be called -- ask your cell inside your own '
-            'control(ego, dt).')
+            raise TypeError('fixs.driver(%s=): %r is not callable' % (name, fn))
     cls = type('Controller', (Controller,),
-               dict(_EXCHANGE=staticmethod(exchange) if exchange else None,
-                    _EXCHANGE_TAKES_AREF=_takesAref(exchange) if exchange else False,
-                    _USERCONTROL=staticmethod(usercontrol) if usercontrol
-                    else None,
+               dict(_EXCHANGE=staticmethod(xil) if xil else None,
+                    _EXCHANGE_TAKES_AREF=_takesAref(xil) if xil else False,
+                    _CONTROL=staticmethod(control) if control else None,
                     _OPTIONS=dict(_DEFAULTS, **options)))
     _BUILT.append(cls)
     return cls
+
+
+#: The driver of the run in progress; see :func:`instance`.
+_instance = None
+
+
+def instance():
+    """The driver FIXS built for this run, for a control(ego, dt) passed to fixs.driver()."""
+    if _instance is None:
+        raise FixsError('fixs.driver.instance(): no driver yet -- call it inside your '
+                        'control(ego, dt), not when the file is imported')
+    return _instance
 
 
 #: Every class :func:`driver` has built. The loader clears this before it

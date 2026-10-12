@@ -101,17 +101,19 @@ __all__ = [
 ]
 
 
-def driver(exchange=None, **options):
+def driver(exchange=None, *, xil=None, control=None, usercontrol=None, **options):
     """A ready-made controller for the ego -- see :mod:`CommonLib.fixs._driver`.
 
-        Controller = fixs.driver()              # no cell
-        Controller = fixs.driver(exchange)      # yours: (vref, dt) or (vref, aref, dt) -> mps
+        Controller = fixs.driver()                       # no cell
+        Controller = fixs.driver(xil=exchange)           # yours: (vref, dt) or (vref, aref, dt) -> mps
+        Controller = fixs.driver(control=my_control)     # your own step: my_control(ego, dt)
 
     Imported lazily: the driver pulls in fixs.carla and CARLA's agents, which
-    a SUMO-only or CarMaker run has no reason to load.
+    a SUMO-only or CarMaker run has no reason to load. `exchange` and
+    `usercontrol` are the old names, kept for one release (see _driver._oldNames).
     """
     from CommonLib.fixs._driver import driver as _driver
-    return _driver(exchange, **options)
+    return _driver(exchange, xil=xil, control=control, usercontrol=usercontrol, **options)
 
 
 def _driverSet(**options):
@@ -120,7 +122,14 @@ def _driverSet(**options):
     setDefaults(**options)
 
 
+def _driverInstance():
+    """fixs.driver.instance(): the driver FIXS built for this run, from inside control(ego, dt)."""
+    from CommonLib.fixs._driver import instance
+    return instance()
+
+
 driver.set = _driverSet
+driver.instance = _driverInstance
 
 
 _F32 = struct.Struct('<f')
@@ -1109,7 +1118,7 @@ def __getattr__(name):
     # side, which a client that is not driving an ego has no reason to load, and
     # sumo reads scenario files a controller may never touch. Bound into the
     # module afterwards, so the cost is once and later lookups are ordinary.
-    if name in ('sumo', 'carla', 'config'):
+    if name in ('sumo', 'carla', 'config', 'xil'):
         import importlib
         module = importlib.import_module(f'{__name__}.{name}')
         globals()[name] = module
