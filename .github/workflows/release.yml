@@ -81,13 +81,28 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          EVENT:  ${{ github.event_name }}
+          PR:     ${{ github.event.pull_request.number }}
+          BEFORE: ${{ github.event.before }}
+          AFTER:  ${{ github.sha }}
         run: |
-          if [ "${{ github.event_name }}" != "pull_request" ]; then
-            echo "event=${{ github.event_name }} -> always build."
-            echo "should_build=true" >> "$GITHUB_OUTPUT"; exit 0
-          fi
-          files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/${{ github.event.pull_request.number }}/files" \
-                    --paginate --jq '.[].filename')
+          case "$EVENT" in
+            pull_request)
+              files=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --paginate --jq '.[].filename') ;;
+            push)
+              # A new branch, a force-push or a diff past the API's 300-file cap has no exact list.
+              cmp=$(gh api "repos/$GITHUB_REPOSITORY/compare/$BEFORE...$AFTER" \
+                      --jq '"\(.status) \(.files | length)"') || cmp="error 0"
+              read -r status count <<< "$cmp"
+              if [ "$status" != ahead ] || [ "$count" -ge 300 ]; then
+                echo "push $BEFORE..$AFTER: compare status=$status files=$count -> build."
+                echo "should_build=true" >> "$GITHUB_OUTPUT"; exit 0
+              fi
+              files=$(gh api "repos/$GITHUB_REPOSITORY/compare/$BEFORE...$AFTER" --jq '.files[].filename') ;;
+            *)
+              echo "event=$EVENT -> always build."
+              echo "should_build=true" >> "$GITHUB_OUTPUT"; exit 0 ;;
+          esac
           echo "Changed files:"; echo "$files"
 
           # release.yml defines THIS build, so a change to it must still build -
@@ -114,6 +129,8 @@ jobs:
           # NOTE: ^scripts/ must NOT be ignored wholesale - scripts/dispatch/** IS
           # the build system, and generate_version.ps1 stamps the version.
           ignore='^doc/|^tests/|^\.github/|^\.vscode/|\.md$|\.py$|^LICENSE$|^\.gitignore$|^\.gitattributes$|^environment\.yml$|^scripts/update_fixs\.(ps1|sh)$'
+          # A push publishes the zip, and .py, environment.yml and Carla/*.md ship in it.
+          [ "$EVENT" = push ] && ignore='^doc/|^tests/|^\.github/|^\.vscode/|^[^/]+\.md$|^LICENSE$|^\.gitignore$|^\.gitattributes$|^scripts/update_fixs\.(ps1|sh)$'
           relevant=$(echo "$files" | grep -vE "$ignore" || true)
           if [ -z "$relevant" ]; then
             echo "No build-relevant changes -> skipping build (required check still passes)."
@@ -419,6 +436,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0        # git describe needs tags for the version stamp
+          filter: blob:none     # full history, but only HEAD's file contents
           submodules: false     # ProprietaryFiles is private and not needed here
 
       # git refuses to run in a checkout owned by another uid (container vs runner).

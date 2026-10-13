@@ -4,8 +4,8 @@ name: PR milestone
 # workflow_dispatch backfills every open or merged PR by the same rule.
 
 on:
-  # _target so fork PRs get a write token; the job never checks out PR code.
-  pull_request_target:
+  # Not pull_request_target: that always runs main's copy of this file.
+  pull_request:
     types: [opened, reopened, edited]
     branches: ['dev_v*']
   workflow_dispatch:
@@ -16,6 +16,8 @@ permissions:
 
 jobs:
   milestone:
+    # A fork PR's token is read-only, so it could not set the milestone anyway.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - name: Set milestone from base branch

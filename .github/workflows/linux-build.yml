@@ -41,8 +41,19 @@ on:
       - 'scripts/fetch_native_deps.sh'
       - 'dependencies.yaml'
       - '.github/workflows/linux-build.yml'
+  # Same paths as pull_request, or every merge recompiles on a docs-only change.
   push:
     branches: [main, 'dev_v*', 'beta_v*']
+    paths:
+      - 'CommonLib/**'
+      - 'TrafficLayer/**'
+      - 'VirCarlaEnv/**'
+      - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'scripts/check_source_lists.py'
+      - 'scripts/fetch_native_deps.sh'
+      - 'dependencies.yaml'
+      - '.github/workflows/linux-build.yml'
 
 jobs:
   linux-build:
@@ -81,6 +92,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0        # git describe needs tags for RealSimVersion.h
+          filter: blob:none     # full history, but only HEAD's file contents
           submodules: false     # ProprietaryFiles is private and not needed here
 
       # git refuses to run in a checkout owned by another uid (container vs runner).
