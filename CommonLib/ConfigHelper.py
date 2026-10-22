@@ -65,12 +65,10 @@ class ConfigHelper:
         sumo_node = config.get("SumoSetup", {})
         self.Sumo_setup["SpeedMode"] = sumo_node.get("SpeedMode", 0)
 
-        # SUMO's lane-change mode for the vehicles FIXS drives. -1 leaves SUMO's
-        # own default (597) alone; 512 is strategic changes only -- the vehicle
-        # still reaches the lane its next turn needs but never changes lane by
-        # choice. Applied by the TrafficLayer, which is the process that owns
-        # SUMO; see TrafficHelper.cpp beside setSpeedMode.
+        # -1 leaves SUMO's default; 512 = strategic lane changes only. Applied by TrafficLayer.
         self.Sumo_setup["LaneChangeMode"] = sumo_node.get("LaneChangeMode", -1)
+        # Apply the configured modes to the ego on network entry even if no client commands it.
+        self.Sumo_setup["EgoModesOnEntry"] = self.parserFlag(sumo_node, "EgoModesOnEntry", False)
         # Consumed by run_cosim.py (not the C++ engine): whether it launches SUMO
         # itself, or waits for the user to start it. Parity with SumoSetup.AutoStart
         # in ConfigHelper.cpp. Default true.

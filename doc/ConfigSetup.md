@@ -63,7 +63,9 @@ silently ignored.
 
 | Key | Type | Default | Notes |
 | --- | --- | --- | --- |
-| SpeedMode | int | 0 | Passed to `SUMO_TRACI_NAMESPACE::Vehicle::setSpeedMode`. Common values: 0 (default safety), 31 (default mode), 32 (all checks off). |
+| SpeedMode | int | 0 | Passed to `Vehicle::setSpeedMode` for each vehicle a client commands, once when it is first commanded and again only if it left the network and came back (SUMO keeps the mode until then). Common values: 31 (SUMO's default, all checks on), 32 (all checks off), 0 (most checks off, which is also what an absent key gives). |
+| LaneChangeMode | int | -1 | Passed to `Vehicle::setLaneChangeMode` together with SpeedMode, and as rarely. -1 leaves SUMO's default; 512 allows strategic changes only, so the vehicle follows its route but never changes lane by choice. |
+| EgoModesOnEntry | bool | false | When true, the ego also gets SpeedMode and LaneChangeMode as it enters the network, even when no client commands it (e.g. a baseline run that leaves SUMO to drive the ego). The ego is `EgoSetup.Id` plus every id a VehicleSubscription in ApplicationSetup or XilSetup names by `id`. Only the configured modes are applied: an absent SpeedMode leaves SUMO's default (31) rather than the 0 above, and LaneChangeMode -1 leaves SUMO's default. Not applied to an ego that CarMaker or the virtual environment drives, or with `EnableExternalDynamics: true`. A client that later commands the ego still applies SpeedMode/LaneChangeMode as above. |
 | ExecutionOrder | int | 1 | Order passed to `Simulation::setOrder`. |
 | EnableAutoLaunch | bool | false | When true, TrafficLayer starts SUMO automatically; otherwise it expects a running instance. |
 | SumoConfigFile | string | `""` | Path to `.sumocfg` used when auto-launching. Relative paths resolved against config file directory. |

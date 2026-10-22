@@ -545,6 +545,31 @@ void TrafficHelper::getConfig() {
 	// even when the application layer is the one TrafficLayer talks to.
 	warmupEgoId_v = Config_c->WarmUpEgoIds;
 
+	// the ego is EgoSetup.Id plus every id either layer subscribes by id
+	egoModesOnEntryIds_.clear();
+	if (Config_c->SumoSetup.EgoModesOnEntry) {
+		egoModesOnEntryIds_ = Config_c->WarmUpEgoIds;
+		if (!Config_c->EgoSetup.Id.empty()) egoModesOnEntryIds_.insert(Config_c->EgoSetup.Id);
+
+		std::string ids;
+		for (const auto& id : egoModesOnEntryIds_) ids += (ids.empty() ? "'" : ", '") + id + "'";
+		if (ENABLE_EXT_DYN) {
+			egoModesOnEntryIds_.clear();
+			printf("WARNING: SumoSetup.EgoModesOnEntry is ignored with "
+				"SimulationSetup.EnableExternalDynamics: true.\n");
+		}
+		else if (egoModesOnEntryIds_.empty()) {
+			printf("WARNING: SumoSetup.EgoModesOnEntry is on but no ego id is known "
+				"(EgoSetup.Id or a by-id VehicleSubscription); it does nothing.\n");
+		}
+		else {
+			printf("SumoSetup.EgoModesOnEntry: on entry ego %s gets SpeedMode %s, LaneChangeMode %s\n",
+				ids.c_str(),
+				Config_c->SumoSetup.SpeedModeConfigured ? std::to_string(Config_c->SumoSetup.SpeedMode).c_str() : "(not set, SUMO default kept)",
+				Config_c->SumoSetup.LaneChangeMode >= 0 ? std::to_string(Config_c->SumoSetup.LaneChangeMode).c_str() : "(-1, SUMO default kept)");
+		}
+	}
+
 	// #176: the `all` subscription means every vehicle in the network, unbounded.
 	// If a radius was also configured alongside `all`, it is ignored — warn so the
 	// config author is not surprised.
@@ -815,8 +840,35 @@ int TrafficHelper::sendToSUMO(double simTime, MsgHelper Msg_c) {
 		//uint8_t a = (color) & 0xFF;
 		//traci.vehicle.setColor("flow_0.0", libsumo::TraCIColor(r, g, b, a));
 
-		for (int iV = 0; iV < VehIdInSimulator.size(); iV++) {
-			//traci.vehicle.setSpeedMode(VehIdInSimulator[iV], 31); // default speed mode
+		if (!sumoModesApplied_.empty() || !egoModesOnEntryIds_.empty()) {
+			const unordered_set<string> inNetwork(VehIdInSimulator.begin(), VehIdInSimulator.end());
+
+			// a vehicle that left comes back with SUMO's default modes
+			auto dropAbsent = [&](unordered_set<string>& applied) {
+				for (auto it = applied.begin(); it != applied.end();) {
+					it = inNetwork.count(*it) ? std::next(it) : applied.erase(it);
+				}
+			};
+			dropAbsent(sumoModesApplied_);
+			dropAbsent(egoModesOnEntryApplied_);
+
+			for (const auto& egoId : egoModesOnEntryIds_) {
+				if (!inNetwork.count(egoId) || egoModesOnEntryApplied_.count(egoId) ||
+					externalEgoOwnerOf(egoId) != ExternalEgoOwner::None) {
+					continue;
+				}
+				if (Config_c->SumoSetup.SpeedModeConfigured) {
+					SUMO_TRACI_NAMESPACE::Vehicle::setSpeedMode(egoId, Config_c->SumoSetup.SpeedMode);
+				}
+				if (Config_c->SumoSetup.LaneChangeMode >= 0) {
+					SUMO_TRACI_NAMESPACE::Vehicle::setLaneChangeMode(egoId, Config_c->SumoSetup.LaneChangeMode);
+				}
+				egoModesOnEntryApplied_.insert(egoId);
+				printf("SumoSetup.EgoModesOnEntry: ego '%s' entered at t=%.2f; speedMode %d, laneChangeMode %d\n",
+					egoId.c_str(), simTime,
+					SUMO_TRACI_NAMESPACE::Vehicle::getSpeedMode(egoId),
+					SUMO_TRACI_NAMESPACE::Vehicle::getLaneChangeMode(egoId));
+			}
 		}
 		for (int iV = 0; iV < Msg_c.VehDataSend_um[0].size(); iV++) {
 			string idStr = Msg_c.VehDataSend_um[0][iV].id;
@@ -925,39 +977,14 @@ int TrafficHelper::sendToSUMO(double simTime, MsgHelper Msg_c) {
 					else {
 						SUMO_TRACI_NAMESPACE::Vehicle::setSpeed(idStr, speed); // speed set at (k) essentially will be reflected at (k+1), not considered in the integration
 
-						/*
-						bit0: Regard safe speed
-						bit1 : Regard maximum acceleration
-						bit2 : Regard maximum deceleration
-						bit3 : Regard right of way at intersections(only applies to approaching foe vehicles outside the intersection)
-						bit4 : Brake hard to avoid passing a red light
-						bit5 : Disregard right of way within intersections(only applies to foe vehicles that have entered the intersection).
-						*/
-
-						SUMO_TRACI_NAMESPACE::Vehicle::setSpeedMode(idStr, Config_c->SumoSetup.SpeedMode); // 000000 most checks off
-
-						/*
-						Lane changing, by the same route: SUMO owns the vehicle,
-						so the mode is set here and not by an application. A
-						client has no TraCI connection of its own -- it holds a
-						FIXS port, and reaching for traci from one fails with
-						"Not connected".
-
-						bit0/1: strategic   (reach the lane the route needs)
-						bit2/3: cooperative (make room for others)
-						bit4/5: speed gain  (change lane to go faster)
-						bit6/7: keep right
-						597 is SUMO's default, every motive on. 512 leaves only
-						strategic: follows its route, never changes lane by choice.
-						*/
-						if (Config_c->SumoSetup.LaneChangeMode >= 0) {
-							SUMO_TRACI_NAMESPACE::Vehicle::setLaneChangeMode(idStr, Config_c->SumoSetup.LaneChangeMode);
+						if (sumoModesApplied_.insert(idStr).second) {
+							// speedMode bits: 0 safe speed, 1 max accel, 2 max decel, 3 right of way, 4 red light, 5 ignore foes inside junction
+							SUMO_TRACI_NAMESPACE::Vehicle::setSpeedMode(idStr, Config_c->SumoSetup.SpeedMode);
+							// laneChangeMode bits: 0-1 strategic, 2-3 cooperative, 4-5 speed gain, 6-7 keep right
+							if (Config_c->SumoSetup.LaneChangeMode >= 0) {
+								SUMO_TRACI_NAMESPACE::Vehicle::setLaneChangeMode(idStr, Config_c->SumoSetup.LaneChangeMode);
+							}
 						}
-						//SUMO_TRACI_NAMESPACE::Vehicle::setSpeedMode(idStr, 0); // 000000 most checks off
-						//SUMO_TRACI_NAMESPACE::Vehicle::setSpeedMode(idStr, 24); // 011000
-						//SUMO_TRACI_NAMESPACE::Vehicle::setSpeedMode(idStr, 8); // 001000
-
-						//SUMO_TRACI_NAMESPACE::Vehicle::setSpeedFactor(idStr, 1);
 					}
 
 					// change vehicle color if needed
