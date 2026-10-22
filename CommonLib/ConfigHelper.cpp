@@ -1057,6 +1057,40 @@ ViewDef_t ConfigHelper::viewDefaults(const std::string& name, const std::string&
 			exit(-1);
 		}
 	}
+	auto trim = [](std::string t) {
+		t.erase(0, t.find_first_not_of(" \t"));
+		t.erase(t.find_last_not_of(" \t") + 1);
+		return t;
+	};
+	if (node && node["Overlay"] && !node["Overlay"].IsNull()) {
+		YAML::Node ov = node["Overlay"];
+		std::vector<std::string> items;
+		if (ov.IsSequence()) {
+			for (size_t i = 0; i < ov.size(); i++) items.push_back(ov[i].as<std::string>());
+		}
+		else {
+			items.push_back(ov.as<std::string>());
+		}
+		for (const std::string& raw : items) {
+			const std::string e = trim(lowerView(raw));
+			if (e != "signal" && e != "speed" && e != "pedals" && e != "advisory") {
+				printf("ERROR: ViewSetup view '%s': Overlay elements must be among signal|speed|pedals|advisory, got '%s'\n",
+					name.c_str(), e.c_str());
+				exit(-1);
+			}
+			v.Overlay.push_back(e);
+		}
+	}
+	v.OverlayUnits = trim(lowerView(parserString(node, "OverlayUnits", "mph")));
+	if (v.OverlayUnits != "mph" && v.OverlayUnits != "kmh") {
+		printf("ERROR: ViewSetup view '%s': OverlayUnits must be mph|kmh, got '%s'\n", name.c_str(), v.OverlayUnits.c_str());
+		exit(-1);
+	}
+	v.OverlaySpeedMax = parserDouble(node, "OverlaySpeedMax", v.OverlayUnits == "mph" ? 40.0 : 60.0);
+	if (v.OverlaySpeedMax <= 0) {
+		printf("ERROR: ViewSetup view '%s': OverlaySpeedMax must be positive\n", name.c_str());
+		exit(-1);
+	}
 	return v;
 }
 

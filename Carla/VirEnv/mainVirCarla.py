@@ -306,7 +306,29 @@ def main(argv=None):
             return backend.egoActor()
         h = core.mappedVehicles().get(target)
         return None if h is None else backend.actorOf(h)
-    cellSpeed = None          # what the cell last commanded (cellOnTraffic only)
+
+    def _hudSample(target):
+        """The HUD's values for ``target`` at the frame just ticked; None where there is no data."""
+        out = {}
+        rec = core.Msg_c.VehDataRecv_um.get(target)
+        valid = core.Msg_c.vehicle_msg_field_valid
+        if rec is not None:
+            if valid.get('speed'):
+                out['speed'] = rec.speed
+            if valid.get('signalLightColor') and valid.get('signalLightDistance'):
+                out['signalColor'] = rec.signalLightColor
+                out['signalDistance'] = rec.signalLightDistance
+            if valid.get('speedDesired'):
+                out['advisory'] = rec.speedDesired
+        # A physics ego: its measured speed and the control PhysX applied, from this tick's snapshot.
+        if virEnvOwnsEgo and target == egoId and backend.egoActor() is not None:
+            ego = backend.egoActor()
+            vel = ego.get_velocity()
+            ctl = ego.get_control()
+            out['speed'] = math.sqrt(vel.x * vel.x + vel.y * vel.y)
+            out['throttle'], out['brake'] = ctl.throttle, ctl.brake
+        return out
+    cellSpeed = None         # what the cell last commanded (cellOnTraffic only)
     xilSpeedSeen = False
 
     try:
@@ -493,9 +515,13 @@ def main(argv=None):
             backend.flushBatch()   # one acknowledged apply: vehicles + camera
             phase["flush batch"] += time.monotonic() - _t0
             _t0 = time.monotonic()
-            world.tick()               # advance Carla one sub-step
+            frameId = world.tick()     # advance Carla one sub-step
             backend.noteWorldTicked()  # every actor now has a snapshot
             phase["world.tick"] += time.monotonic() - _t0
+            if views.wantsHud():
+                _t0 = time.monotonic()
+                views.sampleHud(frameId, _hudSample)
+                phase["views"] += time.monotonic() - _t0
 
             # SUMO <-> CARLA elevation audit, once per exchange. Here rather than
             # inside setVehiclePose because it asks whether the two MAPS agree,

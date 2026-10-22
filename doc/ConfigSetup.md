@@ -214,8 +214,18 @@ ViewSetup:
 | SensorTick | carla cameras | 0 | Seconds between camera frames; 0 is every world tick. A larger value renders less often and is the cheapest way to cut a camera's cost. |
 | Display | carla cameras | true | Show the camera in its window. |
 | Record | carla cameras | `""` (off) | Write the camera to this `.mp4` or `.avi` file (relative to where the bridge was started). Exactly one video frame per world tick, ordered by the frame's world frame number rather than its arrival, so video time is sim time: a world frame with no camera image (`SensorTick`, gaps up to 2 s) repeats the previous image, and longer gaps are left out. CARLA delivers images in bursts, so a frame is only called missing after waiting 2 s of sim time for it (wider if worse lateness is seen), holding at most 256 MB of frames per recording (129 frames at 960x540) while it waits. The video starts at the camera's first frame. An `.mp4` is only playable once the bridge exits normally (end of run or Ctrl+C); if the run may be killed, record `.avi` (MJPG, larger). |
+| Overlay | carla cameras | `[]` (no HUD) | HUD elements drawn onto the camera image, in its window and its video: `signal`, `speed`, `pedals`, `advisory`. Each is drawn only on frames where its data exists (see below). |
+| OverlayUnits | carla cameras | `mph` | `mph` or `kmh`, for the speed dial. |
+| OverlaySpeedMax | carla cameras | 40 (mph), 60 (km/h) | Full scale of the speed dial, in OverlayUnits. |
 | Zoom | sumo `follow` | 600 | Zoom (%) set when following starts; a zoom changed in the GUI afterwards is kept. |
 | Boundary | sumo `fixed` | required | `[xmin, ymin, xmax, ymax]` in SUMO coordinates. |
+
+**HUD.** A compact panel in the top-right of the camera image (286x178 px at 960x540, scaled with `Size`). Its values are sampled once per world tick, after the tick, and drawn on the display and encoder threads onto the image of that same world frame:
+
+- `signal`: a vertical red/amber/green light and the distance to the stop bar, from the target's FIXS record (`signalLightColor`, `signalLightDistance`; both must be in `VehicleMessageField`). Hidden when there is no signal ahead (-1). Code 4 (SUMO `u`) lights red and amber; 0, 5 and 6 show the housing with no lamp lit.
+- `speed`: a 270-degree dial with a digital value. A physics ego (`EgoSetup.Dynamics: virenv`) shows CARLA's measured speed; any other target shows `speed` from its FIXS record.
+- `advisory`: an amber mark on the dial at the record's `speedDesired`, when it is positive. List it only where an application sends an advisory: a baseline run's `speedDesired` is not one.
+- `pedals`: throttle and brake bars, from the control CARLA applied to a physics ego that tick. Hidden for a mirrored target.
 
 **Legacy keys.** The CARLA window and sumo-gui's own view are each one slot:
 

@@ -28,10 +28,12 @@ dependencies:
   # failed every Linux build of this spec, and on Windows python itself depends on
   # vc14_runtime - a solve with or without them installs the same 103 packages.
   - pip
-  # ViewSetup camera windows and recordings (Carla/VirEnv/CarlaViews.py). The PyPI
-  # wheel, so the conda and uv envs carry the same distribution.
+  # ViewSetup camera windows and recordings (Carla/VirEnv/CarlaViews.py), and the
+  # HUD drawn on them (CarlaHud.py). PyPI wheels, so the conda and uv envs carry
+  # the same distributions.
   - pip:
     - opencv-python
+    - pillow
   # No carla, traci or sumolib here on purpose. The release zip strips *.whl from
   # Carla/ (scripts/dispatch/8_create_zip.ps1), so a wheel path in this spec makes
   # `conda env create -f environment.yml` fail on every machine that consumes a

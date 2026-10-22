@@ -21,6 +21,11 @@ import time
 
 import numpy as np
 
+if __package__:
+    from .CarlaHud import drawHud
+else:
+    from CarlaHud import drawHud
+
 CAMERA_TYPES = ('bev', 'chase', 'driver')
 ROLE_PREFIX = 'fixs_view:'
 #: Frame gaps up to this long are filled with the last frame, so video time stays sim time.
@@ -30,6 +35,8 @@ kReorderS = 2.0
 #: Memory a recording may hold in frames waiting for an earlier one, per camera.
 kMaxBufferedBytes = 256 * 1024 * 1024
 kMaxBufferedFrames = 128
+#: World frames of HUD values kept for the display and encoder threads to look up.
+kHudKeepFrames = 600
 _FOURCC = {'.mp4': 'mp4v', '.avi': 'MJPG'}
 
 
@@ -169,6 +176,28 @@ class _Slot:
         self.closed = False
         self.recorder = None
         self.callbackCost = _Cost()
+        self.overlay = tuple(view.get('Overlay') or ())
+        self.units = view.get('OverlayUnits', 'mph')
+        self.speedMax = view.get('OverlaySpeedMax')
+        self.hud = {}
+        self._hudFrames = collections.deque()
+
+    def noteHud(self, frame, sample):
+        """Store the HUD values for world ``frame``; called on the bridge thread only."""
+        self.hud[frame] = sample
+        self._hudFrames.append(frame)
+        while len(self._hudFrames) > kHudKeepFrames:
+            self.hud.pop(self._hudFrames.popleft(), None)
+
+    def drawHud(self, bgr, frame, cost, shown):
+        """Draw this view's HUD for world ``frame`` onto ``bgr``, timing it and counting what was drawn."""
+        if not self.overlay:
+            return
+        t = time.perf_counter()
+        for element in drawHud(bgr, self.hud.get(frame), self.overlay, self.units, self.speedMax):
+            shown[element] += 1
+        shown['frames'] += 1
+        cost.add(time.perf_counter() - t)
 
     def push(self, image):
         t = time.perf_counter()
@@ -189,6 +218,8 @@ class _Display(threading.Thread):
         self.ready = threading.Event()
         self.error = None
         self.cost = {s.name: _Cost() for s in slots}
+        self.hudCost = {s.name: _Cost() for s in slots}
+        self.hudShown = {s.name: collections.Counter() for s in slots}
 
     def run(self):
         try:
@@ -221,7 +252,9 @@ class _Display(threading.Thread):
                         continue
                     seen[s.name] = s.seq
                     t = time.perf_counter()
-                    cv2.imshow(windowTitle(s.name), cv2.cvtColor(bgraOf(image), cv2.COLOR_BGRA2BGR))
+                    bgr = cv2.cvtColor(bgraOf(image), cv2.COLOR_BGRA2BGR)
+                    s.drawHud(bgr, image.frame, self.hudCost[s.name], self.hudShown[s.name])
+                    cv2.imshow(windowTitle(s.name), bgr)
                     self.cost[s.name].add(time.perf_counter() - t)
                     drew = True
                 cv2.waitKey(1 if drew else 5)
@@ -250,7 +283,11 @@ class _Display(threading.Thread):
 class _Recorder(threading.Thread):
     """Encodes every frame of one camera to a video at one frame per world tick."""
 
-    def __init__(self, name, path, step, size):
+    def __init__(self, slot, path, step, size):
+        name = slot.name
+        self.slot = slot
+        self.hudCost = _Cost()
+        self.hudShown = collections.Counter()
         super().__init__(name='fixs-record-' + name, daemon=True)
         self.name = name
         self.path = os.path.abspath(path)
@@ -308,6 +345,7 @@ class _Recorder(threading.Thread):
             if image is not self._lastImage:
                 self._lastImage = image
                 self._lastBgr = cv2.cvtColor(bgraOf(image), cv2.COLOR_BGRA2BGR)
+                self.slot.drawHud(self._lastBgr, image.frame, self.hudCost, self.hudShown)
             for _ in range(n):
                 self._writer.write(self._lastBgr)
         return True
@@ -361,7 +399,7 @@ class CarlaViews:
                 self._display = None
         for v in self._views:
             if v.view['Record']:
-                rec = _Recorder(v.slot.name, v.view['Record'], worldStep, v.view['Size'])
+                rec = _Recorder(v.slot, v.view['Record'], worldStep, v.view['Size'])
                 rec.start()
                 v.slot.recorder = rec
                 self._recorders.append(rec)
@@ -376,6 +414,19 @@ class CarlaViews:
             print("ViewSetup '%s': carla %s camera on '%s', %dx%d, fov %g, mount %s pitch %g -> %s"
                   % (d['Name'], d['Type'], d['Target'], d['Size'][0], d['Size'][1], d['Fov'],
                      list(d['Offset']), d['Pitch'], ' + '.join(out)))
+
+    def wantsHud(self):
+        return any(v.slot.overlay for v in self._views)
+
+    def sampleHud(self, frame, sample):
+        """Snapshot each HUD view's values for world ``frame``: ``sample(target)`` -> dict; post-tick."""
+        cache = {}
+        for v in self._views:
+            if v.slot.overlay:
+                target = v.slot.target
+                if target not in cache:
+                    cache[target] = sample(target)
+                v.slot.noteHud(frame, cache[target])
 
     def active(self):
         return bool(self._views)
@@ -470,6 +521,16 @@ class CarlaViews:
             parts = ['callback %s' % v.slot.callbackCost.text()]
             if self._display is not None and v.slot.name in self._display.cost:
                 parts.append('draw %s' % self._display.cost[v.slot.name].text())
+            if v.slot.overlay:
+                consumers = []
+                if self._display is not None and v.slot.name in self._display.hudCost:
+                    consumers.append(('window', self._display.hudCost[v.slot.name],
+                                      self._display.hudShown[v.slot.name]))
+                if v.slot.recorder is not None:
+                    consumers.append(('video', v.slot.recorder.hudCost, v.slot.recorder.hudShown))
+                for where, cost, shown in consumers:
+                    parts.append('HUD on %s %s, drawn %s' % (where, cost.text(), ', '.join(
+                        '%s %d/%d' % (e, shown[e], shown['frames']) for e in v.slot.overlay)))
             print("ViewSetup '%s': %s" % (v.slot.name, '; '.join(parts)))
         if self._display is not None:
             self._display.stop()

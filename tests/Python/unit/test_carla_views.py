@@ -181,3 +181,44 @@ def test_a_recording_has_one_frame_per_world_tick(monkeypatch, tmp_path):
     cap.release()
     assert len(frames) == 4
     assert frames[0] == pytest.approx(40, abs=8) and frames[-1] == pytest.approx(160, abs=8)
+
+
+def test_the_recorded_hud_is_the_one_sampled_for_that_world_frame(monkeypatch, tmp_path):
+    """Frame 10 is sampled with a red light and frame 11 with green: each video frame shows its own."""
+    cv2 = pytest.importorskip("cv2")
+    pytest.importorskip("PIL")
+    from Carla.VirEnv.CarlaHud import panelBox
+    monkeypatch.setattr(cv, "_Display", _Display)
+    path = tmp_path / "hud.avi"
+    world = _World()
+    v = cv.CarlaViews(world, [dict(VIEW, Size=[960, 540], Display=False, Record=str(path),
+                                   Overlay=["signal"], OverlayUnits="mph", OverlaySpeedMax=40.0)], 0.05)
+    assert v.wantsHud()
+    v.update({"ego": _Actor(7)}.get, 1.0)
+    asked = []
+
+    def sample(target):
+        asked.append(target)
+        return {"signalColor": colors[-1], "signalDistance": 50.0}
+
+    colors = [1]
+    v.sampleHud(10, sample)
+    colors.append(3)
+    v.sampleHud(11, sample)
+    cam = world.spawned[0]
+    cam.callback(_Image(11, 960, 540, 60))      # out of order on purpose
+    cam.callback(_Image(10, 960, 540, 60))
+    v.close()
+    assert asked == ["ego", "ego"]
+    x0, y0, _, _, _ = panelBox(960, 540)
+    cap = cv2.VideoCapture(str(path))
+    lamps = []
+    while True:
+        ok, img = cap.read()
+        if not ok:
+            break
+        red = img[y0 + 10 + 22, x0 + 14 + 23]
+        green = img[y0 + 10 + 22 + 82, x0 + 14 + 23]
+        lamps.append('red' if red[2] > 180 else 'green' if green[1] > 160 else '?')
+    cap.release()
+    assert lamps == ['red', 'green']

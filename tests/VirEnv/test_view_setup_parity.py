@@ -38,7 +38,10 @@ CASES = {
         "ViewSetup": {"Views": [
             {"Name": "pov", "Type": "chase", "Size": [1280, 720], "Fov": 100, "SensorTick": 0.05},
             {"Name": "eye", "Type": "driver", "Enable": False},
-            {"Name": "rec", "Type": "chase", "Display": False, "Record": "_video/chase.mp4"},
+            {"Name": "rec", "Type": "chase", "Display": False, "Record": "_video/chase.mp4",
+             "Overlay": ["signal", "Speed", "pedals", "advisory"]},
+            {"Name": "kmh", "Type": "driver", "Overlay": "speed", "OverlayUnits": "KMH"},
+            {"Name": "max", "Type": "bev", "Overlay": [], "OverlaySpeedMax": 55},
             {"Name": "top", "Type": "bev", "Height": 25, "Target": "veh3"},
         ]},
     },
@@ -64,12 +67,13 @@ def _pythonLines(path):
     c.getConfig(path)
     out = []
     for v in c.View_setup["Views"]:
-        out.append('VIEW|%s|%s|%s|%s|%d|%d|%dx%d|%s|%s|%s|%s|%s|%d|%s|%s|%d|%s' % (
+        out.append('VIEW|%s|%s|%s|%s|%d|%d|%dx%d|%s|%s|%s|%s|%s|%d|%s|%s|%d|%s|%s|%s|%s' % (
             v["Name"], v["Simulator"], v["Type"], v["Target"], v["Enable"], v["Implied"],
             v["Size"][0], v["Size"][1], _g(v["Fov"]), _g(v["SensorTick"]),
             ','.join(_g(x) for x in v["Offset"]), _g(v["Pitch"]), _g(v["Height"]),
             v["AlignYaw"], _g(v["Zoom"]), ','.join(_g(x) for x in v["Boundary"]),
-            v["Display"], v["Record"]))
+            v["Display"], v["Record"], ','.join(v["Overlay"]), v["OverlayUnits"],
+            _g(v["OverlaySpeedMax"])))
     cs, ss = c.Carla_setup, c.Sumo_setup
     out.append('VIEW|legacy-carla|%d|%s|%s|%d' % (cs["EnableSpectatorFollow"], cs["CenteredViewId"],
                                                    _g(cs["SpectatorHeight"]), cs["SpectatorAlignYaw"]))
@@ -97,6 +101,9 @@ def test_cpp_and_python_resolve_the_same_views(case, tmp_path):
     [{"Simulator": "sumo", "Type": "fixed"}],
     [{"Offset": [1, 2]}],
     [{"Record": "chase.mkv"}],
+    [{"Overlay": ["speed", "rpm"]}],
+    [{"OverlayUnits": "knots"}],
+    [{"OverlaySpeedMax": 0}],
 ])
 def test_cpp_refuses_what_python_refuses(views, tmp_path):
     exe = cpp_build.ensureBuilt()['view_dump']

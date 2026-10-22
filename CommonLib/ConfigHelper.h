@@ -366,6 +366,9 @@ struct ViewDef_t {
 	std::vector<double> Boundary;       // sumo fixed [xmin, ymin, xmax, ymax]
 	bool Display = true;                // carla camera: show it in a window
 	std::string Record;                 // carla camera: video path (.mp4 | .avi); empty = off
+	std::vector<std::string> Overlay;   // carla camera HUD: signal | speed | pedals | advisory
+	std::string OverlayUnits = "mph";   // mph | kmh
+	double OverlaySpeedMax = 40.0;      // dial full scale, in OverlayUnits
 };
 
 struct ViewSetup_t {

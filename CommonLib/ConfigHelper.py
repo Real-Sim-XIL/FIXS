@@ -26,6 +26,8 @@ VIEW_TYPES = {
     "carla": ("spectator", "bev", "chase", "driver"),
     "sumo": ("follow", "fixed"),
 }
+#: ViewSetup.Views[].Overlay: the HUD elements a carla camera view can draw.
+VIEW_OVERLAY = ("signal", "speed", "pedals", "advisory")
 
 class ConfigHelper:
     def __init__(self):
@@ -391,6 +393,20 @@ class ConfigHelper:
             "Display": self.parserFlag(node, "Display", True),
             "Record": str(node.get("Record", "") or ""),
         }
+        overlay = node.get("Overlay") or []
+        overlay = [str(x).strip().lower() for x in (overlay if isinstance(overlay, list) else [overlay])]
+        bad = [x for x in overlay if x not in VIEW_OVERLAY]
+        if bad:
+            raise SystemExit("ERROR: %s: Overlay elements must be among %s, got '%s'"
+                             % (where, "|".join(VIEW_OVERLAY), bad[0]))
+        units = str(node.get("OverlayUnits", "mph")).strip().lower()
+        if units not in ("mph", "kmh"):
+            raise SystemExit("ERROR: %s: OverlayUnits must be mph|kmh, got '%s'" % (where, units))
+        view["Overlay"] = overlay
+        view["OverlayUnits"] = units
+        view["OverlaySpeedMax"] = float(node.get("OverlaySpeedMax", 40.0 if units == "mph" else 60.0))
+        if view["OverlaySpeedMax"] <= 0:
+            raise SystemExit("ERROR: %s: OverlaySpeedMax must be positive" % where)
         if vtype == "fixed" and not view["Boundary"]:
             raise SystemExit("ERROR: %s: Type fixed needs Boundary: [xmin, ymin, xmax, ymax]" % where)
         if view["Record"] and os.path.splitext(view["Record"])[1].lower() not in (".mp4", ".avi"):
