@@ -321,7 +321,13 @@ def reexec_under_configured(script, cfg=None, drop=(), tag="fixs"):
         return
     print(f"[{tag}] switching to the configured python env:\n        {target}")
     cmd = [target, os.path.abspath(script), *[a for a in sys.argv[1:] if a not in drop]]
-    sys.exit(subprocess.call(cmd, env=dict(os.environ, **{REEXEC_GUARD: "1"})))
+    child_env = dict(os.environ, **{REEXEC_GUARD: "1"})
+    try:
+        import run_registry
+    except ImportError:
+        sys.exit(subprocess.call(cmd, env=child_env))
+    # Leashed, so killing this (outer) process also stops the run it started.
+    sys.exit(run_registry.LEASH.call(cmd, env=child_env))
 
 
 # ------------------------------------------------------------- path resolving

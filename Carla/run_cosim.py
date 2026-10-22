@@ -43,6 +43,7 @@ import urllib.request
 import app_catalog
 import carla_env_setup as env
 import run_profile
+import run_registry
 
 # Flush every line as it is printed. Redirected to a file or a pipe - which is how
 # the .bat/.sh wrappers get run from a shortcut, and how anyone captures a log -
@@ -241,7 +242,7 @@ def maybe_update_fixs(no_check=False, interactive=None):
             # script to run. subprocess quotes the vector properly on both OSes, and
             # is what env.reexec_under_configured already uses for the same reason.
             cmd = [sys.executable, os.path.join(HERE, "run_cosim.py")] + sys.argv[1:]
-            sys.exit(subprocess.call(cmd))
+            sys.exit(run_registry.LEASH.call(cmd))
         print("[cosim] update did not complete; continuing with the current bundle.")
     except Exception as e:
         if os.environ.get("FIXS_DEBUG"):
@@ -752,6 +753,109 @@ CarlaSetup:
 
 HANDOFF_TIMEOUT_S = 60
 
+# This process's entry in the machine-wide run registry; None until _begin_run.
+_RUN = None
+
+
+def _spawn(label, cmd, new_session=False, **kw):
+    """Popen a stack component tied to this run: it dies with run_cosim and the
+    lease records it, so a later launch can tell it is ours."""
+    proc = run_registry.LEASH.popen(cmd, new_session=new_session, **kw)
+    if _RUN is not None:
+        _RUN.add_child(label, proc)
+    return proc
+
+
+def _progress(what):
+    if _RUN is not None:
+        _RUN.progress(what)
+
+
+def _begin_run(app=None, config_yaml=None, carla_port=None):
+    """Register this run, reap runs that died without cleaning up, and refuse to
+    start next to a leftover of this app that no run owns."""
+    global _RUN
+    app_id = (app or {}).get("id")
+    if _RUN is None:
+        _RUN = run_registry.Run.start(app_id=app_id, config=config_yaml,
+                                      ports={"carla": carla_port} if carla_port else None)
+        if _RUN is None:
+            print("[cosim] WARN could not write the run registry "
+                  f"({', '.join(run_registry.registry_dirs())}); this run is not "
+                  f"registered, so other runs cannot see it.")
+        else:
+            print(f"[cosim] run {_RUN.id}" + (
+                f" (registered in {os.path.dirname(_RUN.dir)}: the machine-wide "
+                f"registry is not writable)" if _RUN.fell_back else ""))
+    else:
+        _RUN.update(app=app_id, config=config_yaml)
+        if carla_port:
+            _RUN.set_ports(carla=carla_port)
+    run_registry.reap_stale(log=print, exclude=(_RUN.id,) if _RUN else ())
+
+    owners = run_registry.Ownership()
+    ghosts, unowned = [], []
+    marks = ()
+    if app_id:
+        marks = (f"apps/{app_id}/".lower(), f"apps\\{app_id}\\".lower())
+    for pid, pname, cmd in _cosim_leftovers(app_id):
+        if owners.of(pid) is not None:
+            continue
+        stem = pname.lower()[:-4] if pname.lower().endswith(".exe") else pname.lower()
+        is_app = stem in _INTERPRETERS and any(m in (cmd or "").lower() for m in marks)
+        (ghosts if is_app else unowned).append((pid, pname))
+    if ghosts:
+        sys.exit("[cosim] '" + app_id + "' is already running outside any FIXS run: "
+                 + ", ".join(f"{n} (pid {p})" for p, n in ghosts)
+                 + ".\n        It would answer TrafficLayer instead of the one this "
+                   "run starts. FIXS does not stop processes it does not own: close "
+                   "it, or run `run_cosim --cleanup --all`.")
+    if unowned:
+        print("[cosim] note: co-sim processes that no FIXS run owns are running and "
+              "are left alone: " + ", ".join(f"{n} (pid {p})" for p, n in unowned)
+              + ". `run_cosim --cleanup --all` stops them.")
+
+
+def _port_refusal(port, label, pid, name, hit, carla=False):
+    """Why this run will not start: `port` is taken and the holder is not ours."""
+    who = f"{name or '?'} (pid {pid})"
+    if hit is not None:
+        info, _child = hit
+        lease = info.lease
+        state = "still running" if info.alive else "no longer running"
+        mins = int(info.created_age_s() // 60)
+        return (f"[cosim] port {port} ({label}) is held by {who} of run {info.id}"
+                f" (app {lease.get('app') or '-'}, user {lease.get('user') or '?'}, "
+                f"started {mins} min ago), which is {state}.\n"
+                f"        Two runs cannot share ports yet. Wait for it, or stop it "
+                f"with `run_cosim --stop {info.id}`.")
+    extra = " or pass --no-launch to use the CARLA that is running," if carla else ""
+    return (f"[cosim] port {port} ({label}) is held by {who}, which no FIXS run owns, "
+            f"so FIXS will not stop it.\n"
+            f"        Close it,{extra} or run `run_cosim --cleanup --all` to stop "
+            f"every co-sim process on this machine.")
+
+
+def _free_port_or_exit(port, label, carla=False):
+    """Make sure `port` is free for this run. A holder left by THIS run is stopped;
+    any other holder is refused, never killed."""
+    pid = _pid_on_port(port)
+    if not pid:
+        return
+    owners = run_registry.Ownership()
+    hit = owners.of(pid)
+    name = owners.name(pid) or _process_name(pid)
+    if hit is not None and _RUN is not None and hit[0].id == _RUN.id:
+        print(f"[cosim] port {port} is still held by {name} (pid {pid}) from this "
+              f"run; stopping it so {label} can bind.")
+        _kill_pid_tree(pid)
+        for _ in range(40):
+            if not _port_listening(port):
+                return
+            time.sleep(0.5)
+        sys.exit(f"[cosim] port {port} is still in use by {name} (pid {pid}).")
+    sys.exit(_port_refusal(port, label, pid, name, hit, carla=carla))
+
 
 def start_app(app, config_yaml=None, timeout=HANDOFF_TIMEOUT_S, sumo_only=False,
               sumocfg=None):
@@ -810,7 +914,8 @@ def start_app(app, config_yaml=None, timeout=HANDOFF_TIMEOUT_S, sumo_only=False,
     if sumocfg:
         env["FIXS_SUMOCFG"] = sumocfg
     print(f"[APP]  {app['launch']}")
-    proc = subprocess.Popen(argv, cwd=cwd, env=env)
+    proc = _spawn(f"app {app['id']}", argv, cwd=cwd, env=env)
+    _progress(f"app {app['id']} started")
     deadline = time.time() + timeout
     while not os.path.isfile(handoff):
         if proc.poll() is not None:
@@ -874,13 +979,6 @@ def run_native_stack(config_yaml, sumocfg, tl_table, cfg, args, app=None,
     if not shutil.which(sumo_bin):
         sys.exit(f"[cosim] {sumo_bin} not on PATH (install SUMO / add %SUMO_HOME%/bin).")
 
-    # Clear stale FIXS-side processes before launching (what the reference probe
-    # .bat does with taskkill). A previous run closed by its window X - or killed
-    # mid-tick - leaves SUMO holding the TraCI port or TrafficLayer holding the bridge
-    # port, and the
-    # new SUMO then cannot bind: the stack comes up but every component loops on
-    # "Could not connect to TraCI server". CARLA is deliberately left alone (it is
-    # slow to start and run_cosim's own preflight owns it).
     # Ports come from the scenario yaml, so moving one there moves it for every
     # component. AutoStart only decides whether sumo-gui gets --start.
     traci_port, bridge_port = read_stack_ports(config_yaml)
@@ -904,24 +1002,14 @@ def run_native_stack(config_yaml, sumocfg, tl_table, cfg, args, app=None,
                   f"it lists that port. TrafficLayer will refuse the bridge's "
                   f"subscribe - add {bridge_port} to a VehicleSubscription.")
 
+    if _RUN is not None:
+        _RUN.set_ports(traci=traci_port, bridge=bridge_port)
+    # A leftover of a dead run was reaped when this run registered; whatever still
+    # holds a port now belongs to a live run or to no run, and is not ours to stop.
     for label, port in (("SUMO (TraCI)", traci_port),
                         ("TrafficLayer (bridge)", bridge_port)):
-        if port is None:
-            continue            # traffic-only scenario: no bridge port to free
-        pid = _pid_on_port(port)
-        if not pid:
-            continue
-        name = _process_name(pid) or "?"
-        print(f"[cosim] port {port} still held by {name} (pid {pid}) from an earlier "
-              f"run; stopping it so {label} can bind.")
-        _kill_pid_tree(pid)
-        for _ in range(10):
-            if not _port_listening(port):
-                break
-            time.sleep(0.5)
-        if _port_listening(port):
-            sys.exit(f"[cosim] port {port} is still in use; close the leftover "
-                     f"{name} window and re-run.")
+        if port is not None:
+            _free_port_or_exit(port, label)
 
     procs = []          # [(label, Popen)] in start order
     if app_proc is not None:
@@ -958,7 +1046,7 @@ def run_native_stack(config_yaml, sumocfg, tl_table, cfg, args, app=None,
                   f"(TrafficLayer is one).")
         print(f"[SUMO] {' '.join(sumo_cmd)}")
         print_sumo_args(sumo_origins)
-        sumo = subprocess.Popen(sumo_cmd)
+        sumo = _spawn("SUMO", sumo_cmd)
         procs.append(("SUMO", sumo))
         # SUMO must be listening before TrafficLayer connects as its TraCI client.
         for _ in range(30):
@@ -979,7 +1067,7 @@ def run_native_stack(config_yaml, sumocfg, tl_table, cfg, args, app=None,
                   "in its window when you want the simulation to run.")
 
         print(f"[TL]   {os.path.basename(tl_exe)} -f {config_yaml}")
-        tl = subprocess.Popen([tl_exe, "-f", config_yaml])
+        tl = _spawn("TrafficLayer", [tl_exe, "-f", config_yaml])
         procs.append(("TrafficLayer", tl))
         # TrafficLayer serves the bridge port; wait for it before starting
         # VirCarlaEnv, which connects to it. A traffic-only scenario has no bridge
@@ -1029,7 +1117,7 @@ def run_native_stack(config_yaml, sumocfg, tl_table, cfg, args, app=None,
                 vce_cmd += ["-t", tl_table]
             print(f"[VCE]  {bridge_name} -f {config_yaml}"
                   + (f" -t {tl_table}" if tl_table else ""))
-            vce = subprocess.Popen(vce_cmd)
+            vce = _spawn(bridge_name, vce_cmd)
             procs.append((bridge_name, vce))
             time.sleep(3)   # long enough for a config/CARLA-connection failure to surface
             if not _check(bridge_name, vce,
@@ -1048,6 +1136,7 @@ def run_native_stack(config_yaml, sumocfg, tl_table, cfg, args, app=None,
                   + (f" + {app['id']}" if app_proc is not None else "") + ".\n"
                   "[cosim] vehicles should now appear in the CARLA window. Ctrl+C here, or "
                   f"close {front_name}, to stop.\n")
+        _progress("stack up")
 
         # Supervise: block on the front process but surface it if any other
         # component dies first - otherwise a dead TrafficLayer just looks like a freeze.
@@ -1148,25 +1237,16 @@ def run_python_bridge(config_yaml, sumocfg, tl_table, tls_manager, no_net_offset
     # FIXS-native stack above. This is CARLA's own bridge (#330).
     print(cadence_banner("standalone", carla_tick, pose_refresh, realtime))
 
-    # A leftover SUMO from a killed run still holds the TraCI port, and the new one
-    # then cannot bind - same failure the native stack guards against.
-    pid = _pid_on_port(traci_port)
-    if pid:
-        name = _process_name(pid) or "?"
-        print(f"[cosim] port {traci_port} still held by {name} (pid {pid}) from an "
-              f"earlier run; stopping it so SUMO can bind.")
-        _kill_pid_tree(pid)
-        for _ in range(10):
-            if not _port_listening(traci_port):
-                break
-            time.sleep(0.5)
+    if _RUN is not None:
+        _RUN.set_ports(traci=traci_port)
+    _free_port_or_exit(traci_port, "SUMO (TraCI)")
 
     sumo_cmd, sumo_origins = sumo_launch_cmd(sumocfg, traci_port, num_clients,
                                              args.sumo_gui, sumo_autostart, app,
                                              app_owns_scenario)
     print(f"[SUMO] {' '.join(sumo_cmd)}")
     print_sumo_args(sumo_origins)
-    sumo = subprocess.Popen(sumo_cmd)
+    sumo = _spawn("SUMO", sumo_cmd)
     try:
         for _ in range(30):
             if _port_listening(traci_port) or sumo.poll() is not None:
@@ -1196,7 +1276,12 @@ def run_python_bridge(config_yaml, sumocfg, tl_table, tls_manager, no_net_offset
         if not realtime:
             cmd.append("--no-realtime")
         print(f"[SYNC] {' '.join(cmd)}")
-        return subprocess.call(cmd)
+        with _spawn("run_synchronization", cmd) as sync:
+            try:
+                return sync.wait()
+            except BaseException:
+                sync.kill()
+                raise
     finally:
         if sumo.poll() is None:
             print("[cosim] stopping SUMO ...")
@@ -1370,9 +1455,7 @@ def _res_arg(text):
 def launch_carla(cfg, port=2000, render_offscreen=False, quality_level=None, level=None):
     cmd = _carla_command(cfg, port, render_offscreen, quality_level, level)
     print(f"[CARLA] launching ({cfg['mode']}): {' '.join(cmd)}")
-    if platform.system() == "Windows":
-        return subprocess.Popen(cmd)
-    return subprocess.Popen(cmd, preexec_fn=os.setsid)
+    return _spawn("CARLA", cmd, new_session=platform.system() != "Windows")
 
 
 def report_traffic_lights(world, tls_manager, cfg, target_map):
@@ -1616,14 +1699,9 @@ def _is_carla_process(name):
 # leftovers from an earlier run
 # ---------------------------------------------------------------------------
 #
-# The port sweep further down catches SUMO and TrafficLayer, which hold ports
-# this launcher knows. Nothing catches the APPLICATION: it listens on nothing,
-# so a run closed by its window X leaves it alive and the next run sits at
-# "0 exchanges" while TrafficLayer answers the ghost.
-#
-# Matched by command line rather than by name, and the pattern comes from the
-# catalog: an app's process is an interpreter whose command line names a file
-# under apps/<id>/. True for every app, hardcodes none.
+# Found by name (stack exes) or by command line (an interpreter running a file
+# under apps/<id>/). Only `--cleanup --all` stops these by name; everything else
+# stops only what a dead run's lease names (run_registry).
 
 _INTERPRETERS = ("python", "pythonw", "python3", "py")
 _STACK_NAMES = ("trafficlayer", "vircarlaenv", "sumo", "sumo-gui")
@@ -1692,12 +1770,93 @@ def _cosim_leftovers(app_id=None, include_carla=False):
     return out
 
 
-def run_cleanup(app_id=None):
-    """--cleanup: stop what a co-sim leaves behind, then exit.
+_LISTED_PORTS = ((DEFAULT_TRACI_PORT, "SUMO TraCI"), (4420, "XIL"), (4430, "app"),
+                 (DEFAULT_BRIDGE_PORT, "TrafficLayer bridge"),
+                 (DEFAULT_CARLA_PORT, "CARLA RPC"), (8000, "Traffic Manager"))
 
-    CARLA is included, unlike the pre-launch sweep that leaves it alone: someone
-    asking for a cleanup wants the machine back.
+
+def _ago(seconds):
+    s = int(seconds)
+    if s < 120:
+        return f"{s}s"
+    return f"{s // 60}m" if s < 7200 else f"{s // 3600}h{s % 3600 // 60:02d}m"
+
+
+def run_list():
+    """--list runs: every run in the registry, and who holds the default ports."""
+    runs = run_registry.scan()
+    dirs = ", ".join(run_registry.registry_dirs())
+    if not runs:
+        print(f"[cosim] no runs registered ({dirs}).")
+    else:
+        print(f"[cosim] runs ({dirs}):")
+    for info in runs:
+        lease = info.lease
+        owner = lease.get("owner") or {}
+        state = "LIVE " if info.alive else "STALE"
+        ports = ", ".join(f"{k} {v}" for k, v in (lease.get("ports") or {}).items()) or "-"
+        print(f"  {state} {info.id}  app {lease.get('app') or '-'}  user "
+              f"{lease.get('user') or '?'}  pid {owner.get('pid', '?')}  up "
+              f"{_ago(info.created_age_s())}  ports {ports}")
+        prog = lease.get("last_progress") or {}
+        if prog.get("what"):
+            print(f"         last progress: {prog['what']} ({prog.get('at', '?')})")
+        kids = lease.get("children") or []
+        if kids:
+            print("         children: " + ", ".join(
+                f"{c.get('label')} {c.get('pid')}"
+                + ("" if run_registry.same_process(c.get("pid"), c.get("start"))
+                   else " (gone)") for c in kids))
+        if not info.alive:
+            print("         its run_cosim is gone; `run_cosim --cleanup` reaps it.")
+    owners = run_registry.Ownership(runs)
+    ports = dict(_LISTED_PORTS)
+    for info in runs:
+        for k, v in (info.lease.get("ports") or {}).items():
+            if isinstance(v, int):
+                ports.setdefault(v, k)
+    print("[cosim] ports:")
+    for port in sorted(ports):
+        pid = _pid_on_port(port)
+        if not pid:
+            print(f"  {port:>5} {ports[port]:<20} free")
+            continue
+        hit = owners.of(pid)
+        name = owners.name(pid) or _process_name(pid) or "?"
+        whose = (f"run {hit[0].id}" if hit is not None
+                 else "NOT owned by any FIXS run")
+        print(f"  {port:>5} {ports[port]:<20} {name} pid {pid} -> {whose}")
+    return 0
+
+
+def run_cleanup(app_id=None, everything=False):
+    """--cleanup: reap runs that died without cleaning up, then exit.
+
+    Live runs and processes no run owns are reported, not stopped. With
+    everything (--cleanup --all) every co-sim process on the machine is stopped
+    by name, CARLA included, whoever started it.
     """
+    if not everything:
+        reaped = run_registry.reap_stale(log=print)
+        runs = run_registry.scan()
+        for info in runs:
+            if info.alive:
+                print(f"[cosim] run {info.id} is still running (app "
+                      f"{info.lease.get('app') or '-'}, user "
+                      f"{info.lease.get('user') or '?'}); left alone. "
+                      f"`run_cosim --stop {info.id}` stops it.")
+        owners = run_registry.Ownership(runs)
+        unowned = [(p, n) for p, n, _c in _cosim_leftovers(app_id, include_carla=True)
+                   if owners.of(p) is None]
+        if unowned:
+            print("[cosim] not owned by any FIXS run, so left alone: "
+                  + ", ".join(f"{n} (pid {p})" for p, n in unowned)
+                  + ".\n[cosim] `run_cosim --cleanup --all` stops every co-sim "
+                    "process on this machine, whoever started it.")
+        if not reaped and not unowned:
+            print("[cosim] nothing left over from an earlier run.")
+        return 0
+    run_registry.reap_stale(log=print)
     victims = _cosim_leftovers(app_id, include_carla=True)
     if not victims:
         print("[cosim] nothing left running.")
@@ -1743,6 +1902,8 @@ def _kill_pid_tree(pid):
                 pgid = os.getpgid(pid)
             except Exception:
                 pgid = None
+            if pgid == os.getpgrp():
+                pgid = None              # our own group: killpg would signal run_cosim too
             def _signal(sig):
                 if pgid is not None:
                     os.killpg(pgid, sig)
@@ -3791,13 +3952,21 @@ def main():
                          "FIXS binaries, CARLA, peer, maps, gh auth) and exit; "
                          "non-zero exit if anything is broken")
     ap.add_argument("--cleanup", action="store_true",
-                    help="stop everything a co-sim leaves behind -- SUMO, "
-                         "TrafficLayer, the bridge, CARLA and the application -- "
-                         "then exit. A run closed by its window X or killed "
-                         "mid-tick leaves the APPLICATION alive with nothing to "
-                         "notice it, and the next run then sits at 0 exchanges. "
-                         "With --app, that app's own process is included; without "
-                         "it, every app's is")
+                    help="stop what runs that died without cleaning up left "
+                         "behind (only what their lease names), then exit. Live "
+                         "runs and processes no run owns are listed, not stopped")
+    ap.add_argument("--all", dest="cleanup_all", action="store_true",
+                    help="with --cleanup: stop EVERY co-sim process on this machine "
+                         "by name -- SUMO, TrafficLayer, the bridge, CARLA and the "
+                         "application -- whoever started it. With --app, that "
+                         "app's own process is included; without it, every app's is")
+    ap.add_argument("--list", nargs="?", const="runs", choices=["runs"], default=None,
+                    metavar="runs",
+                    help="list the co-sim runs on this machine (live and dead), their "
+                         "ports and children, and who holds the default ports, then exit")
+    ap.add_argument("--stop", default=None, metavar="RUN_ID",
+                    help="stop one run by its id (from --list) and what it started, "
+                         "then exit")
     ap.add_argument("--role", choices=["traffic", "render"], default=None,
                     help="which half of a distributed co-sim this machine is; "
                          "--doctor infers it from what is installed here, and this "
@@ -3942,8 +4111,14 @@ def main():
     # --cleanup stops things rather than starting them, so it runs before any
     # setup, map or CARLA work - the point is to be usable when the machine is in
     # a state that would make those fail.
+    if args.cleanup_all and not args.cleanup:
+        sys.exit("[cosim] --all only means something with --cleanup.")
     if args.cleanup:
-        return run_cleanup(getattr(args, "app", None))
+        return run_cleanup(getattr(args, "app", None), everything=args.cleanup_all)
+    if args.list:
+        return run_list()
+    if args.stop:
+        return run_registry.stop_run(args.stop, log=print)
 
     # --doctor and --version answer a question and stop. Neither touches a map, a
     # setup or a server, so they are safe to run at any time - including while a
@@ -4368,20 +4543,11 @@ def main():
     # TrafficLayer while the map is cooked and CARLA comes up. A first cook is
     # minutes, so its wait for the bridge has to be patient - run_cosim stops it if
     # anything below fails.
+    # Registered before anything is spawned, so a leftover app of a dead run (it
+    # holds no port and would answer TrafficLayer instead of ours) is reaped first.
+    _begin_run(app, args.config or setup.get("config"),
+               None if (args.no_launch or args.sumo_only) else args.carla_port)
     if app and app.get("launch"):
-        # A leftover app from an earlier run holds no port, so the port sweep
-        # cannot see it, and it waits forever (the eco app runs --fixsTimeout 0).
-        # It then answers TrafficLayer instead of the one started here and the
-        # bridge reports "0 exchanges" with nothing naming the cause. Swept HERE,
-        # before this run's app exists, so there is nothing of ours to confuse it
-        # with. CARLA is skipped: the preflight owns it.
-        for pid, pname, _ in _cosim_leftovers(app.get("id")):
-            if _is_carla_process(pname):
-                continue
-            print(f"[cosim] {pname} (pid {pid}) is left over from an earlier run; "
-                  f"stopping it so this one is not answered by a ghost.")
-            _kill_pid_tree(pid)
-
         # The yaml this run will hand TrafficLayer. Known already for a config that
         # was chosen (--config, or the one the profile remembers); a first run that
         # GENERATES a per-map config has none yet, and the app falls back to its own.
@@ -4909,30 +5075,17 @@ def main():
     carla_proc = None
     try:
         if not args.no_launch:
-            # If the RPC port is already taken, a CARLA from a previous run is
-            # probably still alive. Launching anyway gives a split brain (the new
-            # server can't bind the port, so it sits on the default map while we
-            # drive the OLD one). Auto-kill a *stale CARLA* holding the port; only
-            # abort if a non-CARLA process owns it (don't kill something unrelated).
+            # Launching onto a taken RPC port gives a split brain: the new server
+            # cannot bind and sits on the default map while we drive the OLD one.
+            # A dead run's CARLA was reaped at registration; any other holder is
+            # refused, never killed, unless it is this run's own.
             if _port_in_use(args.carla_host, args.carla_port):
-                pid = _pid_on_port(args.carla_port)
-                name = _process_name(pid) if pid else ""
-                if pid and _is_carla_process(name):
-                    print(f"[cosim] a stale CARLA is holding port {args.carla_port} "
-                          f"(PID {pid}, {name}); terminating it ...")
-                    _kill_pid_tree(pid)
-                    for _ in range(40):
-                        if not _port_in_use(args.carla_host, args.carla_port):
-                            break
-                        time.sleep(0.5)
-                    if _port_in_use(args.carla_host, args.carla_port):
-                        sys.exit(f"[cosim] could not free port {args.carla_port}; "
-                                 f"kill CARLA manually and retry.")
-                    print(f"[cosim] port {args.carla_port} freed; launching a fresh CARLA.")
-                else:
-                    sys.exit(
-                        f"[cosim] port {args.carla_port} is in use by a non-CARLA process "
-                        f"({name or 'unknown'}); free it or pass --no-launch to use what's running.")
+                if _pid_on_port(args.carla_port):
+                    _free_port_or_exit(args.carla_port, "CARLA RPC", carla=True)
+                if _port_in_use(args.carla_host, args.carla_port):
+                    sys.exit(f"[cosim] port {args.carla_port} (CARLA RPC) is in use and "
+                             f"its holder cannot be identified; free it or pass "
+                             f"--no-launch to use what is running.")
             _tell_peer(ctl_sock, "launch", "starting the CARLA server")
             carla_proc = launch_carla(cfg, args.carla_port, args.render_offscreen,
                                       args.quality_level, target_level)
@@ -5017,6 +5170,7 @@ def main():
             sys.exit(f"[cosim] map '{target_map}' not confirmed loaded "
                      f"(current world: '{current}'); aborting before SUMO.")
         print(f"[CARLA] map ready: {loaded}")
+        _progress(f"CARLA map ready: {loaded}")
         world = client.get_world()
 
         # First point at which this machine can observe whether the CARLA it is
