@@ -149,9 +149,9 @@ def test_bad_views_are_refused(views, needle, tmp_path):
     assert needle in str(e.value)
 
 
-def sequence(frames, step=0.05):
+def sequence(frames, step=0.05, **kw):
     """World frame of each video frame the sequencer writes, for frames arriving in this order."""
-    sq = FrameSequencer(step)
+    sq = FrameSequencer(step, **kw)
     out = []
     for f in frames:
         out += [img for img, n in sq.add(f, f) for _ in range(n)]
@@ -197,3 +197,60 @@ def test_never_more_video_frames_than_world_ticks():
     frames = [5, 3, 4, 3, 9, 8, 7, 6, 4, 10]          # duplicates, late, reversed
     sq, out = sequence(frames)
     assert out == list(range(3, 11)) and sq.written == 10 - 3 + 1
+
+
+
+def bursty(first, n, rng, maxLate):
+    """Arrival order of frames first..first+n-1 when CARLA stalls a run of them and delivers it in one burst.
+
+    A stalled run of 3-12 consecutive frames arrives together, 11 to maxLate ticks after
+    its first frame, with the later frames overtaking it. No frame is lost.
+    """
+    arrival = {}
+    f = first
+    while f < first + n:
+        if rng.random() < 0.012:
+            run = rng.randint(3, 12)
+            when = f + rng.randint(max(11, run), maxLate)
+            for k in range(f, min(first + n, f + run)):
+                arrival[k] = when
+            f += run
+        else:
+            arrival[f] = f
+            f += 1
+    return sorted(arrival, key=lambda k: (arrival[k], k))
+
+
+def test_bursts_up_to_30_ticks_late_are_kept_not_repeated():
+    """The live run: about 9% of frames came more than 10 ticks late, in bursts. None missing."""
+    rng = random.Random(4321)
+    frames = bursty(1791, 6000, rng, 30)
+    assert sorted(frames) == list(range(1791, 7791))
+    sq, out = sequence(frames)
+    assert 20 <= sq.maxLateness <= 30
+    assert out == list(range(1791, 7791))
+    assert (sq.written, sq.filled, sq.skipped, sq.dropped, sq.capHits) == (6000, 0, 0, 0, 0)
+
+
+def test_the_window_is_two_seconds_of_sim_time():
+    assert FrameSequencer(0.05).window == 40
+    assert FrameSequencer(0.1).window == 20
+
+
+def test_the_window_widens_to_the_worst_lateness_seen():
+    # Frame 100 arrives after 160 and frame 200 after 260: both 60 ticks late, past the 40-tick window.
+    frames = [f for f in range(300) if f not in (100, 200)]
+    frames.insert(frames.index(160) + 1, 100)
+    frames.insert(frames.index(260) + 1, 200)
+    sq, out = sequence(frames)
+    assert sq.maxLateness == 60 and sq.window == 61
+    assert (sq.dropped, sq.filled) == (1, 1)          # the first one was lost, the second kept
+    assert out[200] == 200 and out[100] == 99 and len(out) == 300
+
+
+def test_buffered_frames_are_capped():
+    frames = list(range(1, 200)) + [0]                # frame 0 never comes in time
+    sq, out = sequence(frames, maxBuffered=16)
+    assert sq.peakBuffered <= 16 and sq.capHits >= 1
+    assert len(out) <= 200
+

@@ -13,6 +13,7 @@ appears, changes actor, or leaves.
 """
 
 import collections
+import math
 import os
 import sys
 import threading
@@ -24,6 +25,11 @@ CAMERA_TYPES = ('bev', 'chase', 'driver')
 ROLE_PREFIX = 'fixs_view:'
 #: Frame gaps up to this long are filled with the last frame, so video time stays sim time.
 kMaxFillS = 2.0
+#: How long a recording waits for a late frame before calling it missing (sim time).
+kReorderS = 2.0
+#: Memory a recording may hold in frames waiting for an earlier one, per camera.
+kMaxBufferedBytes = 256 * 1024 * 1024
+kMaxBufferedFrames = 128
 _FOURCC = {'.mp4': 'mp4v', '.avi': 'MJPG'}
 
 
@@ -54,14 +60,20 @@ class FrameSequencer:
 
     Frames are keyed on their world frame number. Each world frame from the first
     to the last is written exactly once: its own image, or, if it never arrives,
-    the previous image (gaps longer than kMaxFillS are skipped instead). A missing
-    frame is only declared missing once a frame ``window`` ticks later has arrived.
+    the previous image (gaps longer than kMaxFillS are skipped instead).
+
+    A frame is declared missing only once a frame ``window`` ticks later has
+    arrived. The window starts at kReorderS of sim time and widens to the worst
+    lateness seen so far; at most ``maxBuffered`` frames are held, and reaching
+    that cap declares the oldest gap missing.
     """
 
-    def __init__(self, step, window=10):
+    def __init__(self, step, maxBuffered=kMaxBufferedFrames):
         self.step = step
-        self.window = window
+        self.window = max(1, int(math.ceil(kReorderS / step - 1e-9)))
+        self.maxBuffered = max(2, maxBuffered)
         self.next = None
+        self.highest = None
         self.pending = {}
         self.last = None
         self.firstFrame = None
@@ -69,22 +81,39 @@ class FrameSequencer:
         self.filled = 0
         self.skipped = 0
         self.dropped = 0
+        self.maxLateness = 0
+        self.peakBuffered = 0
+        self.capHits = 0
 
     def add(self, frame, item):
         """-> [(item, count)] to write now, in order."""
+        if self.highest is not None and frame < self.highest:
+            self.maxLateness = max(self.maxLateness, self.highest - frame)
+            self.window = max(self.window, self.maxLateness + 1)
+        self.highest = frame if self.highest is None else max(self.highest, frame)
         if (self.next is not None and frame < self.next) or frame in self.pending:
             self.dropped += 1         # after its slot was written, or a duplicate
             return []
         self.pending[frame] = item
+        self.peakBuffered = max(self.peakBuffered, len(self.pending))
         return self._drain(final=False)
 
     def finish(self):
         return self._drain(final=True)
 
+    def _waiting(self, final, start):
+        """Hold on for a frame that may still arrive?"""
+        if final:
+            return False
+        if len(self.pending) >= self.maxBuffered:
+            self.capHits += 1
+            return False
+        return max(self.pending) - start < self.window
+
     def _drain(self, final):
         out = []
         if self.next is None:
-            if not final and max(self.pending) - min(self.pending) < self.window:
+            if self._waiting(final, min(self.pending)):
                 return out
             self.next = self.firstFrame = min(self.pending)
         while self.pending:
@@ -94,7 +123,7 @@ class FrameSequencer:
                 self.written += 1
                 self.next += 1
                 continue
-            if not final and max(self.pending) - self.next < self.window:
+            if self._waiting(final, self.next):
                 break
             first = min(self.pending)
             gap = first - self.next
@@ -221,7 +250,7 @@ class _Display(threading.Thread):
 class _Recorder(threading.Thread):
     """Encodes every frame of one camera to a video at one frame per world tick."""
 
-    def __init__(self, name, path, step):
+    def __init__(self, name, path, step, size):
         super().__init__(name='fixs-record-' + name, daemon=True)
         self.name = name
         self.path = os.path.abspath(path)
@@ -229,7 +258,7 @@ class _Recorder(threading.Thread):
         self._queue = collections.deque()
         self._wake = threading.Event()
         self._stopping = False
-        self.sequencer = FrameSequencer(step)
+        self.sequencer = FrameSequencer(step, kMaxBufferedBytes // (size[0] * size[1] * 4))
         self.maxQueue = 0
         self.error = None
         self.cost = _Cost()
@@ -332,7 +361,7 @@ class CarlaViews:
                 self._display = None
         for v in self._views:
             if v.view['Record']:
-                rec = _Recorder(v.slot.name, v.view['Record'], worldStep)
+                rec = _Recorder(v.slot.name, v.view['Record'], worldStep, v.view['Size'])
                 rec.start()
                 v.slot.recorder = rec
                 self._recorders.append(rec)
@@ -430,9 +459,13 @@ class CarlaViews:
             if rec.error is None and sq.firstFrame is not None:
                 print("ViewSetup '%s': recorded %d frames = %.2f s for world frames %d..%d "
                       "(%d repeated for missing frames, %d skipped in long gaps, %d late or duplicate "
-                      "dropped, queue peak %d) to %s; encode %s"
+                      "dropped; max lateness %d ticks, reorder window %d ticks, buffered peak %d of %d"
+                      "%s; queue peak %d) to %s; encode %s"
                       % (rec.name, sq.written, sq.written * rec.step, sq.firstFrame, sq.next - 1,
-                         sq.filled, sq.skipped, sq.dropped, rec.maxQueue, rec.path, rec.cost.text()))
+                         sq.filled, sq.skipped, sq.dropped, sq.maxLateness, sq.window,
+                         sq.peakBuffered, sq.maxBuffered,
+                         ', cap reached %d times' % sq.capHits if sq.capHits else '',
+                         rec.maxQueue, rec.path, rec.cost.text()))
         for v in self._views:
             parts = ['callback %s' % v.slot.callbackCost.text()]
             if self._display is not None and v.slot.name in self._display.cost:
