@@ -39,5 +39,10 @@ if %ERRORLEVEL% neq 0 ( echo BLUEPRINT BUILD_FAILED & exit /b 1 )
 if %ERRORLEVEL% neq 0 ( echo BLUEPRINT RUN_FAILED & exit /b 1 )
 
 echo.
+echo === view_dump (the C++ ViewSetup parse, for test_view_setup_parity) ===
+cl /std:c++17 /EHsc /MD /nologo /W3 /DWIN32 /D_CRT_SECURE_NO_WARNINGS %INC% view_dump.cpp "%CLIB%\ConfigHelper.cpp" /Fe:view_dump.exe /link "%YAML%" ws2_32.lib
+if %ERRORLEVEL% neq 0 ( echo VIEWDUMP BUILD_FAILED & exit /b 1 )
+
+echo.
 echo ALL VIRENVCORE GUARD TESTS PASSED
 endlocal

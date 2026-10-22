@@ -28,7 +28,7 @@ VSWHERE = os.path.join(os.environ.get('ProgramFiles(x86)', r'C:\Program Files (x
                        'Microsoft Visual Studio', 'Installer', 'vswhere.exe')
 
 EXES = {name: os.path.join(CPP_DIR, name + '.exe')
-        for name in ('smoke_interface', 'replay_core', 'blueprint_pick')}
+        for name in ('smoke_interface', 'replay_core', 'blueprint_pick', 'view_dump')}
 
 _COMMONLIB = os.path.join(REPO_ROOT, 'CommonLib')
 

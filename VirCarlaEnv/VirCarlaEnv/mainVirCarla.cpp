@@ -115,6 +115,12 @@ int main(int argc, const char* argv[]) {
     const bool   spectatorFollow  = cs.EnableSpectatorFollow && !cs.CenteredViewId.empty();
     const float  spectatorHeight  = (float)cs.SpectatorHeight;
     const bool   spectatorAlignYaw = cs.SpectatorAlignYaw;
+    for (const ViewDef_t& v : config.ViewSetup.Views) {
+        if (v.Simulator == "carla" && v.Type != "spectator" && v.Enable)
+            printf("ViewSetup '%s': carla %s camera views need the Python engine "
+                   "(CarlaSetup.EnablePythonBackend: true); the cpp engine shows only the spectator\n",
+                   v.Name.c_str(), v.Type.c_str());
+    }
     const bool   realtimePacing = cs.RealtimePacing;
     const bool   enableTlsSync = true;
     // The ego, from the one place that describes it (#305). Canonical values, so

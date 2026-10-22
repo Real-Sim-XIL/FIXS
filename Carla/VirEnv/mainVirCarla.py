@@ -40,6 +40,7 @@ from CommonLib.VirEnv.VirEnvCore import VirEnvCore                       # noqa:
 if __package__:
     from .BridgeHelper import BridgeHelper
     from .CarlaBackend import CarlaBackend
+    from .CarlaViews import CarlaViews, ROLE_PREFIX
 else:
     # Run as a plain script (python Carla/VirEnv/mainVirCarla.py). Put the PARENT
     # of this package on sys.path and import through the package, rather than
@@ -48,6 +49,7 @@ else:
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from VirEnv.BridgeHelper import BridgeHelper
     from VirEnv.CarlaBackend import CarlaBackend
+    from VirEnv.CarlaViews import CarlaViews, ROLE_PREFIX
 
 #: Must match the EgoDriver client's DriveCommand steer scaling.
 kMaxSteerRad = 0.7
@@ -114,11 +116,14 @@ def clearStaleActors(world, verbose):
     so ``get_actors()`` would miss the zombies without the tick this does first.
     """
     world.tick()
-    stale = list(world.get_actors().filter('vehicle.*'))
+    actors = world.get_actors()
+    stale = list(actors.filter('vehicle.*'))
+    stale += [a for a in actors.filter('sensor.camera.rgb')
+              if a.attributes.get('role_name', '').startswith(ROLE_PREFIX)]
     for a in stale:
         a.destroy()
     if stale:
-        print('Cleared %d stale vehicle actor(s) from a prior run.' % len(stale))
+        print('Cleared %d stale vehicle/view actor(s) from a prior run.' % len(stale))
 
 
 def applySyncSettings(world, carlaStep, verbose):
@@ -287,6 +292,17 @@ def main(argv=None):
                   "as ego.speedDesired and the traffic simulator integrates it. "
                   "No physics ego is spawned.")
     lastAdvisory = cs['EgoTargetSpeed']
+    views = CarlaViews(world, config.View_setup['Views'])
+    for v in config.View_setup['Views']:
+        if v['Simulator'] == 'carla' and v['Type'] == 'spectator' and not v['Implied']:
+            print("ViewSetup '%s': the CARLA window follows '%s' (%s)" % (
+                v['Name'], v['Target'], 'BEV %g m' % v['Height'] if v['Enable'] else 'off'))
+
+    def _viewActor(target):
+        if virEnvOwnsEgo and target == egoId:
+            return backend.egoActor()
+        h = core.mappedVehicles().get(target)
+        return None if h is None else backend.actorOf(h)
     cellSpeed = None          # what the cell last commanded (cellOnTraffic only)
     xilSpeedSeen = False
 
@@ -327,6 +343,8 @@ def main(argv=None):
         phase = {k: 0.0 for k in
                  ("fixs recv", "orchestrate", "flush batch", "world.tick",
                   "z audit", "readback+send", "pacing sleep")}
+        if views.active():
+            phase["views"] = 0.0
 
         while simTime < simEndTime:
             # ---- core: recv (only on the feed boundary) -> spawn / pose (batch)
@@ -462,6 +480,11 @@ def main(argv=None):
                         backend.queueTransform(
                             spectator.id,
                             _spectatorTransform(tf, spectatorHeight, spectatorAlignYaw))
+
+            if views.active():
+                _t0 = time.monotonic()
+                views.update(_viewActor, simTime)
+                phase["views"] += time.monotonic() - _t0
 
             _t0 = time.monotonic()
             backend.flushBatch()   # one acknowledged apply: vehicles + camera
@@ -634,9 +657,11 @@ def main(argv=None):
             dataLog.close()
         if poseLog is not None:
             poseLog.close()
+        views.close()
         if virEnvOwnsEgo:
             backend.destroyEgo()
     finally:
+        views.close()
         core.shutdown()
         settings = world.get_settings()
         if settings.synchronous_mode:
