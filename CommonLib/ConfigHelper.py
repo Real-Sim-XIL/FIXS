@@ -80,6 +80,10 @@ class ConfigHelper:
         # it to SUMO as --num-clients; without it parsed here the key was read back
         # as None on the python side, so the yaml value silently stayed 1.
         self.Sumo_setup["NumClients"] = self.parserInteger(sumo_node, "NumClients", 1)
+        # sumo-gui follows a vehicle; parity with SumoSetup.EnableGuiFollow in ConfigHelper.cpp.
+        self.Sumo_setup["EnableGuiFollow"] = self.parserFlag(sumo_node, "EnableGuiFollow", False)
+        self.Sumo_setup["GuiCenteredViewId"] = sumo_node.get("GuiCenteredViewId", "ego")
+        self.Sumo_setup["GuiZoom"] = self.parserDouble(sumo_node, "GuiZoom", 600.0)
         # Application Setup
         app_node = config.get("ApplicationSetup", {})
         self.application_setup["EnableApplicationLayer"] = self.parserFlag(app_node, "EnableApplicationLayer", False)

@@ -1120,6 +1120,42 @@ void TrafficHelper::parseSendMsg(MsgHelper MsgIn_c, MsgHelper& MsgOut_c) {
 	
 }
 
+void TrafficHelper::followInGui() {
+	if (!Config_c->SumoSetup.EnableGuiFollow || guiFollowUnavailable_) {
+		return;
+	}
+	const std::string& id = Config_c->SumoSetup.GuiCenteredViewId;
+	bool present = std::find(VehIdInSimulator.begin(), VehIdInSimulator.end(), id) != VehIdInSimulator.end();
+	if (!present) {
+		// sumo-gui drops the track when the vehicle leaves (e.g. a teleport); re-track on return.
+		guiFollowing_ = false;
+		return;
+	}
+	if (guiFollowing_) {
+		return;
+	}
+	try {
+		std::vector<std::string> views = SUMO_TRACI_NAMESPACE::GUI::getIDList();
+		if (views.empty()) {
+			throw std::runtime_error("no view");
+		}
+		SUMO_TRACI_NAMESPACE::GUI::trackVehicle(views[0], id);
+		// Zoom once, so a zoom the user picks afterwards is kept.
+		if (!guiZoomSet_) {
+			SUMO_TRACI_NAMESPACE::GUI::setZoom(views[0], Config_c->SumoSetup.GuiZoom);
+			guiZoomSet_ = true;
+		}
+		guiFollowing_ = true;
+		printf("SumoSetup.EnableGuiFollow: sumo-gui follows '%s' at zoom %.0f%%\n",
+			id.c_str(), Config_c->SumoSetup.GuiZoom);
+	}
+	catch (const std::exception& e) {
+		guiFollowUnavailable_ = true;
+		printf("SumoSetup.EnableGuiFollow: SUMO has no GUI view to follow '%s' in (%s); ignored\n",
+			id.c_str(), e.what());
+	}
+}
+
 void TrafficHelper::runOneStepSimulation() {
 	if (SUMO_OR_VISSIM.compare("SUMO") == 0) {
 		SUMO_TRACI_NAMESPACE::Simulation::step();
@@ -1157,7 +1193,8 @@ int TrafficHelper::recvFromSUMO(double* simTime, MsgHelper& Msg_c) {
 
 	*simTime = SUMO_TRACI_NAMESPACE::Simulation::getTime();
 	VehIdInSimulator = SUMO_TRACI_NAMESPACE::Vehicle::getIDList();
-	
+	followInGui();
+
 	int nVeh = VehIdInSimulator.size(); // number of vehicles
 
 	if (ENABLE_VERBOSE) {

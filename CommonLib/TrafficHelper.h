@@ -265,6 +265,12 @@ public:
 	int shouldSendVehicle(std::string vehicleId, double simTime);
 
 private:
+	// SumoSetup.EnableGuiFollow: track the vehicle each time it (re)enters the network.
+	void followInGui();
+	bool guiFollowing_ = false;
+	bool guiZoomSet_ = false;
+	bool guiFollowUnavailable_ = false;
+
 	void parserSumoSubscription(libsumo::TraCIResults VehDataSubscribeTraciResults, std::string vehId, VehFullData_t& CurVehData);
 
 	// #65: NOT named M_PI. MSVC leaves M_PI undefined unless _USE_MATH_DEFINES,

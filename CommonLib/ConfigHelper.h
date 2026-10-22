@@ -255,6 +255,12 @@ struct SumoSetup_t {
 	std::string SumoConfigFile;
 	int NumClients;
 	std::string RuntimeLibraryPath;
+
+	// sumo-gui tracks GuiCenteredViewId at GuiZoom (%) while it is in the network,
+	// the counterpart of CarlaSetup.EnableSpectatorFollow. No effect on headless sumo.
+	bool EnableGuiFollow;
+	std::string GuiCenteredViewId;
+	double GuiZoom;
 };
 
 // VISSIM DrivingSimulatorProxy.dll coupling (issue #158, Stage A).

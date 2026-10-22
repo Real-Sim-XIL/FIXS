@@ -617,6 +617,9 @@ int ConfigHelper::getConfig(string configName) {
 	else {
 		SumoSetup.RuntimeLibraryPath = "";
 	}
+	SumoSetup.EnableGuiFollow   = node["EnableGuiFollow"]   ? parserFlag(node, "EnableGuiFollow") : false;
+	SumoSetup.GuiCenteredViewId = node["GuiCenteredViewId"] ? parserString(node, "GuiCenteredViewId") : "ego";
+	SumoSetup.GuiZoom           = node["GuiZoom"]           ? parserDouble(node, "GuiZoom") : 600.0;
 
 
 	// ===========================================================================
