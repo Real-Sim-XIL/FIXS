@@ -388,9 +388,13 @@ class ConfigHelper:
             "AlignYaw": self.parserFlag(node, "AlignYaw", False),
             "Zoom": float(node.get("Zoom", 600.0)),
             "Boundary": floats("Boundary", 4, []),
+            "Display": self.parserFlag(node, "Display", True),
+            "Record": str(node.get("Record", "") or ""),
         }
         if vtype == "fixed" and not view["Boundary"]:
             raise SystemExit("ERROR: %s: Type fixed needs Boundary: [xmin, ymin, xmax, ymax]" % where)
+        if view["Record"] and os.path.splitext(view["Record"])[1].lower() not in (".mp4", ".avi"):
+            raise SystemExit("ERROR: %s: Record must be a .mp4 or .avi path" % where)
         return view
 
     def resetConfig(self):

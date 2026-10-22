@@ -211,7 +211,9 @@ ViewSetup:
 | Pitch | carla `bev`, `chase`, `driver` | bev -90, chase -12, driver -5 | Degrees; negative looks down. |
 | Size | carla cameras | `[960, 540]` | Image and window size, pixels. |
 | Fov | carla cameras | 90 | Horizontal field of view, degrees. |
-| SensorTick | carla cameras | 0 | Seconds between camera frames; 0 is every world tick. |
+| SensorTick | carla cameras | 0 | Seconds between camera frames; 0 is every world tick. A larger value renders less often and is the cheapest way to cut a camera's cost. |
+| Display | carla cameras | true | Show the camera in its window. |
+| Record | carla cameras | `""` (off) | Write the camera to this `.mp4` or `.avi` file (relative to where the bridge was started). One video frame per world tick, so video time is sim time: frames the camera skips (`SensorTick`, gaps up to 2 s) are repeated. The video starts at the camera's first frame. An `.mp4` is only playable once the bridge exits normally (end of run or Ctrl+C); if the run may be killed, record `.avi` (MJPG, larger). |
 | Zoom | sumo `follow` | 600 | Zoom (%) set when following starts; a zoom changed in the GUI afterwards is kept. |
 | Boundary | sumo `fixed` | required | `[xmin, ymin, xmax, ymax]` in SUMO coordinates. |
 
@@ -225,13 +227,19 @@ ViewSetup:
   legacy keys. A scenario without `ViewSetup` behaves exactly as before.
 
 The first sumo entry drives sumo-gui's own view. Each further sumo entry is a view
-added with `GUI::addView`, named `FIXS view: <Name>`; these are tabs inside the
-sumo-gui window, not separate OS windows. Headless `sumo` ignores the sumo views.
+added with `GUI::addView`, named `FIXS view: <Name>`; these are panes inside the
+sumo-gui window, not separate OS windows. sumo-gui creates an added view
+asynchronously, so TrafficLayer waits up to 10 s of sim time for it before giving up.
+Headless `sumo` ignores the sumo views.
 
-CARLA camera views need the Python engine (`CarlaSetup.EnablePythonBackend: true`);
-the cpp engine says so once and shows only the spectator. A camera is an extra render
-pass on the CARLA server and never ticks the world. Closing a camera window removes
-that camera for the rest of the run.
+CARLA camera views need the Python engine (`CarlaSetup.EnablePythonBackend: true`)
+and `opencv-python`; the cpp engine says so once and shows only the spectator. A
+camera never ticks the world, and the bridge thread only hands its frames to an
+OpenCV window thread and, with `Record`, an encoder thread. The cost that remains is
+the extra render pass on the CARLA server, which shows up in the bridge's
+`world.tick` timing row; lower it with `SensorTick`, a smaller `Size`, or fewer
+cameras. At shutdown the bridge prints each camera's callback, draw and encode cost.
+Closing a camera window removes that camera unless it is also recording.
 
 ## Vehicle Message Field Specifications
 

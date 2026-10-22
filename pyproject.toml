@@ -23,6 +23,8 @@ dependencies = [
     "pyyaml",
     "shapely",
     "lxml",
+    # ViewSetup camera windows and recordings (Carla/VirEnv/CarlaViews.py).
+    "opencv-python",
     # On PyPI, so unlike carla there is no reason to leave them to a later step.
     # Floor = the SUMO version FIXS builds against (dependencies.yaml).
     "traci>=1.22",

@@ -4,12 +4,11 @@
 """
 from __future__ import annotations
 
-import numpy as np
 import pytest
 import yaml
 
 from CommonLib.ConfigHelper import ConfigHelper
-from Carla.VirEnv.CarlaViews import bgraToPpm, cameraMount, cameraViews, windowTitle
+from Carla.VirEnv.CarlaViews import cameraMount, cameraViews, framesToWrite, windowTitle
 
 BASE = {
     "SimulationSetup": {"SelectedTrafficSimulator": "SUMO",
@@ -72,8 +71,8 @@ def test_a_camera_view_is_added_alongside_the_legacy_spectator(tmp_path):
     assert set(v) == {"spectator", "sumo-gui", "pov"}
     assert v["spectator"]["Implied"] and v["spectator"]["Height"] == 40.0
     pov = v["pov"]
-    assert (pov["Simulator"], pov["Target"], pov["Size"], pov["Fov"], pov["SensorTick"]) == (
-        "carla", "ego", [1280, 720], 90.0, 0.0)
+    assert (pov["Simulator"], pov["Target"], pov["Size"], pov["Fov"], pov["SensorTick"],
+            pov["Display"], pov["Record"]) == ("carla", "ego", [1280, 720], 90.0, 0.0, True, "")
     assert [c["Name"] for c in cameraViews(cfg.View_setup["Views"])] == ["pov"]
     assert windowTitle("pov") == "FIXS view: pov"
 
@@ -104,6 +103,14 @@ def test_a_disabled_view_parses_but_is_not_a_camera(tmp_path):
     assert cameraViews(cfg.View_setup["Views"]) == []
 
 
+def test_a_camera_needs_a_window_or_a_recording(tmp_path):
+    cfg = parse(tmp_path, views=[
+        {"Name": "rec", "Type": "chase", "Display": False, "Record": "_video/chase.mp4"},
+        {"Name": "nothing", "Type": "driver", "Display": False}])
+    assert [v["Name"] for v in cameraViews(cfg.View_setup["Views"])] == ["rec"]
+    assert byName(cfg)["rec"]["Record"] == "_video/chase.mp4"
+
+
 @pytest.mark.parametrize("vtype,offset,pitch", [
     ("chase", [-6.5, 0.0, 2.8], -12.0),
     ("driver", [0.5, 0.0, 1.5], -5.0),
@@ -132,6 +139,7 @@ def test_bev_height_and_explicit_mount(tmp_path):
     ([{"Size": [640]}], "Size must be a list of 2"),
     ([{"Size": [0, 480]}], "two positive pixel counts"),
     ([{"Simulator": "sumo", "Type": "fixed"}], "needs Boundary"),
+    ([{"Record": "chase.mkv"}], "Record must be a .mp4 or .avi"),
 ])
 def test_bad_views_are_refused(views, needle, tmp_path):
     with pytest.raises(SystemExit) as e:
@@ -139,14 +147,13 @@ def test_bad_views_are_refused(views, needle, tmp_path):
     assert needle in str(e.value)
 
 
-def test_bgra_frame_becomes_an_rgb_ppm():
-    w, h = 3, 2
-    bgra = np.zeros((h, w, 4), np.uint8)
-    bgra[..., 0], bgra[..., 1], bgra[..., 2], bgra[..., 3] = 10, 20, 200, 255
-    bgra[1, 2] = (1, 2, 3, 255)
-    ppm = bgraToPpm(bgra.tobytes(), w, h)
-    header = b"P6 3 2 255\n"
-    assert ppm.startswith(header)
-    rgb = np.frombuffer(ppm[len(header):], np.uint8).reshape(h, w, 3)
-    assert tuple(rgb[0, 0]) == (200, 20, 10)
-    assert tuple(rgb[1, 2]) == (3, 2, 1)
+@pytest.mark.parametrize("prev,frame,step,n", [
+    (None, 100, 0.05, 1),      # first frame
+    (100, 101, 0.05, 1),       # every tick
+    (100, 102, 0.05, 2),       # SensorTick 0.1 on a 0.05 world: one frame stands for two ticks
+    (100, 140, 0.05, 40),      # 2.0 s gap: filled
+    (100, 141, 0.05, 1),       # longer (target gone, camera re-spawned): not filled
+    (100, 100, 0.05, 1),
+])
+def test_recording_keeps_video_time_equal_to_sim_time(prev, frame, step, n):
+    assert framesToWrite(prev, frame, step) == n

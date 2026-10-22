@@ -1047,6 +1047,16 @@ ViewDef_t ConfigHelper::viewDefaults(const std::string& name, const std::string&
 		printf("ERROR: ViewSetup view '%s': Type fixed needs Boundary: [xmin, ymin, xmax, ymax]\n", name.c_str());
 		exit(-1);
 	}
+	v.Display = parserFlag(node, "Display", true);
+	v.Record = parserString(node, "Record", "");
+	if (!v.Record.empty()) {
+		const size_t dot = v.Record.find_last_of('.');
+		const std::string ext = dot == std::string::npos ? "" : lowerView(v.Record.substr(dot));
+		if (ext != ".mp4" && ext != ".avi") {
+			printf("ERROR: ViewSetup view '%s': Record must be a .mp4 or .avi path\n", name.c_str());
+			exit(-1);
+		}
+	}
 	return v;
 }
 

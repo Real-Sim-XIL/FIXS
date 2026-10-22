@@ -1,22 +1,30 @@
 """ViewSetup camera views for the CARLA bridge.
 
 Each enabled carla view of Type bev | chase | driver is a ``sensor.camera.rgb``
-attached to its Target vehicle and shown in its own window titled
-``FIXS view: <Name>``. The spectator view is not handled here: it is the CARLA
-window itself, which mainVirCarla snaps from the CarlaSetup keys.
+attached to its Target vehicle. Its frames go to a window titled
+``FIXS view: <Name>`` (Display) and/or to a video file (Record). The spectator
+view is not handled here: it is the CARLA window itself, which mainVirCarla
+snaps from the CarlaSetup keys.
 
-The cameras never tick the world. Frames arrive on CARLA's sensor thread and are
-drawn by one tkinter thread, so the bridge loop only pays a dict lookup per view
-per tick until a target appears, changes actor, or leaves.
+The cameras never tick the world. The sensor callback only stores a reference to
+the frame; one OpenCV thread draws the windows and one thread per recording
+encodes, so the bridge loop pays a dict lookup per view per tick until a target
+appears, changes actor, or leaves.
 """
 
+import collections
+import os
 import sys
 import threading
+import time
 
 import numpy as np
 
 CAMERA_TYPES = ('bev', 'chase', 'driver')
 ROLE_PREFIX = 'fixs_view:'
+#: Frame gaps up to this long are filled with the last frame, so video time stays sim time.
+kMaxFillS = 2.0
+_FOURCC = {'.mp4': 'mp4v', '.avi': 'MJPG'}
 
 
 def windowTitle(name):
@@ -24,9 +32,10 @@ def windowTitle(name):
 
 
 def cameraViews(views):
-    """The enabled carla camera views, in list order."""
+    """The enabled carla camera views that show or record something, in list order."""
     return [v for v in (views or [])
-            if v['Simulator'] == 'carla' and v['Type'] in CAMERA_TYPES and v['Enable']]
+            if v['Simulator'] == 'carla' and v['Type'] in CAMERA_TYPES and v['Enable']
+            and (v['Display'] or v['Record'])]
 
 
 def cameraMount(view):
@@ -35,39 +44,63 @@ def cameraMount(view):
     return float(x), float(y), float(z), float(view['Pitch'])
 
 
-def bgraToPpm(raw, width, height):
-    """CARLA's BGRA frame -> binary PPM bytes, which tkinter.PhotoImage reads directly."""
-    bgra = np.frombuffer(raw, dtype=np.uint8).reshape(height, width, 4)
-    header = b'P6 %d %d 255\n' % (width, height)
-    out = np.empty(len(header) + width * height * 3, dtype=np.uint8)
-    out[:len(header)] = np.frombuffer(header, dtype=np.uint8)
-    rgb = out[len(header):].reshape(height, width, 3)
-    # Per-channel copies: several times faster than one strided BGR->RGB slice.
-    rgb[..., 0] = bgra[..., 2]
-    rgb[..., 1] = bgra[..., 1]
-    rgb[..., 2] = bgra[..., 0]
-    return out.tobytes()
+def bgraOf(image):
+    """A carla.Image's pixels as an (h, w, 4) BGRA array, without copying."""
+    return np.frombuffer(image.raw_data, dtype=np.uint8).reshape(image.height, image.width, 4)
+
+
+def framesToWrite(prevFrame, frame, step):
+    """How many times to write a frame arriving at world ``frame``: gaps up to kMaxFillS repeat it."""
+    if prevFrame is None or frame <= prevFrame:
+        return 1
+    gap = frame - prevFrame
+    return gap if gap * step <= kMaxFillS else 1
+
+
+class _Cost:
+    """Per-frame wall time of one stage, summarised at close."""
+
+    def __init__(self):
+        self.n = 0
+        self.total = 0.0
+        self.worst = 0.0
+
+    def add(self, sec):
+        self.n += 1
+        self.total += sec
+        self.worst = max(self.worst, sec)
+
+    def text(self):
+        if not self.n:
+            return 'no frames'
+        return '%d frames, mean %.2f ms, max %.1f ms' % (self.n, 1000 * self.total / self.n, 1000 * self.worst)
 
 
 class _Slot:
-    """Latest frame of one view; written by the sensor thread, read by the display thread."""
+    """Latest frame of one view; written by CARLA's sensor thread."""
 
     def __init__(self, view):
         self.name = view['Name']
         self.target = view['Target']
         self.size = tuple(view['Size'])
+        self.display = view['Display']
         self.image = None
         self.seq = 0
         self.closed = False
+        self.recorder = None
+        self.callbackCost = _Cost()
 
     def push(self, image):
-        # Only keep the latest; the display thread converts the frames it actually draws.
+        t = time.perf_counter()
         self.image = image
         self.seq += 1
+        if self.recorder is not None:
+            self.recorder.push(image)
+        self.callbackCost.add(time.perf_counter() - t)
 
 
 class _Display(threading.Thread):
-    """One Tk interpreter, one Toplevel per view; every Tk call stays on this thread."""
+    """One OpenCV thread owns every window: create, draw, pump, destroy."""
 
     def __init__(self, slots):
         super().__init__(name='fixs-views', daemon=True)
@@ -75,61 +108,127 @@ class _Display(threading.Thread):
         self._stopping = False
         self.ready = threading.Event()
         self.error = None
+        self.cost = {s.name: _Cost() for s in slots}
 
     def run(self):
         try:
-            import tkinter as tk
-            self._tk = tk
-            root = tk.Tk()
-            root.withdraw()
-            self._wins = []
-            for s in self._slots:
-                top = tk.Toplevel(root)
-                top.title(windowTitle(s.name))
-                top.configure(bg='black')
-                top.resizable(False, False)
-                blank = tk.PhotoImage(width=s.size[0], height=s.size[1])
-                label = tk.Label(top, image=blank, text='%s\nwaiting for %r' % (windowTitle(s.name), s.target),
-                                 compound='center', fg='gray70', bg='black', bd=0)
-                label.pack()
-                top.protocol('WM_DELETE_WINDOW', lambda s=s, top=top: (setattr(s, 'closed', True), top.withdraw()))
-                self._wins.append({'slot': s, 'label': label, 'photo': blank, 'seq': 0})
-            self._root = root
+            import cv2
+            self._cv2 = cv2
+            for i, s in enumerate(self._slots):
+                title = windowTitle(s.name)
+                cv2.namedWindow(title, cv2.WINDOW_AUTOSIZE)
+                cv2.moveWindow(title, 40 + 60 * i, 40 + 60 * i)
+                blank = np.zeros((s.size[1], s.size[0], 3), np.uint8)
+                cv2.putText(blank, '%s - waiting for %r' % (title, s.target), (20, s.size[1] // 2),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (180, 180, 180), 1, cv2.LINE_AA)
+                cv2.imshow(title, blank)
+            cv2.waitKey(1)
         except Exception as e:
             self.error = e
             self.ready.set()
             return
         self.ready.set()
-        root.after(10, self._poll)
-        root.mainloop()
-        try:
-            root.destroy()
-        except Exception:
-            pass
-
-    def _poll(self):
-        if self._stopping:
-            self._root.quit()
-            return
-        try:
-            for w in self._wins:
-                s = w['slot']
-                image = s.image
-                if s.seq != w['seq'] and image is not None:
-                    w['seq'] = s.seq
-                    ppm = bgraToPpm(image.raw_data, image.width, image.height)
-                    photo = self._tk.PhotoImage(data=ppm, format='PPM')
-                    w['label'].configure(image=photo, text='')
-                    w['photo'] = photo
-        except Exception as e:
-            if self.error is None:
-                self.error = e
-                print('ViewSetup: display error (%s)' % e, file=sys.stderr)
-        self._root.after(10, self._poll)
+        seen = {s.name: 0 for s in self._slots}
+        shown = set()
+        while not self._stopping:
+            drew = False
+            try:
+                for s in self._slots:
+                    if s.closed:
+                        continue
+                    image = s.image
+                    if image is None or s.seq == seen[s.name]:
+                        continue
+                    seen[s.name] = s.seq
+                    t = time.perf_counter()
+                    cv2.imshow(windowTitle(s.name), cv2.cvtColor(bgraOf(image), cv2.COLOR_BGRA2BGR))
+                    self.cost[s.name].add(time.perf_counter() - t)
+                    drew = True
+                cv2.waitKey(1 if drew else 5)
+                for s in self._slots:
+                    if s.closed:
+                        continue
+                    # Closed only once it has been seen open, so a window still being created is not.
+                    visible = cv2.getWindowProperty(windowTitle(s.name), cv2.WND_PROP_VISIBLE) >= 1
+                    if visible:
+                        shown.add(s.name)
+                    elif s.name in shown:
+                        s.closed = True
+            except Exception as e:
+                if self.error is None:
+                    self.error = e
+                    print('ViewSetup: display error (%s)' % e, file=sys.stderr)
+                time.sleep(0.05)
+        cv2.destroyAllWindows()
+        cv2.waitKey(1)
 
     def stop(self):
         self._stopping = True
         self.join(timeout=2.0)
+
+
+class _Recorder(threading.Thread):
+    """Encodes every frame of one camera to a video at one frame per world tick."""
+
+    def __init__(self, name, path, step):
+        super().__init__(name='fixs-record-' + name, daemon=True)
+        self.name = name
+        self.path = os.path.abspath(path)
+        self.step = step
+        self._queue = collections.deque()
+        self._wake = threading.Event()
+        self._stopping = False
+        self.written = 0
+        self.filled = 0
+        self.maxQueue = 0
+        self.error = None
+        self.cost = _Cost()
+
+    def push(self, image):
+        if self.error is not None:
+            return
+        self._queue.append(image)
+        self.maxQueue = max(self.maxQueue, len(self._queue))
+        self._wake.set()
+
+    def run(self):
+        import cv2
+        writer = None
+        prev = None
+        while True:
+            if not self._queue:
+                if self._stopping:
+                    break
+                self._wake.wait(0.05)
+                self._wake.clear()
+                continue
+            image = self._queue.popleft()
+            t = time.perf_counter()
+            if writer is None:
+                os.makedirs(os.path.dirname(self.path), exist_ok=True)
+                ext = os.path.splitext(self.path)[1].lower()
+                writer = cv2.VideoWriter(self.path, cv2.VideoWriter_fourcc(*_FOURCC[ext]),
+                                         1.0 / self.step, (image.width, image.height))
+                if not writer.isOpened():
+                    self.error = 'cannot open %s for writing' % self.path
+                    print("ViewSetup '%s': %s; not recording" % (self.name, self.error), file=sys.stderr)
+                    self._queue.clear()
+                    return
+            bgr = cv2.cvtColor(bgraOf(image), cv2.COLOR_BGRA2BGR)
+            n = framesToWrite(prev, image.frame, self.step)
+            for _ in range(n):
+                writer.write(bgr)
+            self.written += n
+            self.filled += n - 1
+            prev = image.frame
+            self.cost.add(time.perf_counter() - t)
+        if writer is not None:
+            writer.release()
+
+    def stop(self):
+        self._stopping = True
+        self._wake.set()
+        self.join()
 
 
 class _View:
@@ -144,30 +243,52 @@ class _View:
 
 
 class CarlaViews:
-    """Spawns, re-attaches and shows the carla camera views of ``ViewSetup.Views``."""
+    """Spawns, re-attaches, shows and records the carla camera views of ``ViewSetup.Views``.
 
-    def __init__(self, world, views):
+    ``worldStep`` is the CARLA tick (s), the frame period of a recording.
+    """
+
+    def __init__(self, world, views, worldStep):
         self._world = world
         self._bp = None
         self._views = [_View(v) for v in cameraViews(views)]
         self._display = None
+        self._recorders = []
+        for v in views or []:
+            if (v['Simulator'] == 'carla' and v['Type'] in CAMERA_TYPES and v['Enable']
+                    and not v['Display'] and not v['Record']):
+                print("ViewSetup '%s': Display is false and nothing to Record; no camera" % v['Name'])
         if not self._views:
             return
-        self._display = _Display([v.slot for v in self._views])
-        self._display.start()
-        self._display.ready.wait(10.0)
-        if self._display.error is not None or not self._display.ready.is_set():
-            print('ViewSetup: no window for the camera views (%s); %s not shown'
-                  % (self._display.error or 'tkinter did not start',
-                     ', '.join(repr(v.slot.name) for v in self._views)), file=sys.stderr)
-            self._views = []
-            self._display = None
-            return
+        shown = [v.slot for v in self._views if v.view['Display']]
+        if shown:
+            self._display = _Display(shown)
+            self._display.start()
+            self._display.ready.wait(10.0)
+            if self._display.error is not None or not self._display.ready.is_set():
+                print('ViewSetup: no window for the camera views (%s); %s not shown'
+                      % (self._display.error or 'the OpenCV window thread did not start',
+                         ', '.join(repr(s.name) for s in shown)), file=sys.stderr)
+                for s in shown:
+                    s.display = False
+                self._display = None
+        for v in self._views:
+            if v.view['Record']:
+                rec = _Recorder(v.slot.name, v.view['Record'], worldStep)
+                rec.start()
+                v.slot.recorder = rec
+                self._recorders.append(rec)
+        self._views = [v for v in self._views if v.slot.display or v.slot.recorder is not None]
         for v in self._views:
             d = v.view
-            print("ViewSetup '%s': carla %s camera on '%s', %dx%d, fov %g, mount %s pitch %g -> window '%s'"
+            out = []
+            if v.slot.display:
+                out.append("window '%s'" % windowTitle(d['Name']))
+            if v.slot.recorder is not None:
+                out.append("video %s at %g fps" % (v.slot.recorder.path, 1.0 / worldStep))
+            print("ViewSetup '%s': carla %s camera on '%s', %dx%d, fov %g, mount %s pitch %g -> %s"
                   % (d['Name'], d['Type'], d['Target'], d['Size'][0], d['Size'][1], d['Fov'],
-                     list(d['Offset']), d['Pitch'], windowTitle(d['Name'])))
+                     list(d['Offset']), d['Pitch'], ' + '.join(out)))
 
     def active(self):
         return bool(self._views)
@@ -177,11 +298,14 @@ class CarlaViews:
         for v in self._views:
             if v.closed:
                 continue
-            if v.slot.closed:
-                self._drop(v)
-                v.closed = True
-                print("ViewSetup '%s': window closed; camera removed" % v.slot.name)
-                continue
+            if v.slot.closed and v.slot.display:
+                v.slot.display = False
+                if v.slot.recorder is None:
+                    self._drop(v)
+                    v.closed = True
+                    print("ViewSetup '%s': window closed; camera removed" % v.slot.name)
+                    continue
+                print("ViewSetup '%s': window closed; still recording" % v.slot.name)
             if v.camera is not None and not v.frameSeen and v.slot.seq > v.seqAtAttach:
                 v.frameSeen = True
                 print("ViewSetup '%s': first frame at t=%.2f" % (v.slot.name, simTime))
@@ -237,8 +361,24 @@ class CarlaViews:
             pass
 
     def close(self):
+        """Remove the cameras, finish the videos, close the windows, and report each stage's cost."""
+        if not self._views:
+            return
         for v in self._views:
             self._drop(v)
+        for rec in self._recorders:
+            rec.stop()
+            if rec.error is None:
+                print("ViewSetup '%s': recorded %d frames (%d repeated to fill gaps, queue peak %d) "
+                      "to %s; encode %s" % (rec.name, rec.written, rec.filled, rec.maxQueue,
+                                            rec.path, rec.cost.text()))
+        for v in self._views:
+            parts = ['callback %s' % v.slot.callbackCost.text()]
+            if self._display is not None and v.slot.name in self._display.cost:
+                parts.append('draw %s' % self._display.cost[v.slot.name].text())
+            print("ViewSetup '%s': %s" % (v.slot.name, '; '.join(parts)))
         if self._display is not None:
             self._display.stop()
             self._display = None
+        self._recorders = []
+        self._views = []

@@ -292,7 +292,7 @@ def main(argv=None):
                   "as ego.speedDesired and the traffic simulator integrates it. "
                   "No physics ego is spawned.")
     lastAdvisory = cs['EgoTargetSpeed']
-    views = CarlaViews(world, config.View_setup['Views'])
+    views = CarlaViews(world, config.View_setup['Views'], carlaStep)
     for v in config.View_setup['Views']:
         if v['Simulator'] == 'carla' and v['Type'] == 'spectator' and not v['Implied']:
             print("ViewSetup '%s': the CARLA window follows '%s' (%s)" % (

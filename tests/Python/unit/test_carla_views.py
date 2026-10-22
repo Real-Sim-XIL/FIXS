@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import threading
 
+import numpy as np
+
 import pytest
 
 pytest.importorskip("carla", reason="needs the CARLA PythonAPI")
@@ -21,6 +23,7 @@ class _Display:
         self.ready = threading.Event()
         self.error = None
         self.stopped = False
+        self.cost = {}
 
     def start(self):
         self.ready.set()
@@ -88,14 +91,14 @@ class _Actor:
 VIEW = {"Name": "pov", "Simulator": "carla", "Type": "chase", "Target": "ego", "Enable": True,
         "Implied": False, "Size": [640, 360], "Fov": 100.0, "SensorTick": 0.0,
         "Offset": [-6.5, 0.0, 2.8], "Pitch": -12.0, "Height": 50.0, "AlignYaw": False,
-        "Zoom": 600.0, "Boundary": []}
+        "Zoom": 600.0, "Boundary": [], "Display": True, "Record": ""}
 
 
 @pytest.fixture
 def views(monkeypatch):
     monkeypatch.setattr(cv, "_Display", _Display)
     world = _World()
-    return world, cv.CarlaViews(world, [VIEW, dict(VIEW, Name="off", Enable=False)])
+    return world, cv.CarlaViews(world, [VIEW, dict(VIEW, Name="off", Enable=False)], 0.05)
 
 
 def test_camera_follows_its_target_through_respawn_and_absence(views):
@@ -141,7 +144,40 @@ def test_closing_the_window_removes_the_camera(views):
 def test_no_camera_views_start_nothing(monkeypatch):
     started = []
     monkeypatch.setattr(cv, "_Display", lambda slots: started.append(slots))
-    v = cv.CarlaViews(_World(), [dict(VIEW, Type="spectator")])
+    v = cv.CarlaViews(_World(), [dict(VIEW, Type="spectator"), dict(VIEW, Name="x", Display=False)], 0.05)
     assert not v.active() and started == []
     v.update(lambda _t: None, 0.0)
     v.close()
+
+
+class _Image:
+    def __init__(self, frame, w, h, value):
+        px = np.zeros((h, w, 4), np.uint8)
+        px[..., :3] = value
+        px[..., 3] = 255
+        self.raw_data, self.width, self.height, self.frame = px.tobytes(), w, h, frame
+
+
+def test_a_recording_has_one_frame_per_world_tick(monkeypatch, tmp_path):
+    """Frames 10, 11, 13 (one missing): four video frames, the video at 1/step fps."""
+    cv2 = pytest.importorskip("cv2")
+    monkeypatch.setattr(cv, "_Display", _Display)
+    path = tmp_path / "out" / "chase.avi"
+    world = _World()
+    v = cv.CarlaViews(world, [dict(VIEW, Display=False, Record=str(path))], 0.05)
+    v.update({"ego": _Actor(7)}.get, 1.0)
+    cam = world.spawned[0]
+    for frame in (10, 11, 13):
+        cam.callback(_Image(frame, 64, 48, 40 * (frame - 9)))
+    v.close()
+    cap = cv2.VideoCapture(str(path))
+    assert cap.get(cv2.CAP_PROP_FPS) == pytest.approx(20.0)
+    frames = []
+    while True:
+        ok, img = cap.read()
+        if not ok:
+            break
+        frames.append(int(img[24, 32, 0]))
+    cap.release()
+    assert len(frames) == 4
+    assert frames[0] == pytest.approx(40, abs=8) and frames[-1] == pytest.approx(160, abs=8)

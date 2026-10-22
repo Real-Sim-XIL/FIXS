@@ -26,11 +26,11 @@ int main(int argc, char** argv) {
 	ConfigHelper c;
 	c.getConfig(argv[1]);
 	for (const ViewDef_t& v : c.ViewSetup.Views) {
-		printf("VIEW|%s|%s|%s|%s|%d|%d|%dx%d|%.6g|%.6g|%s|%.6g|%.6g|%d|%.6g|%s\n",
+		printf("VIEW|%s|%s|%s|%s|%d|%d|%dx%d|%.6g|%.6g|%s|%.6g|%.6g|%d|%.6g|%s|%d|%s\n",
 			v.Name.c_str(), v.Simulator.c_str(), v.Type.c_str(), v.Target.c_str(),
 			(int)v.Enable, (int)v.Implied, v.Size[0], v.Size[1], v.Fov, v.SensorTick,
 			nums(v.Offset).c_str(), v.Pitch, v.Height, (int)v.AlignYaw, v.Zoom,
-			nums(v.Boundary).c_str());
+			nums(v.Boundary).c_str(), (int)v.Display, v.Record.c_str());
 	}
 	printf("VIEW|legacy-carla|%d|%s|%.6g|%d\n", (int)c.CarlaSetup.EnableSpectatorFollow,
 		c.CarlaSetup.CenteredViewId.c_str(), c.CarlaSetup.SpectatorHeight, (int)c.CarlaSetup.SpectatorAlignYaw);

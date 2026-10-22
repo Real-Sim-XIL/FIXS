@@ -364,6 +364,8 @@ struct ViewDef_t {
 	bool AlignYaw = false;              // spectator: rotate with the target's heading
 	double Zoom = 600.0;                // sumo follow zoom, %
 	std::vector<double> Boundary;       // sumo fixed [xmin, ymin, xmax, ymax]
+	bool Display = true;                // carla camera: show it in a window
+	std::string Record;                 // carla camera: video path (.mp4 | .avi); empty = off
 };
 
 struct ViewSetup_t {
