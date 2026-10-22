@@ -551,18 +551,24 @@ int ConfigHelper::getConfig(string configName) {
 	// ===========================================================================
 	node = config["SumoSetup"];
 
+	SumoSetup.SpeedModeConfigured = (bool)node["SpeedMode"];
 	if (node["SpeedMode"]) {
 		SumoSetup.SpeedMode = parserInteger(node, "SpeedMode");
 	}
 	else {
 		SumoSetup.SpeedMode = 0;
-		//printf("\nXil not specified as server or client! Will set Xil as client!\n");
 	}
 	if (node["LaneChangeMode"]) {
 		SumoSetup.LaneChangeMode = parserInteger(node, "LaneChangeMode");
 	}
 	else {
 		SumoSetup.LaneChangeMode = -1;      // leave SUMO's own default alone
+	}
+	if (node["EgoModesOnEntry"]) {
+		SumoSetup.EgoModesOnEntry = parserFlag(node, "EgoModesOnEntry");
+	}
+	else {
+		SumoSetup.EgoModesOnEntry = false;
 	}
 	if (node["ExecutionOrder"]) {
 		SumoSetup.ExecutionOrder = parserInteger(node, "ExecutionOrder");

@@ -228,14 +228,16 @@ struct SumoSetup_t {
 
 	int SpeedMode;
 
-	// SUMO's lane-change mode for the vehicles FIXS drives, as
-	// Vehicle::setLaneChangeMode takes it. -1 leaves SUMO's own default (597,
-	// every motive on) untouched, which is what every scenario got before this
-	// existed. 512 is strategic changes only: the vehicle still reaches the lane
-	// its next turn needs, but never changes lane by choice -- the setting for
-	// comparing against a driver that holds one lane, such as a CARLA agent
-	// steering a fixed route polyline.
+	// Vehicle::setLaneChangeMode for the vehicles FIXS drives. -1 leaves SUMO's
+	// default; 512 = strategic changes only (follows its route, never by choice).
 	int LaneChangeMode;
+
+	// true only when the yaml has SpeedMode; the absent default 0 turns most checks off.
+	bool SpeedModeConfigured;
+
+	// Give the ego the configured SpeedMode/LaneChangeMode when it enters the
+	// network, even if no client commands it. Default false.
+	bool EgoModesOnEntry;
 
 	int ExecutionOrder;
 

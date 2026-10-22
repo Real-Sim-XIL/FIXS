@@ -61,3 +61,22 @@ def test_it_sits_beside_speed_mode(tmp_path):
     """)
     assert cfg.Sumo_setup["SpeedMode"] == 32
     assert cfg.Sumo_setup["LaneChangeMode"] == 0
+
+
+def test_ego_modes_on_entry_is_opt_in(tmp_path):
+    """Off unless asked for: an uncommanded ego keeps SUMO's own modes."""
+    cfg = _config(tmp_path, """
+        SumoSetup:
+          LaneChangeMode: 512
+    """)
+    assert cfg.Sumo_setup["EgoModesOnEntry"] is False
+
+
+def test_ego_modes_on_entry_is_carried(tmp_path):
+    cfg = _config(tmp_path, """
+        SumoSetup:
+          SpeedMode: 31
+          LaneChangeMode: 512
+          EgoModesOnEntry: true
+    """)
+    assert cfg.Sumo_setup["EgoModesOnEntry"] is True
