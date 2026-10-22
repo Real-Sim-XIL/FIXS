@@ -272,8 +272,12 @@ private:
 		bool following = false;
 		bool zoomSet = false;
 		bool failed = false;
+		double giveUpAt = -1.0;      // added view: sim time to stop waiting for sumo-gui to create it
+		double nextTry = -1.0;
 	};
-	void followInGui();
+	void followInGui(double simTime);
+	const double kGuiViewWaitS = 10.0;
+	const double kGuiViewRetryS = 0.5;
 	bool guiViewsInit_ = false;
 	bool guiUnavailable_ = false;
 	std::string guiMainView_;
