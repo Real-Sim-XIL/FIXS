@@ -31,6 +31,7 @@ _PARSED = {
     'CarlaSetup': 'Carla_setup',
     'CarMakerSetup': 'CarMaker_setup',
     'DataLogSetup': 'DataLog_setup',
+    'ViewSetup': 'View_setup',
 }
 
 _cache = {}
