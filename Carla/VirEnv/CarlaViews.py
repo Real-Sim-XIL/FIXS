@@ -49,12 +49,63 @@ def bgraOf(image):
     return np.frombuffer(image.raw_data, dtype=np.uint8).reshape(image.height, image.width, 4)
 
 
-def framesToWrite(prevFrame, frame, step):
-    """How many times to write a frame arriving at world ``frame``: gaps up to kMaxFillS repeat it."""
-    if prevFrame is None or frame <= prevFrame:
-        return 1
-    gap = frame - prevFrame
-    return gap if gap * step <= kMaxFillS else 1
+class FrameSequencer:
+    """Turns camera frames, in any arrival order, into one video frame per world tick.
+
+    Frames are keyed on their world frame number. Each world frame from the first
+    to the last is written exactly once: its own image, or, if it never arrives,
+    the previous image (gaps longer than kMaxFillS are skipped instead). A missing
+    frame is only declared missing once a frame ``window`` ticks later has arrived.
+    """
+
+    def __init__(self, step, window=10):
+        self.step = step
+        self.window = window
+        self.next = None
+        self.pending = {}
+        self.last = None
+        self.firstFrame = None
+        self.written = 0
+        self.filled = 0
+        self.skipped = 0
+        self.dropped = 0
+
+    def add(self, frame, item):
+        """-> [(item, count)] to write now, in order."""
+        if (self.next is not None and frame < self.next) or frame in self.pending:
+            self.dropped += 1         # after its slot was written, or a duplicate
+            return []
+        self.pending[frame] = item
+        return self._drain(final=False)
+
+    def finish(self):
+        return self._drain(final=True)
+
+    def _drain(self, final):
+        out = []
+        if self.next is None:
+            if not final and max(self.pending) - min(self.pending) < self.window:
+                return out
+            self.next = self.firstFrame = min(self.pending)
+        while self.pending:
+            if self.next in self.pending:
+                self.last = self.pending.pop(self.next)
+                out.append((self.last, 1))
+                self.written += 1
+                self.next += 1
+                continue
+            if not final and max(self.pending) - self.next < self.window:
+                break
+            first = min(self.pending)
+            gap = first - self.next
+            if gap * self.step <= kMaxFillS:
+                out.append((self.last, gap))
+                self.written += gap
+                self.filled += gap
+            else:
+                self.skipped += gap
+            self.next = first
+        return out
 
 
 class _Cost:
@@ -178,8 +229,7 @@ class _Recorder(threading.Thread):
         self._queue = collections.deque()
         self._wake = threading.Event()
         self._stopping = False
-        self.written = 0
-        self.filled = 0
+        self.sequencer = FrameSequencer(step)
         self.maxQueue = 0
         self.error = None
         self.cost = _Cost()
@@ -193,8 +243,10 @@ class _Recorder(threading.Thread):
 
     def run(self):
         import cv2
-        writer = None
-        prev = None
+        self._cv2 = cv2
+        self._writer = None
+        self._lastImage = None
+        self._lastBgr = None
         while True:
             if not self._queue:
                 if self._stopping:
@@ -204,26 +256,32 @@ class _Recorder(threading.Thread):
                 continue
             image = self._queue.popleft()
             t = time.perf_counter()
-            if writer is None:
+            if not self._write(self.sequencer.add(image.frame, image)):
+                return
+            self.cost.add(time.perf_counter() - t)
+        self._write(self.sequencer.finish())
+        if self._writer is not None:
+            self._writer.release()
+
+    def _write(self, batch):
+        cv2 = self._cv2
+        for image, n in batch:
+            if self._writer is None:
                 os.makedirs(os.path.dirname(self.path), exist_ok=True)
                 ext = os.path.splitext(self.path)[1].lower()
-                writer = cv2.VideoWriter(self.path, cv2.VideoWriter_fourcc(*_FOURCC[ext]),
-                                         1.0 / self.step, (image.width, image.height))
-                if not writer.isOpened():
+                self._writer = cv2.VideoWriter(self.path, cv2.VideoWriter_fourcc(*_FOURCC[ext]),
+                                               1.0 / self.step, (image.width, image.height))
+                if not self._writer.isOpened():
                     self.error = 'cannot open %s for writing' % self.path
                     print("ViewSetup '%s': %s; not recording" % (self.name, self.error), file=sys.stderr)
                     self._queue.clear()
-                    return
-            bgr = cv2.cvtColor(bgraOf(image), cv2.COLOR_BGRA2BGR)
-            n = framesToWrite(prev, image.frame, self.step)
+                    return False
+            if image is not self._lastImage:
+                self._lastImage = image
+                self._lastBgr = cv2.cvtColor(bgraOf(image), cv2.COLOR_BGRA2BGR)
             for _ in range(n):
-                writer.write(bgr)
-            self.written += n
-            self.filled += n - 1
-            prev = image.frame
-            self.cost.add(time.perf_counter() - t)
-        if writer is not None:
-            writer.release()
+                self._writer.write(self._lastBgr)
+        return True
 
     def stop(self):
         self._stopping = True
@@ -368,10 +426,13 @@ class CarlaViews:
             self._drop(v)
         for rec in self._recorders:
             rec.stop()
-            if rec.error is None:
-                print("ViewSetup '%s': recorded %d frames (%d repeated to fill gaps, queue peak %d) "
-                      "to %s; encode %s" % (rec.name, rec.written, rec.filled, rec.maxQueue,
-                                            rec.path, rec.cost.text()))
+            sq = rec.sequencer
+            if rec.error is None and sq.firstFrame is not None:
+                print("ViewSetup '%s': recorded %d frames = %.2f s for world frames %d..%d "
+                      "(%d repeated for missing frames, %d skipped in long gaps, %d late or duplicate "
+                      "dropped, queue peak %d) to %s; encode %s"
+                      % (rec.name, sq.written, sq.written * rec.step, sq.firstFrame, sq.next - 1,
+                         sq.filled, sq.skipped, sq.dropped, rec.maxQueue, rec.path, rec.cost.text()))
         for v in self._views:
             parts = ['callback %s' % v.slot.callbackCost.text()]
             if self._display is not None and v.slot.name in self._display.cost:

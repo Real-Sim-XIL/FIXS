@@ -4,11 +4,13 @@
 """
 from __future__ import annotations
 
+import random
+
 import pytest
 import yaml
 
 from CommonLib.ConfigHelper import ConfigHelper
-from Carla.VirEnv.CarlaViews import cameraMount, cameraViews, framesToWrite, windowTitle
+from Carla.VirEnv.CarlaViews import FrameSequencer, cameraMount, cameraViews, windowTitle
 
 BASE = {
     "SimulationSetup": {"SelectedTrafficSimulator": "SUMO",
@@ -147,13 +149,51 @@ def test_bad_views_are_refused(views, needle, tmp_path):
     assert needle in str(e.value)
 
 
-@pytest.mark.parametrize("prev,frame,step,n", [
-    (None, 100, 0.05, 1),      # first frame
-    (100, 101, 0.05, 1),       # every tick
-    (100, 102, 0.05, 2),       # SensorTick 0.1 on a 0.05 world: one frame stands for two ticks
-    (100, 140, 0.05, 40),      # 2.0 s gap: filled
-    (100, 141, 0.05, 1),       # longer (target gone, camera re-spawned): not filled
-    (100, 100, 0.05, 1),
-])
-def test_recording_keeps_video_time_equal_to_sim_time(prev, frame, step, n):
-    assert framesToWrite(prev, frame, step) == n
+def sequence(frames, step=0.05):
+    """World frame of each video frame the sequencer writes, for frames arriving in this order."""
+    sq = FrameSequencer(step)
+    out = []
+    for f in frames:
+        out += [img for img, n in sq.add(f, f) for _ in range(n)]
+    out += [img for img, n in sq.finish() for _ in range(n)]
+    return sq, out
+
+
+def test_frames_in_order_give_one_video_frame_per_tick():
+    sq, out = sequence(range(100, 6100))
+    assert out == list(range(100, 6100))
+    assert (sq.written, sq.filled, sq.dropped) == (6000, 0, 0)
+
+
+def test_late_and_out_of_order_frames_give_one_video_frame_per_tick():
+    """The live bug: arrival order is not frame order. No frame is missing, so no frame repeats."""
+    rng = random.Random(371)
+    # Each frame arrives up to 8 ticks late, so neighbours swap and some are overtaken by several.
+    frames = sorted(range(1000, 4000), key=lambda f: f + rng.uniform(0, 8))
+    assert frames != sorted(frames)
+    sq, out = sequence(frames)
+    assert out == list(range(1000, 4000))
+    assert (sq.written, sq.filled, sq.skipped, sq.dropped) == (3000, 0, 0, 0)
+
+
+def test_a_missing_frame_holds_the_previous_one():
+    sq, out = sequence([10, 11, 13, 14, 15])
+    assert out == [10, 11, 11, 13, 14, 15] and sq.filled == 1
+
+
+def test_sensor_tick_coarser_than_the_world_repeats_each_frame():
+    sq, out = sequence(range(0, 40, 2))              # SensorTick 0.1 on a 0.05 s world
+    assert out == [f - (f % 2) for f in range(0, 39)]
+    assert sq.written == 39
+
+
+def test_a_long_gap_is_skipped_not_filled():
+    sq, out = sequence(list(range(0, 5)) + list(range(100, 105)))   # 4.75 s gap at 0.05 s
+    assert out == list(range(0, 5)) + list(range(100, 105))
+    assert (sq.skipped, sq.filled) == (95, 0)
+
+
+def test_never_more_video_frames_than_world_ticks():
+    frames = [5, 3, 4, 3, 9, 8, 7, 6, 4, 10]          # duplicates, late, reversed
+    sq, out = sequence(frames)
+    assert out == list(range(3, 11)) and sq.written == 10 - 3 + 1

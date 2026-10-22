@@ -213,7 +213,7 @@ ViewSetup:
 | Fov | carla cameras | 90 | Horizontal field of view, degrees. |
 | SensorTick | carla cameras | 0 | Seconds between camera frames; 0 is every world tick. A larger value renders less often and is the cheapest way to cut a camera's cost. |
 | Display | carla cameras | true | Show the camera in its window. |
-| Record | carla cameras | `""` (off) | Write the camera to this `.mp4` or `.avi` file (relative to where the bridge was started). One video frame per world tick, so video time is sim time: frames the camera skips (`SensorTick`, gaps up to 2 s) are repeated. The video starts at the camera's first frame. An `.mp4` is only playable once the bridge exits normally (end of run or Ctrl+C); if the run may be killed, record `.avi` (MJPG, larger). |
+| Record | carla cameras | `""` (off) | Write the camera to this `.mp4` or `.avi` file (relative to where the bridge was started). Exactly one video frame per world tick, ordered by the frame's world frame number rather than its arrival, so video time is sim time: a world frame with no camera image (`SensorTick`, gaps up to 2 s) repeats the previous image, and longer gaps are left out. The video starts at the camera's first frame. An `.mp4` is only playable once the bridge exits normally (end of run or Ctrl+C); if the run may be killed, record `.avi` (MJPG, larger). |
 | Zoom | sumo `follow` | 600 | Zoom (%) set when following starts; a zoom changed in the GUI afterwards is kept. |
 | Boundary | sumo `fixed` | required | `[xmin, ymin, xmax, ymax]` in SUMO coordinates. |
 
