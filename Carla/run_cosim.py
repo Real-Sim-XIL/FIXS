@@ -62,6 +62,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SYNC = os.path.join(os.path.dirname(HERE), "standalone", "run_synchronization",
                     "run_synchronization.py")
 PY_BRIDGE = os.path.join(HERE, "VirEnv", "mainVirCarla.py")
+#: Seconds the bridge gets to exit by itself after the rest of the stack finished cleanly.
+FRONT_GRACE_S = 20
 FIXS_ROOT = os.path.dirname(HERE)          # FIXS/Carla -> FIXS (the fetched bundle root)
 APP_ROOT = os.path.dirname(FIXS_ROOT)      # FIXS -> the app dir (holds initialize.{sh,ps1})
 
@@ -1070,6 +1072,11 @@ def run_native_stack(config_yaml, sumocfg, tl_table, cfg, args, app=None,
                 if all(rc == 0 for _n, rc in dead):
                     print(f"[cosim] {', '.join(n for n, _ in dead)} finished; "
                           f"stopping the stack.")
+                    # Let the front finish on its own: its summary and any video are written at exit.
+                    try:
+                        front.wait(timeout=FRONT_GRACE_S)
+                    except subprocess.TimeoutExpired:
+                        pass
                 else:
                     broke = ", ".join(f"{n} ({rc})" for n, rc in dead if rc != 0)
                     print(f"[cosim] {broke} exited while the co-sim was running; "

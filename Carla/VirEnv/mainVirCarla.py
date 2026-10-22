@@ -161,6 +161,9 @@ def main(argv=None):
     ap.add_argument('-t', '--tls', dest='tlsPath', default='',
                     help='traffic-light table csv (junctionId,linkId,x,y,z,heading)')
     args = ap.parse_args(argv)
+    # Redirected to a file, stdout is block-buffered and run_cosim's terminate() would discard the tail.
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(line_buffering=True)
 
     config = ConfigHelper()
     config.getConfig(args.configPath)
