@@ -183,6 +183,20 @@ def test_a_recording_has_one_frame_per_world_tick(monkeypatch, tmp_path):
     assert frames[0] == pytest.approx(40, abs=8) and frames[-1] == pytest.approx(160, abs=8)
 
 
+def test_an_image_ahead_of_its_hud_sample_holds_the_last_one():
+    """The window can get frame 11's image before frame 11 is sampled: it shows frame 10's HUD, not none."""
+    slot = cv._Slot(dict(VIEW, Size=[960, 540], Display=True, Overlay=["signal"]))
+    assert slot.hudFor(11) is None
+    slot.noteHud(10, {"signalColor": 1})
+    assert slot.hudFor(10) == {"signalColor": 1}
+    assert slot.hudFor(11) == {"signalColor": 1}
+    assert slot.hudFor(9) is None                          # never a later frame's values
+    assert slot.hudFor(10 + cv.kHudHoldFrames + 1) is None  # nor a stale one
+    slot.noteHud(11, {"signalColor": 3})
+    assert slot.hudFor(11) == {"signalColor": 3}
+    assert slot.hudFor(10) == {"signalColor": 1}
+
+
 def test_the_recorded_hud_is_the_one_sampled_for_that_world_frame(monkeypatch, tmp_path):
     """Frame 10 is sampled with a red light and frame 11 with green: each video frame shows its own."""
     cv2 = pytest.importorskip("cv2")

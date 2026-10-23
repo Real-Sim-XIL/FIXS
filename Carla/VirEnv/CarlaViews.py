@@ -37,6 +37,8 @@ kMaxBufferedBytes = 256 * 1024 * 1024
 kMaxBufferedFrames = 128
 #: World frames of HUD values kept for the display and encoder threads to look up.
 kHudKeepFrames = 600
+#: How many world frames back a view may reach for HUD values its own frame does not have yet.
+kHudHoldFrames = 20
 _FOURCC = {'.mp4': 'mp4v', '.avi': 'MJPG'}
 
 
@@ -181,6 +183,7 @@ class _Slot:
         self.speedMax = view.get('OverlaySpeedMax')
         self.hud = {}
         self._hudFrames = collections.deque()
+        self._lastHud = None
 
     def noteHud(self, frame, sample):
         """Store the HUD values for world ``frame``; called on the bridge thread only."""
@@ -188,13 +191,22 @@ class _Slot:
         self._hudFrames.append(frame)
         while len(self._hudFrames) > kHudKeepFrames:
             self.hud.pop(self._hudFrames.popleft(), None)
+        self._lastHud = (frame, sample)
+
+    def hudFor(self, frame):
+        """HUD values for world ``frame``; the latest earlier ones if the image beat its own sample."""
+        sample = self.hud.get(frame)
+        last = self._lastHud
+        if sample is None and last is not None and 0 < frame - last[0] <= kHudHoldFrames:
+            sample = last[1]
+        return sample
 
     def drawHud(self, bgr, frame, cost, shown):
         """Draw this view's HUD for world ``frame`` onto ``bgr``, timing it and counting what was drawn."""
         if not self.overlay:
             return
         t = time.perf_counter()
-        for element in drawHud(bgr, self.hud.get(frame), self.overlay, self.units, self.speedMax):
+        for element in drawHud(bgr, self.hudFor(frame), self.overlay, self.units, self.speedMax):
             shown[element] += 1
         shown['frames'] += 1
         cost.add(time.perf_counter() - t)
