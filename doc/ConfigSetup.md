@@ -69,6 +69,11 @@ silently ignored.
 | SumoConfigFile | string | `""` | Path to `.sumocfg` used when auto-launching. Relative paths resolved against config file directory. |
 | NumClients | int | 1 | Number of SUMO clients negotiated during auto-launch. |
 | RuntimeLibraryPath | string | `""` | Optional override for the SUMO runtime directory (DLL/.so path). |
+| EnableGuiFollow | bool | false | sumo-gui tracks `GuiCenteredViewId` whenever it is in the network, the counterpart of `CarlaSetup.EnableSpectatorFollow`. No effect on headless `sumo`; TrafficLayer prints one line and carries on. |
+| GuiCenteredViewId | string | `"ego"` | Vehicle id sumo-gui follows. |
+| GuiZoom | double | 600 | sumo-gui zoom (%) set when following starts; changing it in the GUI afterwards is kept. |
+
+These three keys are the short form of one sumo view; see [ViewSetup](#viewsetup).
 
 When `RuntimeLibraryPath` is omitted the executable searches for the libsumo runtime in the following order:
 
@@ -154,7 +159,7 @@ A controller reads this section with `fixs.config.get('xil')`: keys in snake_cas
 | CarlaClientIP | string | `"127.0.0.1"` | **Not CARLA.** Where VirCarlaEnv reaches **TrafficLayer** — `mainVirCarla` assigns it to `core.trafficLayerIP_`. Keep it local even when the CARLA server is on another machine: TrafficLayer runs beside VirCarlaEnv, not beside CARLA. |
 | CarlaClientPort | int | 430 | TrafficLayer's bridge port for this client (`core.vehDataPort_`); pair it with `ApplicationSetup.VehicleSubscription[].port`. Nothing to do with CARLA's streaming port. |
 | CarlaMapName | string | `"Town01"` | Desired CARLA map name. |
-| CenteredViewId | string | `"ego"` | Actor id used for camera centering. |
+| CenteredViewId | string | `"ego"` | Actor id used for camera centering. With `EnableSpectatorFollow` (true), `SpectatorHeight` (50) and `SpectatorAlignYaw` (false) it is the short form of the carla spectator view; see [ViewSetup](#viewsetup). |
 | CarlaTimeStep | double | 0 (= the FIXS feed) | CARLA world step, i.e. `fixed_delta_seconds`. Must be the FIXS feed period or an exact divisor of it (0.1 / 0.05 / 0.025 / 0.02 / 0.01): the exchange boundary is tested on the feed grid, so a tick that does not divide it never lands on one and the bridge would exchange nothing. Finer than the feed makes the bridge interpolate traffic — position **and** heading — across the sub-steps, exactly as the CarMaker host does at 0.001 s. |
 | TrafficRefreshRate | double | 0 (= every tick) | How often traffic poses are **re-applied**. Same meaning as the CarMakerSetup key above; **not** the feed period. Must be ≥ `CarlaTimeStep` and have a whole reciprocal. Coarser than the tick = fewer `ApplyBatch` calls on a heavy scene while physics and sensors still run at the tick rate. |
 | InterestedIds | string list | `["ego"]` | Vehicle IDs that receive mirrored CARLA updates. Should be subset of VehicleSubscription. |
@@ -173,6 +178,78 @@ A controller reads this section with `fixs.config.get('xil')`: keys in snake_cas
 > interpolation off. They are separate keys now and neither falls back to the other. An
 > older yaml carrying a feed-period value in it is migrated (generated yamls) or
 > reported (app-owned ones) by `run_cosim`.
+
+## ViewSetup
+
+A list of co-sim views, for CARLA and sumo-gui. Each camera view opens its own
+window titled `FIXS view: <Name>`, so a screen recorder can capture it by title.
+
+```yaml
+ViewSetup:
+  Views:
+    - Name: pov            # unique; camera window title "FIXS view: pov"
+      Simulator: carla     # carla | sumo
+      Type: chase          # carla: spectator | bev | chase | driver; sumo: follow | fixed
+      Target: ego          # vehicle id
+      Size: [960, 540]
+    - Name: junction
+      Simulator: sumo
+      Type: fixed
+      Boundary: [100, 200, 400, 350]
+```
+
+| Key | Applies to | Default | Notes |
+| --- | --- | --- | --- |
+| Name | all | the Type | Unique across the list. Camera windows and added sumo-gui views are titled `FIXS view: <Name>`. |
+| Simulator | all | `carla` | `carla` or `sumo`. |
+| Type | all | carla `chase`, sumo `follow` | carla `spectator`: the CARLA window itself, a top-down snap (at most one). carla `bev` / `chase` / `driver`: an RGB camera rigidly attached to Target, in its own window. sumo `follow`: tracks Target. sumo `fixed`: shows Boundary. |
+| Target | all but sumo `fixed` | `"ego"` | Vehicle id. A camera attaches when the vehicle exists, re-attaches if it is respawned, and waits while it is gone. |
+| Enable | all | true | |
+| Height | carla `spectator`, `bev` | 50 | Metres above the target. |
+| AlignYaw | carla `spectator` | false | Rotate the view with the target's heading. A `bev` camera always turns with the target. |
+| Offset | carla `bev`, `chase`, `driver` | bev `[0, 0, Height]`, chase `[-6.5, 0, 2.8]`, driver `[0.5, 0, 1.5]` | Camera position in the target's frame, metres: x forward, y right, z up. |
+| Pitch | carla `bev`, `chase`, `driver` | bev -90, chase -12, driver -5 | Degrees; negative looks down. |
+| Size | carla cameras | `[960, 540]` | Image and window size, pixels. |
+| Fov | carla cameras | 90 | Horizontal field of view, degrees. |
+| SensorTick | carla cameras | 0 | Seconds between camera frames; 0 is every world tick. A larger value renders less often and is the cheapest way to cut a camera's cost. |
+| Display | carla cameras | true | Show the camera in its window. |
+| Record | carla cameras | `""` (off) | Write the camera to this `.mp4` or `.avi` file (relative to where the bridge was started). Exactly one video frame per world tick, ordered by the frame's world frame number rather than its arrival, so video time is sim time: a world frame with no camera image (`SensorTick`, gaps up to 2 s) repeats the previous image, and longer gaps are left out. CARLA delivers images in bursts, so a frame is only called missing after waiting 2 s of sim time for it (wider if worse lateness is seen), holding at most 256 MB of frames per recording (129 frames at 960x540) while it waits. The video starts at the camera's first frame. An `.mp4` is only playable once the bridge exits normally (end of run or Ctrl+C); if the run may be killed, record `.avi` (MJPG, larger). |
+| Overlay | carla cameras | `[]` (no HUD) | HUD elements drawn onto the camera image, in its window and its video: `signal`, `speed`, `pedals`, `advisory`. Each is drawn only on frames where its data exists (see below). |
+| OverlayUnits | carla cameras | `mph` | `mph` or `kmh`, for the speed dial. |
+| OverlaySpeedMax | carla cameras | 40 (mph), 60 (km/h) | Full scale of the speed dial, in OverlayUnits. |
+| Zoom | sumo `follow` | 600 | Zoom (%) set when following starts; a zoom changed in the GUI afterwards is kept. |
+| Boundary | sumo `fixed` | required | `[xmin, ymin, xmax, ymax]` in SUMO coordinates. |
+
+**HUD.** A compact panel in the top-right of the camera image (286x178 px at 960x540, scaled with `Size`). Its values are sampled once per world tick, after the tick, and drawn on the display and encoder threads onto the image of that same world frame:
+
+- `signal`: a vertical red/amber/green light and the distance to the stop bar, from the target's FIXS record (`signalLightColor`, `signalLightDistance`; both must be in `VehicleMessageField`). Hidden when there is no signal ahead (-1). Code 4 (SUMO `u`) lights red and amber; 0, 5 and 6 show the housing with no lamp lit.
+- `speed`: a 270-degree dial with a digital value. A physics ego (`EgoSetup.Dynamics: virenv`) shows CARLA's measured speed; any other target shows `speed` from its FIXS record.
+- `advisory`: an amber mark on the dial at the record's `speedDesired`, when it is positive. List it only where an application sends an advisory: a baseline run's `speedDesired` is not one.
+- `pedals`: throttle and brake bars, from the control CARLA applied to a physics ego that tick. Hidden for a mirrored target.
+
+**Legacy keys.** The CARLA window and sumo-gui's own view are each one slot:
+
+- If the list has no carla `spectator` entry, one is implied from
+  `CarlaSetup.EnableSpectatorFollow / CenteredViewId / SpectatorHeight / SpectatorAlignYaw`.
+- If the list has no sumo entry, one sumo `follow` is implied from
+  `SumoSetup.EnableGuiFollow / GuiCenteredViewId / GuiZoom`.
+- A declared entry replaces the implied one, and the parser writes it back into those
+  legacy keys. A scenario without `ViewSetup` behaves exactly as before.
+
+The first sumo entry drives sumo-gui's own view. Each further sumo entry is a view
+added with `GUI::addView`, named `FIXS view: <Name>`; these are panes inside the
+sumo-gui window, not separate OS windows. sumo-gui creates an added view
+asynchronously, so TrafficLayer waits up to 10 s of sim time for it before giving up.
+Headless `sumo` ignores the sumo views.
+
+CARLA camera views need the Python engine (`CarlaSetup.EnablePythonBackend: true`)
+and `opencv-python`; the cpp engine says so once and shows only the spectator. A
+camera never ticks the world, and the bridge thread only hands its frames to an
+OpenCV window thread and, with `Record`, an encoder thread. The cost that remains is
+the extra render pass on the CARLA server, which shows up in the bridge's
+`world.tick` timing row; lower it with `SensorTick`, a smaller `Size`, or fewer
+cameras. At shutdown the bridge prints each camera's callback, draw and encode cost.
+Closing a camera window removes that camera unless it is also recording.
 
 ## Vehicle Message Field Specifications
 

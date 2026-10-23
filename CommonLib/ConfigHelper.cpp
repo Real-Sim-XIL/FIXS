@@ -617,6 +617,9 @@ int ConfigHelper::getConfig(string configName) {
 	else {
 		SumoSetup.RuntimeLibraryPath = "";
 	}
+	SumoSetup.EnableGuiFollow   = node["EnableGuiFollow"]   ? parserFlag(node, "EnableGuiFollow") : false;
+	SumoSetup.GuiCenteredViewId = node["GuiCenteredViewId"] ? parserString(node, "GuiCenteredViewId") : "ego";
+	SumoSetup.GuiZoom           = node["GuiZoom"]           ? parserDouble(node, "GuiZoom") : 600.0;
 
 
 	// ===========================================================================
@@ -984,7 +987,199 @@ int ConfigHelper::getConfig(string configName) {
 		}
 	}
 
+	// ===========================================================================
+	// 			READ ViewSetup section (parity with ConfigHelper.py)
+	// ===========================================================================
+	parseViewSetup(config["ViewSetup"]);
+
 	return 0;
+}
+
+namespace {
+std::string lowerView(std::string s) {
+	for (size_t i = 0; i < s.size(); i++)
+		if (s[i] >= 'A' && s[i] <= 'Z') s[i] = (char)(s[i] - 'A' + 'a');
+	return s;
+}
+
+std::vector<double> viewNumbers(YAML::Node node, const char* key, size_t n,
+	const std::vector<double>& fallback, const std::string& name) {
+	if (!node || !node[key]) return fallback;
+	YAML::Node v = node[key];
+	if (!v.IsSequence() || v.size() != n) {
+		printf("ERROR: ViewSetup view '%s': %s must be a list of %zu numbers\n", name.c_str(), key, n);
+		exit(-1);
+	}
+	std::vector<double> out;
+	for (size_t i = 0; i < n; i++) out.push_back(v[i].as<double>());
+	return out;
+}
+}
+
+ViewDef_t ConfigHelper::viewDefaults(const std::string& name, const std::string& sim,
+	const std::string& type, YAML::Node node, bool implied) {
+	ViewDef_t v;
+	v.Name = name;
+	v.Simulator = sim;
+	v.Type = type;
+	v.Implied = implied;
+	v.Height = parserDouble(node, "Height", 50.0);
+	std::vector<double> mountOffset = { 0.0, 0.0, v.Height };
+	double mountPitch = -90.0;
+	if (type == "chase")       { mountOffset = { -6.5, 0.0, 2.8 }; mountPitch = -12.0; }
+	else if (type == "driver") { mountOffset = { 0.5, 0.0, 1.5 };  mountPitch = -5.0; }
+	std::vector<double> size = viewNumbers(node, "Size", 2, { 960.0, 540.0 }, name);
+	v.Size = { (int)size[0], (int)size[1] };
+	if (v.Size[0] <= 0 || v.Size[1] <= 0) {
+		printf("ERROR: ViewSetup view '%s': Size must be two positive pixel counts\n", name.c_str());
+		exit(-1);
+	}
+	v.Target = parserString(node, "Target", "ego");
+	v.Enable = parserFlag(node, "Enable", true);
+	v.Fov = parserDouble(node, "Fov", 90.0);
+	v.SensorTick = parserDouble(node, "SensorTick", 0.0);
+	v.Offset = viewNumbers(node, "Offset", 3, mountOffset, name);
+	v.Pitch = parserDouble(node, "Pitch", mountPitch);
+	v.AlignYaw = parserFlag(node, "AlignYaw", false);
+	v.Zoom = parserDouble(node, "Zoom", 600.0);
+	v.Boundary = viewNumbers(node, "Boundary", 4, {}, name);
+	if (type == "fixed" && v.Boundary.empty()) {
+		printf("ERROR: ViewSetup view '%s': Type fixed needs Boundary: [xmin, ymin, xmax, ymax]\n", name.c_str());
+		exit(-1);
+	}
+	v.Display = parserFlag(node, "Display", true);
+	v.Record = parserString(node, "Record", "");
+	if (!v.Record.empty()) {
+		const size_t dot = v.Record.find_last_of('.');
+		const std::string ext = dot == std::string::npos ? "" : lowerView(v.Record.substr(dot));
+		if (ext != ".mp4" && ext != ".avi") {
+			printf("ERROR: ViewSetup view '%s': Record must be a .mp4 or .avi path\n", name.c_str());
+			exit(-1);
+		}
+	}
+	auto trim = [](std::string t) {
+		t.erase(0, t.find_first_not_of(" \t"));
+		t.erase(t.find_last_not_of(" \t") + 1);
+		return t;
+	};
+	if (node && node["Overlay"] && !node["Overlay"].IsNull()) {
+		YAML::Node ov = node["Overlay"];
+		std::vector<std::string> items;
+		if (ov.IsSequence()) {
+			for (size_t i = 0; i < ov.size(); i++) items.push_back(ov[i].as<std::string>());
+		}
+		else {
+			items.push_back(ov.as<std::string>());
+		}
+		for (const std::string& raw : items) {
+			const std::string e = trim(lowerView(raw));
+			if (e != "signal" && e != "speed" && e != "pedals" && e != "advisory") {
+				printf("ERROR: ViewSetup view '%s': Overlay elements must be among signal|speed|pedals|advisory, got '%s'\n",
+					name.c_str(), e.c_str());
+				exit(-1);
+			}
+			v.Overlay.push_back(e);
+		}
+	}
+	v.OverlayUnits = trim(lowerView(parserString(node, "OverlayUnits", "mph")));
+	if (v.OverlayUnits != "mph" && v.OverlayUnits != "kmh") {
+		printf("ERROR: ViewSetup view '%s': OverlayUnits must be mph|kmh, got '%s'\n", name.c_str(), v.OverlayUnits.c_str());
+		exit(-1);
+	}
+	v.OverlaySpeedMax = parserDouble(node, "OverlaySpeedMax", v.OverlayUnits == "mph" ? 40.0 : 60.0);
+	if (v.OverlaySpeedMax <= 0) {
+		printf("ERROR: ViewSetup view '%s': OverlaySpeedMax must be positive\n", name.c_str());
+		exit(-1);
+	}
+	return v;
+}
+
+void ConfigHelper::parseViewSetup(YAML::Node viewNode) {
+	ViewSetup.Views.clear();
+	std::vector<ViewDef_t> declared;
+	YAML::Node list = viewNode ? viewNode["Views"] : YAML::Node();
+	if (list && !list.IsNull() && !list.IsSequence()) {
+		printf("ERROR: ViewSetup.Views must be a list of views\n");
+		exit(-1);
+	}
+	for (size_t i = 0; list && list.IsSequence() && i < list.size(); i++) {
+		YAML::Node n = list[i];
+		if (!n.IsMap()) {
+			printf("ERROR: ViewSetup.Views[%zu] must be a mapping\n", i);
+			exit(-1);
+		}
+		const std::string sim = lowerView(parserString(n, "Simulator", "carla"));
+		std::vector<std::string> types;
+		if (sim == "carla")     types = { "spectator", "bev", "chase", "driver" };
+		else if (sim == "sumo") types = { "follow", "fixed" };
+		else {
+			printf("ERROR: ViewSetup.Views[%zu].Simulator must be carla|sumo, got '%s'\n", i, sim.c_str());
+			exit(-1);
+		}
+		const std::string type = lowerView(parserString(n, "Type", sim == "sumo" ? "follow" : "chase"));
+		if (std::find(types.begin(), types.end(), type) == types.end()) {
+			std::string all;
+			for (size_t k = 0; k < types.size(); k++) all += (k ? "|" : "") + types[k];
+			printf("ERROR: ViewSetup.Views[%zu].Type for %s must be one of %s, got '%s'\n",
+				i, sim.c_str(), all.c_str(), type.c_str());
+			exit(-1);
+		}
+		declared.push_back(viewDefaults(parserString(n, "Name", type), sim, type, n, false));
+	}
+
+	int spectators = 0;
+	bool anySumo = false;
+	for (const ViewDef_t& v : declared) {
+		if (v.Simulator == "carla" && v.Type == "spectator") spectators++;
+		if (v.Simulator == "sumo") anySumo = true;
+	}
+	if (spectators > 1) {
+		printf("ERROR: ViewSetup.Views: only one carla 'spectator' view (the CARLA window) is allowed\n");
+		exit(-1);
+	}
+	if (spectators == 0) {
+		YAML::Node legacy;
+		legacy["Target"] = CarlaSetup.CenteredViewId;
+		legacy["Enable"] = CarlaSetup.EnableSpectatorFollow ? "true" : "false";
+		legacy["Height"] = CarlaSetup.SpectatorHeight;
+		legacy["AlignYaw"] = CarlaSetup.SpectatorAlignYaw ? "true" : "false";
+		ViewSetup.Views.push_back(viewDefaults("spectator", "carla", "spectator", legacy, true));
+	}
+	if (!anySumo) {
+		YAML::Node legacy;
+		legacy["Target"] = SumoSetup.GuiCenteredViewId;
+		legacy["Enable"] = SumoSetup.EnableGuiFollow ? "true" : "false";
+		legacy["Zoom"] = SumoSetup.GuiZoom;
+		ViewSetup.Views.push_back(viewDefaults("sumo-gui", "sumo", "follow", legacy, true));
+	}
+	ViewSetup.Views.insert(ViewSetup.Views.end(), declared.begin(), declared.end());
+
+	for (size_t i = 0; i < ViewSetup.Views.size(); i++)
+		for (size_t j = i + 1; j < ViewSetup.Views.size(); j++)
+			if (ViewSetup.Views[i].Name == ViewSetup.Views[j].Name) {
+				printf("ERROR: ViewSetup.Views: duplicate Name '%s'; give each view its own Name\n",
+					ViewSetup.Views[i].Name.c_str());
+				exit(-1);
+			}
+
+	// The legacy keys always describe the CARLA window and sumo-gui's first view.
+	for (const ViewDef_t& v : ViewSetup.Views) {
+		if (v.Simulator == "carla" && v.Type == "spectator") {
+			CarlaSetup.EnableSpectatorFollow = v.Enable;
+			CarlaSetup.CenteredViewId = v.Target;
+			CarlaSetup.SpectatorHeight = v.Height;
+			CarlaSetup.SpectatorAlignYaw = v.AlignYaw;
+			break;
+		}
+	}
+	for (const ViewDef_t& v : ViewSetup.Views) {
+		if (v.Simulator == "sumo") {
+			SumoSetup.EnableGuiFollow = v.Enable && v.Type == "follow";
+			SumoSetup.GuiCenteredViewId = v.Target;
+			SumoSetup.GuiZoom = v.Zoom;
+			break;
+		}
+	}
 }
 
 

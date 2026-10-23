@@ -255,6 +255,12 @@ struct SumoSetup_t {
 	std::string SumoConfigFile;
 	int NumClients;
 	std::string RuntimeLibraryPath;
+
+	// sumo-gui tracks GuiCenteredViewId at GuiZoom (%) while it is in the network,
+	// the counterpart of CarlaSetup.EnableSpectatorFollow. No effect on headless sumo.
+	bool EnableGuiFollow;
+	std::string GuiCenteredViewId;
+	double GuiZoom;
 };
 
 // VISSIM DrivingSimulatorProxy.dll coupling (issue #158, Stage A).
@@ -340,6 +346,37 @@ struct DataLogSetup_t {
 	std::vector<std::string> DataLogFields;      // VehFullData fields; empty = default core set
 };
 
+// One entry of ViewSetup.Views, with every default resolved. Mirrors the view
+// dicts ConfigHelper.py builds; see doc/ConfigSetup.md for the schema.
+struct ViewDef_t {
+	std::string Name;
+	std::string Simulator;              // carla | sumo
+	std::string Type;                   // carla: spectator|bev|chase|driver; sumo: follow|fixed
+	std::string Target;                 // vehicle id
+	bool Enable = true;
+	bool Implied = false;               // built from the CarlaSetup/SumoSetup legacy keys
+	std::vector<int> Size;              // camera window [w, h] px
+	double Fov = 90.0;
+	double SensorTick = 0.0;
+	std::vector<double> Offset;         // camera mount in the target's frame [x fwd, y right, z up] m
+	double Pitch = 0.0;                 // camera mount pitch, deg
+	double Height = 50.0;               // spectator/bev height above the target, m
+	bool AlignYaw = false;              // spectator: rotate with the target's heading
+	double Zoom = 600.0;                // sumo follow zoom, %
+	std::vector<double> Boundary;       // sumo fixed [xmin, ymin, xmax, ymax]
+	bool Display = true;                // carla camera: show it in a window
+	std::string Record;                 // carla camera: video path (.mp4 | .avi); empty = off
+	std::vector<std::string> Overlay;   // carla camera HUD: signal | speed | pedals | advisory
+	std::string OverlayUnits = "mph";   // mph | kmh
+	double OverlaySpeedMax = 40.0;      // dial full scale, in OverlayUnits
+};
+
+struct ViewSetup_t {
+	// Always holds one carla spectator and at least one sumo view: absent from
+	// the list, they are implied by the legacy keys.
+	std::vector<ViewDef_t> Views;
+};
+
 class ConfigHelper
 {
 public:
@@ -389,6 +426,7 @@ public:
 	CarlaSetup_t CarlaSetup;
 	VissimSetup_t VissimSetup;
 	DataLogSetup_t DataLogSetup;
+	ViewSetup_t ViewSetup;
 
 
 
@@ -418,6 +456,10 @@ private:
 	void popErrorMessageBox(std::string message, std::string title);
 
 	void extractSubscriptionAttributes(YAML::Node attnode, std::string type, std::string att, SubAttMap_t& attMap);
+
+	void parseViewSetup(YAML::Node viewNode);
+	ViewDef_t viewDefaults(const std::string& name, const std::string& sim, const std::string& type,
+		YAML::Node node, bool implied);
 
 };
 

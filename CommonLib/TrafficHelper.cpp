@@ -1120,6 +1120,99 @@ void TrafficHelper::parseSendMsg(MsgHelper MsgIn_c, MsgHelper& MsgOut_c) {
 	
 }
 
+void TrafficHelper::followInGui(double simTime) {
+	if (guiUnavailable_) {
+		return;
+	}
+	if (!guiViewsInit_) {
+		guiViewsInit_ = true;
+		bool first = true;
+		for (const ViewDef_t& v : Config_c->ViewSetup.Views) {
+			if (v.Simulator != "sumo") continue;
+			// The first sumo view is sumo-gui's own view (viewId resolved later); the rest are added.
+			if (v.Enable) {
+				GuiViewState_t s;
+				s.def = &v;
+				s.viewId = first ? "" : "FIXS view: " + v.Name;
+				guiViews_.push_back(s);
+			}
+			first = false;
+		}
+	}
+	std::vector<GuiViewState_t*> due;
+	for (GuiViewState_t& s : guiViews_) {
+		if (s.failed) continue;
+		if (s.def->Type == "follow"
+			&& std::find(VehIdInSimulator.begin(), VehIdInSimulator.end(), s.def->Target) == VehIdInSimulator.end()) {
+			// sumo-gui drops the track when the vehicle leaves (e.g. a teleport); re-track on return.
+			s.following = false;
+			continue;
+		}
+		if (!s.following) due.push_back(&s);
+	}
+	if (due.empty()) {
+		return;
+	}
+	if (guiMainView_.empty()) {
+		try {
+			std::vector<std::string> ids = SUMO_TRACI_NAMESPACE::GUI::getIDList();
+			if (ids.empty()) {
+				throw std::runtime_error("no view");
+			}
+			guiMainView_ = ids[0];
+		}
+		catch (const std::exception& e) {
+			guiUnavailable_ = true;
+			printf("ViewSetup: SUMO has no GUI view (%s); the sumo views are ignored\n", e.what());
+			return;
+		}
+	}
+	for (GuiViewState_t* s : due) {
+		const ViewDef_t& v = *s->def;
+		const bool added = !s->viewId.empty();
+		const std::string viewId = added ? s->viewId : guiMainView_;
+		if (simTime < s->nextTry) continue;
+		try {
+			if (added) {
+				// sumo-gui creates an added view asynchronously: wait until it reports the view.
+				if (s->giveUpAt < 0) {
+					s->giveUpAt = simTime + kGuiViewWaitS;
+					if (!SUMO_TRACI_NAMESPACE::GUI::hasView(viewId)) {
+						SUMO_TRACI_NAMESPACE::GUI::addView(viewId);
+					}
+				}
+				if (!SUMO_TRACI_NAMESPACE::GUI::hasView(viewId)) {
+					throw std::runtime_error("View '" + viewId + "' is not known");
+				}
+			}
+			if (v.Type == "fixed") {
+				SUMO_TRACI_NAMESPACE::GUI::setBoundary(viewId, v.Boundary[0], v.Boundary[1], v.Boundary[2], v.Boundary[3]);
+				printf("ViewSetup '%s': sumo-gui view '%s' shows [%.0f, %.0f, %.0f, %.0f]\n", v.Name.c_str(),
+					viewId.c_str(), v.Boundary[0], v.Boundary[1], v.Boundary[2], v.Boundary[3]);
+			}
+			else {
+				SUMO_TRACI_NAMESPACE::GUI::trackVehicle(viewId, v.Target);
+				// Zoom once, so a zoom the user picks afterwards is kept.
+				if (!s->zoomSet) {
+					SUMO_TRACI_NAMESPACE::GUI::setZoom(viewId, v.Zoom);
+					s->zoomSet = true;
+				}
+				printf("ViewSetup '%s': sumo-gui view '%s' follows '%s' at zoom %.0f%%\n", v.Name.c_str(),
+					viewId.c_str(), v.Target.c_str(), v.Zoom);
+			}
+			s->following = true;
+		}
+		catch (const std::exception& e) {
+			if (added && simTime < s->giveUpAt) {
+				s->nextTry = simTime + kGuiViewRetryS;
+				continue;
+			}
+			s->failed = true;
+			printf("ViewSetup '%s': sumo-gui view '%s' failed (%s); ignored\n", v.Name.c_str(), viewId.c_str(), e.what());
+		}
+	}
+}
+
 void TrafficHelper::runOneStepSimulation() {
 	if (SUMO_OR_VISSIM.compare("SUMO") == 0) {
 		SUMO_TRACI_NAMESPACE::Simulation::step();
@@ -1157,7 +1250,8 @@ int TrafficHelper::recvFromSUMO(double* simTime, MsgHelper& Msg_c) {
 
 	*simTime = SUMO_TRACI_NAMESPACE::Simulation::getTime();
 	VehIdInSimulator = SUMO_TRACI_NAMESPACE::Vehicle::getIDList();
-	
+	followInGui(*simTime);
+
 	int nVeh = VehIdInSimulator.size(); // number of vehicles
 
 	if (ENABLE_VERBOSE) {

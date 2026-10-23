@@ -21,6 +21,14 @@ s_mapTypeValues = {
     "detector": TypeNamesEnum.detector
 }
 
+#: ViewSetup.Views: the view types each simulator offers.
+VIEW_TYPES = {
+    "carla": ("spectator", "bev", "chase", "driver"),
+    "sumo": ("follow", "fixed"),
+}
+#: ViewSetup.Views[].Overlay: the HUD elements a carla camera view can draw.
+VIEW_OVERLAY = ("signal", "speed", "pedals", "advisory")
+
 class ConfigHelper:
     def __init__(self):
         # Initialize the s_mapTypeValues
@@ -33,6 +41,7 @@ class ConfigHelper:
         self.Sumo_setup = defaultdict(lambda: None)
         self.Carla_setup = defaultdict(lambda: None)
         self.DataLog_setup = defaultdict(lambda: None)
+        self.View_setup = defaultdict(lambda: None)
         # The document as written, before defaults were applied. Every section
         # above is a defaultdict filled in with fallbacks, so it cannot answer
         # "did the author actually say this?" -- and for some keys that is the
@@ -80,6 +89,10 @@ class ConfigHelper:
         # it to SUMO as --num-clients; without it parsed here the key was read back
         # as None on the python side, so the yaml value silently stayed 1.
         self.Sumo_setup["NumClients"] = self.parserInteger(sumo_node, "NumClients", 1)
+        # sumo-gui follows a vehicle; parity with SumoSetup.EnableGuiFollow in ConfigHelper.cpp.
+        self.Sumo_setup["EnableGuiFollow"] = self.parserFlag(sumo_node, "EnableGuiFollow", False)
+        self.Sumo_setup["GuiCenteredViewId"] = sumo_node.get("GuiCenteredViewId", "ego")
+        self.Sumo_setup["GuiZoom"] = self.parserDouble(sumo_node, "GuiZoom", 600.0)
         # Application Setup
         app_node = config.get("ApplicationSetup", {})
         self.application_setup["EnableApplicationLayer"] = self.parserFlag(app_node, "EnableApplicationLayer", False)
@@ -285,6 +298,121 @@ class ConfigHelper:
         self.DataLog_setup["DataLogWho"] = self.parserStringVector(datalog_node, "DataLogWho", [])
         self.DataLog_setup["DataLogFields"] = self.parserStringVector(datalog_node, "DataLogFields", [])
 
+        # ViewSetup -- parity with the ViewSetup section in ConfigHelper.cpp.
+        self.View_setup["Views"] = self._parseViews(config.get("ViewSetup", {}) or {})
+
+    def _parseViews(self, view_node):
+        declared = view_node.get("Views") or []
+        if not isinstance(declared, list):
+            raise SystemExit("ERROR: ViewSetup.Views must be a list of views")
+        views = [self._parseView(i, v) for i, v in enumerate(declared)]
+
+        spectators = [v for v in views if v["Simulator"] == "carla" and v["Type"] == "spectator"]
+        if len(spectators) > 1:
+            raise SystemExit("ERROR: ViewSetup.Views: only one carla 'spectator' view (the CARLA window) is allowed")
+        implied = []
+        if not spectators:
+            implied.append(self._viewDefaults("spectator", "carla", "spectator", {
+                "Target": self.Carla_setup["CenteredViewId"],
+                "Enable": self.Carla_setup["EnableSpectatorFollow"],
+                "Height": self.Carla_setup["SpectatorHeight"],
+                "AlignYaw": self.Carla_setup["SpectatorAlignYaw"]}, True))
+        if not any(v["Simulator"] == "sumo" for v in views):
+            implied.append(self._viewDefaults("sumo-gui", "sumo", "follow", {
+                "Target": self.Sumo_setup["GuiCenteredViewId"],
+                "Enable": self.Sumo_setup["EnableGuiFollow"],
+                "Zoom": self.Sumo_setup["GuiZoom"]}, True))
+        views = implied + views
+
+        names = [v["Name"] for v in views]
+        dup = sorted({n for n in names if names.count(n) > 1})
+        if dup:
+            raise SystemExit("ERROR: ViewSetup.Views: duplicate Name '%s'; give each view its own Name" % dup[0])
+
+        # The legacy keys always describe the CARLA window and sumo-gui's first view.
+        spec = next(v for v in views if v["Simulator"] == "carla" and v["Type"] == "spectator")
+        self.Carla_setup["EnableSpectatorFollow"] = spec["Enable"]
+        self.Carla_setup["CenteredViewId"] = spec["Target"]
+        self.Carla_setup["SpectatorHeight"] = spec["Height"]
+        self.Carla_setup["SpectatorAlignYaw"] = spec["AlignYaw"]
+        main = next(v for v in views if v["Simulator"] == "sumo")
+        self.Sumo_setup["EnableGuiFollow"] = main["Enable"] and main["Type"] == "follow"
+        self.Sumo_setup["GuiCenteredViewId"] = main["Target"]
+        self.Sumo_setup["GuiZoom"] = main["Zoom"]
+        return views
+
+    def _parseView(self, index, node):
+        if not isinstance(node, dict):
+            raise SystemExit("ERROR: ViewSetup.Views[%d] must be a mapping" % index)
+        sim = str(node.get("Simulator", "carla")).strip().lower()
+        types = VIEW_TYPES.get(sim)
+        if types is None:
+            raise SystemExit("ERROR: ViewSetup.Views[%d].Simulator must be carla|sumo, got '%s'" % (index, sim))
+        vtype = str(node.get("Type", types[0] if sim == "sumo" else "chase")).strip().lower()
+        if vtype not in types:
+            raise SystemExit("ERROR: ViewSetup.Views[%d].Type for %s must be one of %s, got '%s'"
+                             % (index, sim, "|".join(types), vtype))
+        name = str(node.get("Name", vtype))
+        return self._viewDefaults(name, sim, vtype, node, False)
+
+    def _viewDefaults(self, name, sim, vtype, node, implied):
+        where = "ViewSetup view '%s'" % name
+
+        def floats(key, n, default):
+            val = node.get(key)
+            if val is None:
+                return list(default)
+            if not isinstance(val, (list, tuple)) or len(val) != n:
+                raise SystemExit("ERROR: %s: %s must be a list of %d numbers" % (where, key, n))
+            return [float(x) for x in val]
+
+        height = float(node.get("Height", 50.0))
+        mountOffset, mountPitch = {
+            "chase": ([-6.5, 0.0, 2.8], -12.0),
+            "driver": ([0.5, 0.0, 1.5], -5.0),
+        }.get(vtype, ([0.0, 0.0, height], -90.0))
+        size = [int(x) for x in floats("Size", 2, [960, 540])]
+        if min(size) <= 0:
+            raise SystemExit("ERROR: %s: Size must be two positive pixel counts" % where)
+        view = {
+            "Name": name,
+            "Simulator": sim,
+            "Type": vtype,
+            "Target": str(node.get("Target", "ego")),
+            "Enable": self.parserFlag(node, "Enable", True),
+            "Implied": implied,
+            "Size": size,
+            "Fov": float(node.get("Fov", 90.0)),
+            "SensorTick": float(node.get("SensorTick", 0.0)),
+            "Offset": floats("Offset", 3, mountOffset),
+            "Pitch": float(node.get("Pitch", mountPitch)),
+            "Height": height,
+            "AlignYaw": self.parserFlag(node, "AlignYaw", False),
+            "Zoom": float(node.get("Zoom", 600.0)),
+            "Boundary": floats("Boundary", 4, []),
+            "Display": self.parserFlag(node, "Display", True),
+            "Record": str(node.get("Record", "") or ""),
+        }
+        overlay = node.get("Overlay") or []
+        overlay = [str(x).strip().lower() for x in (overlay if isinstance(overlay, list) else [overlay])]
+        bad = [x for x in overlay if x not in VIEW_OVERLAY]
+        if bad:
+            raise SystemExit("ERROR: %s: Overlay elements must be among %s, got '%s'"
+                             % (where, "|".join(VIEW_OVERLAY), bad[0]))
+        units = str(node.get("OverlayUnits", "mph")).strip().lower()
+        if units not in ("mph", "kmh"):
+            raise SystemExit("ERROR: %s: OverlayUnits must be mph|kmh, got '%s'" % (where, units))
+        view["Overlay"] = overlay
+        view["OverlayUnits"] = units
+        view["OverlaySpeedMax"] = float(node.get("OverlaySpeedMax", 40.0 if units == "mph" else 60.0))
+        if view["OverlaySpeedMax"] <= 0:
+            raise SystemExit("ERROR: %s: OverlaySpeedMax must be positive" % where)
+        if vtype == "fixed" and not view["Boundary"]:
+            raise SystemExit("ERROR: %s: Type fixed needs Boundary: [xmin, ymin, xmax, ymax]" % where)
+        if view["Record"] and os.path.splitext(view["Record"])[1].lower() not in (".mp4", ".avi"):
+            raise SystemExit("ERROR: %s: Record must be a .mp4 or .avi path" % where)
+        return view
+
     def resetConfig(self):
         # Clear all config settings
         self.simulation_setup.clear()
@@ -295,6 +423,7 @@ class ConfigHelper:
         self.Sumo_setup.clear()
         self.Carla_setup.clear()
         self.DataLog_setup.clear()
+        self.View_setup.clear()
 
     def parserFlag(self, node, name, default=False):
         return node.get(name, default) in ['true', True]
