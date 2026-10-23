@@ -848,7 +848,8 @@ def reap_stale(log=print, exclude=()):
 
 
 class Ownership:
-    """Which run, if any, owns a pid: the pid, or one of its ancestors, is a lease child."""
+    """Which run, if any, owns a pid: the pid, or one of its ancestors, is a lease
+    child, or one of its ancestors is a live run's owner (run_cosim)."""
 
     def __init__(self, runs=None):
         self.runs = scan() if runs is None else runs
@@ -868,6 +869,12 @@ class Ownership:
                     return info, child
                 if pgid and child.get("pgid") == pgid and _group_is_ours(pgid, cpid, cstart):
                     return info, child
+        # A child exists before add_child records it; its owner is in the lease from the start.
+        for info in self.runs:
+            owner = info.lease.get("owner") or {}
+            opid, ostart = owner.get("pid"), owner.get("start")
+            if info.alive and opid in chain[1:] and ostart is not None and starts[opid] == ostart:
+                return info, owner
         return None
 
     def name(self, pid):

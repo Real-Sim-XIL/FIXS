@@ -793,12 +793,14 @@ def _begin_run(app=None, config_yaml=None, carla_port=None):
             _RUN.set_ports(carla=carla_port)
     run_registry.reap_stale(log=print, exclude=(_RUN.id,) if _RUN else ())
 
+    # Processes first, leases second: whatever was listed has its owner's lease written by now.
+    leftovers = _cosim_leftovers(app_id)
     owners = run_registry.Ownership()
     ghosts, unowned = [], []
     marks = ()
     if app_id:
         marks = (f"apps/{app_id}/".lower(), f"apps\\{app_id}\\".lower())
-    for pid, pname, cmd in _cosim_leftovers(app_id):
+    for pid, pname, cmd in leftovers:
         if owners.of(pid) is not None:
             continue
         stem = pname.lower()[:-4] if pname.lower().endswith(".exe") else pname.lower()

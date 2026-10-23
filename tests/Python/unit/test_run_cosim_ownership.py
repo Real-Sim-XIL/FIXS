@@ -32,6 +32,19 @@ def sleeper():
 
 
 @pytest.fixture
+def orphan():
+    """A sleeper whose parent has exited, like a leftover whose run_cosim is gone."""
+    code = ("import subprocess, sys; p = subprocess.Popen([sys.executable, '-c', "
+            "'import time; time.sleep(120)'], stdout=subprocess.DEVNULL, "
+            "stderr=subprocess.DEVNULL); print(p.pid)")
+    pid = int(subprocess.run([sys.executable, "-c", code], capture_output=True, text=True,
+                             check=True).stdout)
+    yield pid
+    if rr.process_start(pid) is not None:
+        os.kill(pid, 9)
+
+
+@pytest.fixture
 def kills(monkeypatch):
     seen = []
     monkeypatch.setattr(run_cosim, "_kill_pid_tree", seen.append)
@@ -121,30 +134,70 @@ def test_cleanup_reaps_a_dead_runs_children(registry, sleeper, monkeypatch):
     assert not os.path.exists(path)
 
 
-def test_begin_run_refuses_a_leftover_of_this_app(registry, sleeper, monkeypatch):
+def test_begin_run_refuses_a_leftover_of_this_app(registry, orphan, monkeypatch):
     monkeypatch.setattr(run_cosim, "_cosim_leftovers",
                         lambda app_id=None, include_carla=False:
-                        [(sleeper.pid, "python.exe", "python apps/eco/controller.py")])
+                        [(orphan, "python.exe", "python apps/eco/controller.py")])
     try:
         with pytest.raises(SystemExit) as exc:
             run_cosim._begin_run({"id": "eco"}, None, None)
         assert "outside any FIXS run" in str(exc.value.code)
-        assert sleeper.poll() is None
+        assert rr.process_start(orphan) is not None
     finally:
         if run_cosim._RUN is not None:
             run_cosim._RUN.close()
 
 
-def test_begin_run_only_notes_other_unowned_processes(registry, sleeper, monkeypatch, capsys):
+def test_a_live_runs_owner_owns_a_child_it_has_not_recorded_yet(registry, sleeper):
+    other = rr.Run.start(app_id="eco")          # owner = this test process, sleeper's parent
+    try:
+        hit = rr.Ownership().of(sleeper.pid)
+        assert hit is not None and hit[0].id == other.id
+        assert rr.Ownership().of(os.getpid()) is None    # the owner itself is not its own child
+    finally:
+        other.close()
+    assert rr.Ownership().of(sleeper.pid) is None
+
+
+def test_begin_run_does_not_refuse_another_runs_app_before_it_is_recorded(registry, sleeper,
+                                                                          monkeypatch):
+    other = rr.Run.start(app_id="eco")
     monkeypatch.setattr(run_cosim, "_cosim_leftovers",
                         lambda app_id=None, include_carla=False:
-                        [(sleeper.pid, "sumo.exe", "sumo -c other.sumocfg")])
+                        [(sleeper.pid, "python.exe", "python apps/eco/controller.py")])
+    try:
+        run_cosim._begin_run({"id": "eco"}, None, None)
+        assert run_cosim._RUN is not None and sleeper.poll() is None
+    finally:
+        if run_cosim._RUN is not None:
+            run_cosim._RUN.close()
+        other.close()
+
+
+def test_begin_run_lists_processes_before_it_reads_the_leases(registry, monkeypatch):
+    order = []
+    monkeypatch.setattr(run_cosim, "_cosim_leftovers",
+                        lambda app_id=None, include_carla=False: order.append("processes") or [])
+    real = rr.Ownership
+    monkeypatch.setattr(run_cosim.run_registry, "Ownership",
+                        lambda *a, **k: order.append("leases") or real(*a, **k))
+    try:
+        run_cosim._begin_run({"id": "eco"}, None, None)
+        assert order == ["processes", "leases"]
+    finally:
+        run_cosim._RUN.close()
+
+
+def test_begin_run_only_notes_other_unowned_processes(registry, orphan, monkeypatch, capsys):
+    monkeypatch.setattr(run_cosim, "_cosim_leftovers",
+                        lambda app_id=None, include_carla=False:
+                        [(orphan, "sumo.exe", "sumo -c other.sumocfg")])
     try:
         run_cosim._begin_run({"id": "eco"}, "c.yaml", 2000)
         assert run_cosim._RUN is not None
         assert run_cosim._RUN.lease["ports"] == {"carla": 2000}
         assert "left alone" in capsys.readouterr().out
-        assert sleeper.poll() is None
+        assert rr.process_start(orphan) is not None
     finally:
         run_cosim._RUN.close()
 
